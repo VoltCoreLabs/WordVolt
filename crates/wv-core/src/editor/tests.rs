@@ -175,3 +175,24 @@ fn caret_movement_crosses_paragraphs() {
 fn word_count() {
     assert_eq!(Document::from_text("one two\nthree").word_count(), 3);
 }
+
+#[test]
+fn double_click_selects_word_and_triple_selects_paragraph() {
+    let mut e = Editor::new(Document::from_text("hello big world"));
+    e.select_word(Position::new(0, 7));
+    assert_eq!(e.selected_text(), "big");
+    e.select_paragraph(0);
+    assert_eq!(e.selected_text(), "hello big world");
+}
+
+#[test]
+fn revision_counts_changes_and_current_style_reflects_selection() {
+    let mut e = typed("ab");
+    assert_eq!(e.revision(), 1);
+    e.select_all();
+    e.toggle_bold();
+    assert!(e.current_style().bold);
+    e.undo();
+    assert!(!e.current_style().bold);
+    assert_eq!(e.revision(), 3);
+}

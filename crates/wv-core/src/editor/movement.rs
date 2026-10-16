@@ -1,3 +1,5 @@
+use unicode_segmentation::UnicodeSegmentation;
+
 use super::Editor;
 use crate::position::Position;
 
@@ -42,5 +44,29 @@ impl Editor {
     pub fn select_all(&mut self) {
         self.sel.anchor = Position::default();
         self.sel.head = self.doc.end();
+    }
+}
+
+impl Editor {
+    /// Selects the word around `at` (double click).
+    pub fn select_word(&mut self, at: Position) {
+        let text = self.doc.paragraphs[at.para].text();
+        let mut range = (0, text.len());
+        for (i, word) in text.split_word_bound_indices() {
+            if at.offset <= i + word.len() {
+                range = (i, i + word.len());
+                break;
+            }
+        }
+        self.sel.anchor = Position::new(at.para, range.0);
+        self.sel.head = Position::new(at.para, range.1);
+        self.pending_style = None;
+    }
+
+    /// Selects the whole paragraph (triple click).
+    pub fn select_paragraph(&mut self, para: usize) {
+        self.sel.anchor = Position::new(para, 0);
+        self.sel.head = Position::new(para, self.doc.paragraphs[para].len());
+        self.pending_style = None;
     }
 }

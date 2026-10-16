@@ -15,16 +15,27 @@ impl Render for MainWindow {
             window.set_window_title(&title);
             self.applied_title = title;
         }
+        let words = self.editor.read(cx).core.doc.word_count();
         let t = cx.global::<Theme>();
-        let (bg, page, border, text) = (t.bg, t.page, t.border, t.text);
-        let sheet = div()
-            .w(px(620.))
-            .h_full()
-            .bg(page)
-            .border_1()
-            .border_color(border)
-            .p(px(48.))
-            .child("WordVolt");
+        let (bg, text) = (t.bg, t.text);
+        let workspace = div()
+            .flex_1()
+            .flex()
+            .gap(space::md())
+            .overflow_hidden()
+            .child(
+                block(cx).flex_1().overflow_hidden().child(
+                    div()
+                        .id("doc-scroll")
+                        .size_full()
+                        .overflow_y_scroll()
+                        .flex()
+                        .justify_center()
+                        .py(space::xl())
+                        .child(self.editor.clone()),
+                ),
+            )
+            .child(side_panel(self, cx));
         div()
             .size_full()
             .bg(bg)
@@ -44,24 +55,8 @@ impl Render for MainWindow {
                     .overflow_hidden()
                     .child(tab_bar(self, cx))
                     .child(ribbon(self, cx))
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .gap(space::md())
-                            .overflow_hidden()
-                            .child(
-                                block(cx)
-                                    .flex_1()
-                                    .flex()
-                                    .justify_center()
-                                    .overflow_hidden()
-                                    .p(space::xl())
-                                    .child(sheet),
-                            )
-                            .child(side_panel(self, cx)),
-                    )
-                    .child(status_bar(cx)),
+                    .child(workspace)
+                    .child(status_bar(words, cx)),
             )
     }
 }

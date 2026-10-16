@@ -1,0 +1,69 @@
+use gpui_kit::*;
+
+use super::view::EditorView;
+
+impl EditorView {
+    pub(super) fn on_key_down(
+        &mut self,
+        ev: &KeyDownEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let k = &ev.keystroke;
+        let m = k.modifiers;
+        let shift = m.shift;
+        // Ctrl on Windows/Linux, Cmd on macOS. AltGr (ctrl+alt) is just typing.
+        let command = (m.control && !m.alt) || m.platform;
+        match (k.key.as_str(), command) {
+            ("enter", _) => self.apply(cx, |c| c.enter()),
+            ("backspace", _) => self.apply(cx, |c| c.backspace()),
+            ("delete", _) => self.apply(cx, |c| c.delete_forward()),
+            ("left", _) => self.apply(cx, |c| c.move_left(shift)),
+            ("right", _) => self.apply(cx, |c| c.move_right(shift)),
+            ("home", true) => self.apply(cx, |c| c.move_doc_start(shift)),
+            ("end", true) => self.apply(cx, |c| c.move_doc_end(shift)),
+            ("home", _) => self.apply(cx, |c| c.move_line_start(shift)),
+            ("end", _) => self.apply(cx, |c| c.move_line_end(shift)),
+            ("up", _) => self.move_vertical(-1, shift, cx),
+            ("down", _) => self.move_vertical(1, shift, cx),
+            ("a", true) => self.apply(cx, |c| c.select_all()),
+            ("z", true) if shift => self.apply(cx, |c| _ = c.redo()),
+            ("z", true) => self.apply(cx, |c| _ = c.undo()),
+            ("y", true) => self.apply(cx, |c| _ = c.redo()),
+            ("b", true) => self.apply(cx, |c| c.toggle_bold()),
+            ("i", true) => self.apply(cx, |c| c.toggle_italic()),
+            ("u", true) => self.apply(cx, |c| c.toggle_underline()),
+            ("c", true) => self.copy(cx),
+            ("x", true) => {
+                self.copy(cx);
+                self.apply(cx, |c| _ = c.delete_selection());
+            }
+            ("v", true) => self.paste(cx),
+            ("tab", _) => self.apply(cx, |c| c.insert_text("\t")),
+            (_, false) => {
+                if let Some(text) = k
+                    .key_char
+                    .as_deref()
+                    .filter(|t| !t.chars().any(char::is_control))
+                {
+                    self.apply(cx, |c| c.insert_text(text));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn copy(&mut self, cx: &mut Context<Self>) {
+        let text = self.core.selected_text();
+        if !text.is_empty() {
+            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        }
+    }
+
+    fn paste(&mut self, cx: &mut Context<Self>) {
+        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            let text = text.replace("\r\n", "\n").replace('\r', "\n");
+            self.apply(cx, |c| c.insert_text(&text));
+        }
+    }
+}

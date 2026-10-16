@@ -2,6 +2,7 @@
 
 mod app;
 mod assets;
+mod editor;
 mod theme;
 mod ui_kit;
 mod window;
