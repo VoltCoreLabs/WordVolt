@@ -1,7 +1,7 @@
 use gpui_kit::*;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::theme::Theme;
+use crate::theme::{Theme, ui_font};
 
 /// What a key press did to the text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -143,16 +143,46 @@ impl LineEdit {
         }
     }
 
-    /// The text with a caret (or highlighted when everything is selected).
-    pub fn view(&self, cx: &App) -> Div {
-        let t = cx.global::<Theme>();
-        let row = div().flex().items_center();
-        if self.all {
-            return row.child(div().bg(t.accent_subtle).child(self.text.clone()));
+    /// Width of `text` in the 14 px UI font (what `text_sm` draws).
+    fn text_width(text: &str, window: &Window, color: Hsla) -> f32 {
+        if text.is_empty() {
+            return 0.0;
         }
-        row.child(self.text[..self.cursor].to_string())
-            .child(div().w(px(1.)).h(px(16.)).bg(t.text))
-            .child(self.text[self.cursor..].to_string())
+        let run = TextRun {
+            len: text.len(),
+            font: ui_font(),
+            color,
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+        };
+        f32::from(
+            window
+                .text_system()
+                .shape_line(text.to_string().into(), px(14.), &[run], None)
+                .width(),
+        )
+    }
+
+    /// The text with a caret (or highlighted when everything is selected). `visible` is the width
+    /// available for the text: longer text is clipped and scrolled so that the caret stays in view.
+    pub fn view(&self, visible: f32, window: &Window, cx: &App) -> Div {
+        let t = cx.global::<Theme>();
+        let row = div().flex().flex_none().items_center().whitespace_nowrap();
+        let (row, shift) = if self.all {
+            (
+                row.child(div().bg(t.accent_subtle).child(self.text.clone())),
+                0.0,
+            )
+        } else {
+            let before = Self::text_width(&self.text[..self.cursor], window, t.text.into());
+            let row = row
+                .child(self.text[..self.cursor].to_string())
+                .child(div().w(px(1.)).h(px(16.)).bg(t.text))
+                .child(self.text[self.cursor..].to_string());
+            (row, (before + 4.0 - visible).max(0.0))
+        };
+        div().w_full().overflow_hidden().child(row.ml(px(-shift)))
     }
 }
 
