@@ -37,6 +37,8 @@ impl EditorView {
             _ => core.set_head(at, ev.modifiers.shift),
         });
         self.selecting = ev.click_count == 1;
+        // The clicked point is already visible: do not scroll to the caret.
+        self.reveal_caret.set(false);
     }
 
     /// Drag-selection, handled once for the whole viewport.

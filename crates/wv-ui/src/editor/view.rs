@@ -74,6 +74,15 @@ impl EditorView {
         cx.notify();
     }
 
+    /// (page with the caret, total pages), both 1-based; recomputes the layout if the document changed.
+    pub fn page_info(&mut self, window: &Window) -> (usize, usize) {
+        let layout = self.ensure_layout(window);
+        let current = layout
+            .caret(self.core.sel.head, &self.measurer(window))
+            .map_or(1, |c| c.page + 1);
+        (current, layout.pages.len())
+    }
+
     pub(super) fn measurer(&self, window: &Window) -> GpuiMeasurer {
         GpuiMeasurer::new(window, self.measure_cache.clone())
     }
@@ -144,6 +153,8 @@ impl Render for EditorView {
                             move |bounds, (), window, cx| paint_page(&view, bounds, window, cx),
                         )
                         .absolute()
+                        .top_0()
+                        .left_0()
                         .size_full(),
                     )
             })
@@ -156,6 +167,8 @@ impl Render for EditorView {
             |_, _, _, _| {},
         )
         .absolute()
+        .top_0()
+        .left_0()
         .size_full();
         let viewport_probe = canvas(
             move |b, _, _| {
@@ -165,6 +178,8 @@ impl Render for EditorView {
             move |_, (scroll, b), window, _| scroll.paint_scrollbar(b, thumb, window),
         )
         .absolute()
+        .top_0()
+        .left_0()
         .size_full();
 
         div()

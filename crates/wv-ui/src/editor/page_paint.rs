@@ -32,7 +32,9 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     let m = GpuiMeasurer::new(window, v.measure.clone());
     let origin = bounds.origin;
     let at = |x: f32, y: f32| point(origin.x + px(x), origin.y + px(y));
-    let (view_top, view_bottom) = v.scroll.visible();
+    // Visible region = clip rectangle of the scroll container (no cross-element bookkeeping).
+    let clip = window.content_mask().bounds;
+    let (view_top, view_bottom) = (f32::from(clip.top()), f32::from(clip.bottom()));
     let visible = |top: f32, height: f32| {
         let top = f32::from(origin.y) + top;
         top + height > view_top - CULL && top < view_bottom + CULL
