@@ -1,0 +1,8 @@
+[package]
+name = "wv-io"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+wv-core = { path = "../wv-core" }

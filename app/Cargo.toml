@@ -1,0 +1,8 @@
+[package]
+name = "wordvolt"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+wv-ui = { path = "../crates/wv-ui" }

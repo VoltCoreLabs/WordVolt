@@ -26,8 +26,14 @@ Cargo workspace: `crates/{wv-core,wv-layout,wv-io,wv-i18n,wv-ui}` + `app/`. Фа
 Задача = ветка → коммиты → проверки → PR → squash-merge при зелёных проверках. Подробно: `CLAUDE.md`.
 
 ## D-008 — 2026-10-17 — Доп. библиотеки UI
-`lilt`/`keyframe` (сложные анимации), `palette` (цвет), Lucide SVG (иконки), `rfd` (диалоги). План Б по UI — Slint.
+`lilt`/`keyframe` (сложные анимации), `palette` (цвет), Phosphor SVG (иконки, D-010), `rfd` (диалоги). План Б по UI — Slint.
 
 ## D-009 — 2026-10-17 — Живая пересборка (dev-loop)
 Полноценного HMR как в Tauri у GPUI нет. Цель: изменил код → окно обновилось за секунды.
 Слои: (1) `bacon`/`cargo-watch` — пересборка и перезапуск при сохранении; (2) быстрая сборка в dev (lld/mold, `opt-level=1` для зависимостей, incremental); (3) **hot-reload токенов темы** из файла через `notify` без пересборки; (4) эксперимент: `subsecond` (hot-patching Rust) — оценить в Этапе 0; (5) сохранение/восстановление открытого документа при перезапуске.
+
+## D-010 — 2026-10-17 — Иконки: Phosphor
+Набор иконок — **Phosphor** (SVG, лицензия MIT), вместо Lucide из D-008. Файлы в `assets/icons/phosphor/` (стили regular/bold/fill), рисуем через GPUI `svg()`. Подключать только нужные иконки, не весь набор.
+
+## D-011 — 2026-10-17 — Dev-команда
+`cargo dev` (алиас в `.cargo/config.toml` → `cargo watch -x run` по `crates/` и `app/`). `just`/`bacon` не нужны, `cargo-watch` уже установлен. Уточняет D-009.

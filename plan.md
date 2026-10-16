@@ -25,7 +25,7 @@
 | Орфография | `spellbook` (Hunspell на Rust) | чистый Rust |
 | Диалоги ОС | `rfd` | открыть/сохранить |
 | Анимации | встроенные GPUI `with_animation` + `lilt`/`keyframe` | пружины, цепочки |
-| Цвет/иконки | `palette`, Lucide SVG | тёмная тема, иконки |
+| Цвет/иконки | `palette`, Phosphor SVG | тёмная тема, иконки |
 | Dev-loop | `bacon`, `notify`, (`subsecond`) | живая пересборка |
 | Прочее | `serde`, `thiserror`, `anyhow`, `tracing`, `slotmap`, `smallvec` | |
 
@@ -52,10 +52,10 @@ wordvolt (bin)
 ## 4. Этапы и задачи
 
 ### Этап 0 — Фундамент
-- [ ] Преобразовать в cargo workspace по `docs/structure.md` (crates/* + app/, README.md в каждом крейте, wv-i18n)
+- [x] (2026-10-17) Преобразовать в cargo workspace по `docs/structure.md` (crates/* + app/, README.md в каждом крейте, wv-i18n)
 - [ ] Подобрать совместимые версии gpui / gpui-component, окно собирается и запускается на Windows
 - [ ] CI-минимум: fmt + clippy + test (GitHub Actions)
-- [ ] **Dev-loop (D-009):** `bacon`/`cargo-watch` с авто-перезапуском, быстрый линкер, профиль dev; команда `just dev`
+- [~] **Dev-loop (D-009/D-011):** `cargo dev` (cargo-watch) сделан; осталось: быстрый линкер
 - [ ] Hot-reload токенов темы из файла (`notify`), без пересборки
 - [ ] Оценить `subsecond` (hot-patching) — если работает с GPUI, включить
 - [ ] Восстановление документа при перезапуске (dev-режим)
