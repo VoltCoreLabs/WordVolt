@@ -1,6 +1,7 @@
 use gpui_kit::*;
 use wv_core::Position;
 
+use super::align::caret_point;
 use super::view::EditorView;
 
 impl EditorView {
@@ -12,7 +13,11 @@ impl EditorView {
             let Some(layout) = layouts.get(head.para) else {
                 return;
             };
-            let Some(caret) = layout.position_for_index(head.offset) else {
+            let Some(caret) = caret_point(
+                layout,
+                head.offset,
+                self.core.doc.paragraphs[head.para].style.align,
+            ) else {
                 return;
             };
             let line = layout.line_height();

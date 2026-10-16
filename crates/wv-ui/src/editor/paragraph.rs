@@ -3,6 +3,8 @@ use std::ops::Range;
 use gpui_kit::*;
 use wv_core::{Align, CharStyle, Paragraph};
 
+use super::align::caret_point;
+use super::caret::caret_alpha;
 use super::view::EditorView;
 use crate::theme::{Theme, ui_font};
 
@@ -23,17 +25,30 @@ pub fn paragraph_el(
     view.layouts.borrow_mut().push(layout.clone());
 
     let head = view.core.sel.head;
-    let caret = (focused && view.caret_visible && head.para == ix).then(|| {
+    let align = para.style.align;
+    let caret = (focused && head.para == ix).then(|| {
         let color = theme.text;
-        let offset = head.offset;
-        let layout = layout.clone();
+        let (epoch, scroll, reveal) = (
+            view.caret_epoch.clone(),
+            view.scroll.clone(),
+            view.reveal_caret.clone(),
+        );
         canvas(
             |_, _, _| (),
             move |_, _, window, _| {
-                if let Some(at) = layout.position_for_index(offset) {
-                    let caret = Bounds::new(at, size(px(1.5), layout.line_height()));
-                    window.paint_quad(fill(caret, color));
+                let Some(at) = caret_point(&layout, head.offset, align) else {
+                    return;
+                };
+                let height = layout.line_height();
+                let alpha = caret_alpha(epoch.get().elapsed().as_secs_f32());
+                window.paint_quad(fill(
+                    Bounds::new(at, size(px(1.5), height)),
+                    Rgba { a: alpha, ..color },
+                ));
+                if reveal.replace(false) {
+                    scroll.reveal(at.y, height);
                 }
+                window.request_animation_frame();
             },
         )
         .absolute()
@@ -50,7 +65,7 @@ pub fn paragraph_el(
             cx.listener(move |this, ev, window, cx| this.on_mouse_down(ix, ev, window, cx)),
         )
         .on_mouse_move(cx.listener(move |this, ev, _, cx| this.on_mouse_drag(ix, ev, cx)));
-    let aligned = match para.style.align {
+    let aligned = match align {
         Align::Left | Align::Justify => base,
         Align::Center => base.text_center(),
         Align::Right => base.text_right(),

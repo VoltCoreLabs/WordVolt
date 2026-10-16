@@ -1,15 +1,15 @@
 use gpui_kit::*;
 use wv_core::Position;
 
+use super::align::index_at;
 use super::view::EditorView;
 
 impl EditorView {
     /// Byte offset in paragraph `ix` under `point` (clamped to a char boundary).
     pub(super) fn offset_at(&self, ix: usize, point: Point<Pixels>) -> usize {
         let layouts = self.layouts.borrow();
-        let raw = layouts
-            .get(ix)
-            .map_or(0, |l| l.index_for_position(point).unwrap_or_else(|i| i));
+        let align = self.core.doc.paragraphs[ix].style.align;
+        let raw = layouts.get(ix).map_or(0, |l| index_at(l, point, align));
         let text = self.core.doc.paragraphs[ix].text();
         let mut offset = raw.min(text.len());
         while !text.is_char_boundary(offset) {

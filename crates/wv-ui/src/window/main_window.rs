@@ -24,16 +24,10 @@ impl Render for MainWindow {
             .gap(space::md())
             .overflow_hidden()
             .child(
-                block(cx).flex_1().overflow_hidden().child(
-                    div()
-                        .id("doc-scroll")
-                        .size_full()
-                        .overflow_y_scroll()
-                        .flex()
-                        .justify_center()
-                        .py(space::xl())
-                        .child(self.editor.clone()),
-                ),
+                block(cx)
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(self.editor.clone()),
             )
             .child(side_panel(self, cx));
         div()
@@ -56,7 +50,7 @@ impl Render for MainWindow {
                     .child(tab_bar(self, cx))
                     .child(ribbon(self, cx))
                     .child(workspace)
-                    .child(status_bar(words, cx)),
+                    .child(status_bar(self.lang, words, cx)),
             )
     }
 }

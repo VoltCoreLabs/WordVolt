@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use gpui_kit::*;
+use wv_i18n::{Key, t};
 
 use super::state::MainWindow;
 use crate::theme::{Theme, space};
@@ -20,12 +21,16 @@ pub fn side_panel(this: &MainWindow, cx: &App) -> impl IntoElement {
         .flex()
         .flex_col()
         .gap(space::sm())
-        .child(div().font_weight(FontWeight::SEMIBOLD).child("Styles"))
+        .child(
+            div()
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(t(this.lang, Key::Styles)),
+        )
         .child(
             div()
                 .text_sm()
                 .text_color(muted)
-                .child("Heading 1 · Heading 2 · Normal"),
+                .child(t(this.lang, Key::StylesHint)),
         );
     div()
         .h_full()

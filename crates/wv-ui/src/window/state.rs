@@ -16,12 +16,12 @@ pub enum Tab {
 impl Tab {
     pub const ALL: [Tab; 4] = [Tab::Home, Tab::Insert, Tab::Layout, Tab::View];
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self, lang: Lang) -> &'static str {
         match self {
-            Tab::Home => "Home",
-            Tab::Insert => "Insert",
-            Tab::Layout => "Layout",
-            Tab::View => "View",
+            Tab::Home => t(lang, Key::TabHome),
+            Tab::Insert => t(lang, Key::TabInsert),
+            Tab::Layout => t(lang, Key::TabLayout),
+            Tab::View => t(lang, Key::TabView),
         }
     }
 }

@@ -21,15 +21,15 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
     let (open, tab) = (this.ribbon_open, this.tab);
     let groups = match tab {
         Tab::Home => home::groups(this, cx),
-        Tab::Insert => insert::groups(cx),
-        Tab::Layout | Tab::View => placeholder::groups(tab, cx),
+        Tab::Insert => insert::groups(this.lang, cx),
+        Tab::Layout | Tab::View => placeholder::groups(tab, this.lang, cx),
     };
     let row = div()
         .flex()
         .gap(space::md())
         .children(groups)
         .with_animation(
-            SharedString::from(format!("ribbon-fade-{}", tab.label())),
+            SharedString::from(format!("ribbon-fade-{}", tab.label(this.lang))),
             Animation::new(Duration::from_millis(200)).with_easing(ease_out_quint()),
             |el, delta| el.opacity(delta),
         );
