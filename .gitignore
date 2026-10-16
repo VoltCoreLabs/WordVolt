@@ -1,1 +1,4 @@
 /target
+
+# Apple SF Pro: licence forbids redistribution, keep local only (see docs/decisions.md D-012)
+assets/fonts/SFPro*

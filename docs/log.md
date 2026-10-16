@@ -7,3 +7,5 @@
 - Дальше: Этап 0 — ветка `feat/workspace-setup`: workspace, версии gpui-kit, dev-loop, прототип анимаций.
 - (позже в тот же день) Ветка `feat/workspace-setup`: workspace, `wv-ui` (theme, ui_kit, window), `cargo dev`. Окно запускается. Иконки — Phosphor (D-010).
 - Дальше: `feat/ui-animation-prototype` (анимации GPUI, раскрывающаяся панель), hot-reload токенов темы, быстрый линкер, CI.
+- Ветка `feat/ui-foundation`: шрифт (SF Pro Text → Inter → Segoe UI, D-012), иконки Phosphor, ui_kit (icon, icon_button, tab, block_group), вкладки ribbon, анимации (вкладки, ribbon, боковая панель), hot-reload темы из `assets/theme/light.toml`.
+- Грабля: GPUI `svg()` рисуется только если `text_color` задан на самом svg, наследование от родителя не работает.

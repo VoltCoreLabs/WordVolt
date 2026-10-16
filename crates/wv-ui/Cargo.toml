@@ -8,3 +8,7 @@ publish = false
 gpui-kit.workspace = true
 wv-core = { path = "../wv-core" }
 wv-layout = { path = "../wv-layout" }
+rust-embed = { version = "8", features = ["interpolate-folder-path"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+notify = "8"

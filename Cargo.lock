@@ -7911,6 +7911,10 @@ name = "wv-ui"
 version = "0.1.0"
 dependencies = [
  "gpui-kit",
+ "notify",
+ "rust-embed",
+ "serde",
+ "toml 0.8.23",
  "wv-core",
  "wv-layout",
 ]

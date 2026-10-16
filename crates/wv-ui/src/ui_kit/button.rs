@@ -3,6 +3,7 @@ use gpui_kit::*;
 use crate::theme::{Theme, radius, space};
 
 #[derive(Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum ButtonKind {
     Default,
     Primary,
