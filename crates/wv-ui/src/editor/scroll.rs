@@ -43,6 +43,11 @@ impl ScrollState {
         self.content_h.set(f32::from(height));
     }
 
+    pub fn reset(&self) {
+        self.target.set(0.);
+        self.current.set(0.);
+    }
+
     /// Wheel/trackpad: positive `dy` scrolls down.
     pub fn scroll_by(&self, dy: f32) {
         self.target

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use gpui_kit::*;
 use wv_core::Editor;
 use wv_i18n::{APP_NAME, Key, Lang, t};
@@ -30,7 +32,7 @@ impl Tab {
 pub struct MainWindow {
     pub editor: Entity<EditorView>,
     /// `None` = document was never saved (shown as "New document").
-    pub file_name: Option<String>,
+    pub file_path: Option<PathBuf>,
     pub dirty: bool,
     pub lang: Lang,
     pub applied_title: String,
@@ -43,13 +45,13 @@ impl MainWindow {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let editor = cx.new(EditorView::new);
         cx.observe(&editor, |this, editor, cx| {
-            this.dirty = editor.read(cx).core.revision() != 0;
+            this.dirty = editor.read(cx).core.is_modified();
             cx.notify();
         })
         .detach();
         Self {
             editor,
-            file_name: None,
+            file_path: None,
             dirty: false,
             lang: Lang::default(),
             applied_title: String::new(),
@@ -64,12 +66,18 @@ impl MainWindow {
         self.editor.update(cx, |view, cx| view.apply(cx, f));
     }
 
-    /// File name, or "New document" if there is none; `•` marks unsaved changes.
+    /// File name, or "New document" if there is none.
+    pub fn file_label(&self) -> String {
+        self.file_path
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| t(self.lang, Key::UntitledDocument).to_string())
+    }
+
+    /// Title shown in the title bar; `•` marks unsaved changes.
     pub fn document_title(&self) -> String {
-        let name = self
-            .file_name
-            .clone()
-            .unwrap_or_else(|| t(self.lang, Key::UntitledDocument).to_string());
+        let name = self.file_label();
         if self.dirty {
             format!("{name} •")
         } else {

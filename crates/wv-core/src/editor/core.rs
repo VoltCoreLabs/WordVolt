@@ -11,6 +11,7 @@ pub struct Editor {
     pub pending_style: Option<CharStyle>,
     pub(super) history: History,
     revision: u64,
+    saved_revision: u64,
 }
 
 impl Default for Editor {
@@ -27,12 +28,22 @@ impl Editor {
             pending_style: None,
             history: History::default(),
             revision: 0,
+            saved_revision: 0,
         }
     }
 
     /// Grows with every change (also undo/redo); 0 = untouched document.
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// True if the document changed since it was created/loaded or last marked saved.
+    pub fn is_modified(&self) -> bool {
+        self.revision != self.saved_revision
+    }
+
+    pub fn mark_saved(&mut self) {
+        self.saved_revision = self.revision;
     }
 
     pub fn can_undo(&self) -> bool {

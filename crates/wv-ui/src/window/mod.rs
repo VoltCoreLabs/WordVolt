@@ -1,3 +1,4 @@
+mod file_ops;
 mod main_window;
 mod ribbon;
 mod side_panel;
