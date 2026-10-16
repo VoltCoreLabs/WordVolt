@@ -197,7 +197,7 @@ impl ColorPicker {
             .into_any_element()
     }
 
-    fn panel(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn panel(&mut self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.global::<Theme>();
         let (surface, border, muted, text, hover) =
             (t.surface, t.border, t.text_muted, t.text, t.surface_alt);
@@ -399,7 +399,7 @@ impl ColorPicker {
                     .text_sm()
                     .text_color(text)
                     .cursor_text()
-                    .child(self.hex.view(cx)),
+                    .child(self.hex.view(150.0, window, cx)),
             );
 
         div()
@@ -439,7 +439,7 @@ impl ColorPicker {
 }
 
 impl Render for ColorPicker {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.global::<Theme>();
         let (bar, border) = (self.current.map_or(t.border_strong, rgb), t.border);
         let button = icon_button(
@@ -467,7 +467,7 @@ impl Render for ColorPicker {
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .offset(point(px(0.), px(36.)))
-                    .child(self.panel(cx)),
+                    .child(self.panel(window, cx)),
             )
             .with_priority(10)
         });

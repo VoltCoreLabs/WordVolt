@@ -123,8 +123,7 @@ impl Render for LinkEditor {
                 .border_color(accent)
                 .text_sm()
                 .cursor_text()
-                .child(self.edit.view(cx));
-            let _ = window;
+                .child(self.edit.view(240.0, window, cx));
             let body = div()
                 .id("link-panel")
                 .occlude()

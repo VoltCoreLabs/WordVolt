@@ -169,11 +169,13 @@ impl Combo {
 }
 
 impl Render for Combo {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.global::<Theme>();
         let (surface, border, accent, muted) = (t.surface, t.border, t.accent, t.text_muted);
         let content = if self.open {
-            self.edit.view(cx).into_any_element()
+            self.edit
+                .view(self.config.width - 50.0, window, cx)
+                .into_any_element()
         } else {
             div()
                 .truncate()
