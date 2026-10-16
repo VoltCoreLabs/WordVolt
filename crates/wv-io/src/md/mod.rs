@@ -1,0 +1,74 @@
+//! Markdown subset: paragraphs, `**bold**`, `*italic*`, `<u>underline</u>`, `# headings` (read as bold).
+//! Paragraph alignment and font size/colour are not representable and are dropped.
+
+mod reader;
+mod writer;
+
+pub use reader::decode;
+pub use writer::encode;
+
+#[cfg(test)]
+mod tests {
+    use wv_core::{CharStyle, Document, Paragraph, Run};
+
+    use super::*;
+
+    fn styled(text: &str, bold: bool, italic: bool, underline: bool) -> Run {
+        Run::new(
+            text,
+            CharStyle {
+                bold,
+                italic,
+                underline,
+                ..Default::default()
+            },
+        )
+    }
+
+    #[test]
+    fn round_trip_keeps_inline_styles_and_empty_paragraphs() {
+        let mut doc = Document::from_text("");
+        doc.paragraphs = vec![
+            Paragraph {
+                runs: vec![
+                    styled("plain ", false, false, false),
+                    styled("bold", true, false, false),
+                    styled(" and ", false, false, false),
+                    styled("both", true, true, false),
+                    styled(" ", false, false, false),
+                    styled("under", false, false, true),
+                ],
+                ..Default::default()
+            },
+            Paragraph::default(),
+            Paragraph {
+                runs: vec![styled("2 * 3 = 6, a_b, <tag>, \\", false, false, false)],
+                ..Default::default()
+            },
+        ];
+        assert_eq!(decode(&encode(&doc)), doc);
+    }
+
+    #[test]
+    fn reads_headings_lists_and_soft_wrapped_lines() {
+        let doc = decode("# Title\n\nline one\nline two\n\n- item");
+        assert_eq!(doc.text(), "Title\nline one line two\n- item");
+        assert!(doc.paragraphs[0].runs[0].style.bold);
+    }
+
+    #[test]
+    fn spaces_stay_outside_markers() {
+        let doc = Document {
+            paragraphs: vec![Paragraph {
+                runs: vec![styled(" bold ", true, false, false)],
+                ..Default::default()
+            }],
+        };
+        assert_eq!(encode(&doc), " **bold** ");
+    }
+
+    #[test]
+    fn stray_asterisks_are_literal() {
+        assert_eq!(decode("a * b ** c").text(), "a * b ** c");
+    }
+}

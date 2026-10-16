@@ -3,10 +3,13 @@
 mod block;
 mod block_group;
 mod button;
+mod hover;
 mod icon;
 mod icon_button;
 mod tab;
 mod window_controls;
+
+use gpui_kit::App;
 
 pub use block::block;
 pub use block_group::block_group;
@@ -15,3 +18,8 @@ pub use icon::Icon;
 pub use icon_button::icon_button;
 pub use tab::tab;
 pub use window_controls::{CONTROLS_WIDTH, window_controls};
+
+/// Registers the global state widgets need (hover fades). Call once at startup.
+pub fn init(cx: &mut App) {
+    cx.set_global(hover::HoverMap::default());
+}

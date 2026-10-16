@@ -1,5 +1,6 @@
 //! GPUI interface. See README.md.
 
+mod actions;
 mod app;
 mod assets;
 mod editor;

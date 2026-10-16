@@ -10,6 +10,8 @@ pub fn run() {
         gpui_kit::init(cx);
         register_fonts(cx);
         cx.set_global(Theme::light());
+        crate::ui_kit::init(cx);
+        crate::actions::bind_keys(cx);
         watch_theme_file(cx);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
@@ -26,8 +28,16 @@ pub fn run() {
             window_min_size: Some(size(px(720.), px(480.))),
             ..Default::default()
         };
-        gpui_kit::open_window(options, cx, |_, cx| cx.new(MainWindow::new))
-            .expect("failed to open window");
+        gpui_kit::open_window(options, cx, |window, cx| {
+            let view = cx.new(MainWindow::new);
+            let weak = view.downgrade();
+            window.on_window_should_close(cx, move |window, cx| {
+                weak.update(cx, |this, cx| this.should_close(window, cx))
+                    .unwrap_or(true)
+            });
+            view
+        })
+        .expect("failed to open window");
         cx.activate(true);
     });
 }

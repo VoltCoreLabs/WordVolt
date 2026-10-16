@@ -1,5 +1,6 @@
 use gpui_kit::*;
 
+use super::hover::{HoverLook, hover_layer, track_hover};
 use super::icon::{Icon, Weight, icon};
 use crate::theme::{Theme, radius, space};
 
@@ -52,16 +53,25 @@ fn control(
     on_click: impl Fn(&mut Window) + 'static,
 ) -> Stateful<Div> {
     let t = cx.global::<Theme>();
-    let (hover_bg, hover_fg) = if is_close {
-        (t.danger, t.on_accent)
+    let id = ElementId::from(id);
+    // Close turns red with a white icon; the icon is part of the fading layer so both change together.
+    let (bg, hover_icon) = if is_close {
+        (
+            t.danger,
+            Some(icon(glyph, Weight::Regular, px(16.), t.on_accent).into_any_element()),
+        )
     } else {
-        (t.surface, t.text)
+        (t.border, None)
     };
-    let hover_bg = if is_close { hover_bg } else { t.border };
-    let group = SharedString::from(id);
-    div()
-        .id(id)
-        .group(group.clone())
+    let look = HoverLook {
+        bg,
+        border: None,
+        radius: radius::md(),
+        bleed: px(0.),
+    };
+    let control = div()
+        .id(id.clone())
+        .relative()
         .window_control_area(area)
         .size(px(32.))
         .flex()
@@ -69,10 +79,14 @@ fn control(
         .justify_center()
         .rounded(radius::md())
         .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .on_click(move |_, window, _| on_click(window))
-        .child(
-            icon(glyph, Weight::Regular, px(16.), t.text)
-                .group_hover(group, move |s| s.text_color(hover_fg)),
-        )
+        .on_click(move |_, window, _| on_click(window));
+    let base_icon = icon(glyph, Weight::Regular, px(16.), t.text);
+    let layer = hover_layer(&id, look, hover_icon, cx);
+    let control = track_hover(control, &id);
+    if is_close {
+        // The red layer (with its white icon) must cover the dark icon.
+        control.child(base_icon).child(layer)
+    } else {
+        control.child(layer).child(base_icon)
+    }
 }

@@ -26,6 +26,10 @@ pub enum Key {
     Save,
     Styles,
     StylesHint,
+    UnsavedTitle,
+    DontSave,
+    Cancel,
+    ErrorTitle,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -52,6 +56,10 @@ fn ru(key: Key) -> &'static str {
         Key::Save => "Сохранить",
         Key::Styles => "Стили",
         Key::StylesHint => "Заголовок 1 · Заголовок 2 · Обычный",
+        Key::UnsavedTitle => "Сохранить изменения?",
+        Key::DontSave => "Не сохранять",
+        Key::Cancel => "Отмена",
+        Key::ErrorTitle => "Не удалось выполнить операцию",
     }
 }
 
@@ -72,6 +80,10 @@ fn en(key: Key) -> &'static str {
         Key::Save => "Save",
         Key::Styles => "Styles",
         Key::StylesHint => "Heading 1 · Heading 2 · Normal",
+        Key::UnsavedTitle => "Save changes?",
+        Key::DontSave => "Don't save",
+        Key::Cancel => "Cancel",
+        Key::ErrorTitle => "The operation failed",
     }
 }
 
@@ -86,6 +98,16 @@ pub fn words(lang: Lang, n: usize) -> String {
                 _ => "слов",
             };
             format!("{n} {form}")
+        }
+    }
+}
+
+/// "Документ «name» изменён…" / "“name” has unsaved changes…".
+pub fn unsaved_detail(lang: Lang, name: &str) -> String {
+    match lang {
+        Lang::Ru => format!("Документ «{name}» изменён. Сохранить изменения перед продолжением?"),
+        Lang::En => {
+            format!("\u{201C}{name}\u{201D} has unsaved changes. Save them before continuing?")
         }
     }
 }

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use gpui_kit::*;
 
+use super::hover::{HoverLook, hover_layer, track_hover};
 use crate::theme::{Theme, radius, space};
 
 /// Ribbon tab. The accent underline slides in when the tab becomes active.
@@ -27,8 +28,16 @@ pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
     } else {
         div().h(px(3.)).into_any_element()
     };
-    div()
-        .id(SharedString::from(format!("tab-{label}")))
+    let id = ElementId::from(SharedString::from(format!("tab-{label}")));
+    let look = HoverLook {
+        bg: hover,
+        border: None,
+        radius: radius::sm(),
+        bleed: px(0.),
+    };
+    let tab = div()
+        .id(id.clone())
+        .relative()
         .flex()
         .flex_col()
         .gap(px(2.))
@@ -38,8 +47,9 @@ pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
         .text_color(fg)
         .text_sm()
         .when(active, |s| s.font_weight(FontWeight::SEMIBOLD))
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover))
+        .cursor_pointer();
+    track_hover(tab, &id)
+        .child(hover_layer(&id, look, None, cx))
         .child(div().py(space::xs()).child(label))
         .child(indicator)
 }

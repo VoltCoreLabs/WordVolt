@@ -45,6 +45,15 @@ impl EditorView {
         }
     }
 
+    /// Replaces the document (open / new): fresh history, caret at the start, scrolled to the top.
+    pub fn load(&mut self, doc: Document, cx: &mut Context<Self>) {
+        self.core = Editor::new(doc);
+        self.scroll.reset();
+        self.goal_x = None;
+        self.caret_epoch.set(Instant::now());
+        cx.notify();
+    }
+
     /// Runs an editing action (from keyboard or ribbon) and redraws.
     pub fn apply(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut Editor)) {
         f(&mut self.core);
