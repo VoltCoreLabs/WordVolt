@@ -235,3 +235,34 @@ fn bump_size_stops_at_the_ends() {
     e.bump_size(1);
     assert_eq!(e.current_style().size_pt, Some(288));
 }
+
+#[test]
+fn font_family_on_selection_caret_and_default() {
+    let mut e = typed("hello world");
+    e.sel.anchor = Position::new(0, 0);
+    e.sel.head = Position::new(0, 5);
+    e.set_font_family(Some("Georgia".into()));
+    assert_eq!(e.current_style().font.as_deref(), Some("Georgia"));
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 2);
+    e.select_all();
+    assert_eq!(
+        e.current_style().font,
+        None,
+        "mixed selection has no single font"
+    );
+    e.set_font_family(None);
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 1);
+    e.sel = crate::Selection::caret(Position::new(0, 11));
+    e.set_font_family(Some("Arial".into()));
+    e.insert_text("!");
+    assert_eq!(
+        e.doc.paragraphs[0]
+            .runs
+            .last()
+            .unwrap()
+            .style
+            .font
+            .as_deref(),
+        Some("Arial")
+    );
+}

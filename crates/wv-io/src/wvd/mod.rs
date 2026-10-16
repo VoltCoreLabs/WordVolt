@@ -34,6 +34,7 @@ mod tests {
         e.sel.anchor = wv_core::Position::new(1, 0);
         e.sel.head = wv_core::Position::new(1, 3);
         e.set_align(Align::Center);
+        e.doc.paragraphs[0].runs[0].style.font = Some("Georgia".into());
         let back = decode(&encode(&e.doc).unwrap()).unwrap();
         assert_eq!(back, e.doc);
     }

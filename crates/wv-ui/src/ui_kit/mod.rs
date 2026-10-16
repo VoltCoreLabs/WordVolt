@@ -6,6 +6,7 @@ mod button;
 mod hover;
 mod icon;
 mod icon_button;
+mod line_edit;
 mod tab;
 mod window_controls;
 
@@ -14,8 +15,9 @@ use gpui_kit::App;
 pub use block::block;
 pub use block_group::block_group;
 pub use button::{ButtonKind, button};
-pub use icon::Icon;
+pub use icon::{Icon, Weight, icon};
 pub use icon_button::icon_button;
+pub use line_edit::{LineEdit, Outcome};
 pub use tab::tab;
 pub use window_controls::{CONTROLS_WIDTH, window_controls};
 

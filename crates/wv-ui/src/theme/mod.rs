@@ -8,5 +8,5 @@ mod watch;
 
 pub use colors::Theme;
 pub use metrics::{radius, space};
-pub use typography::ui_font;
+pub use typography::{DEFAULT_FONT, ui_font};
 pub use watch::watch_theme_file;

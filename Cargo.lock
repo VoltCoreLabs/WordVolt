@@ -7977,6 +7977,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "toml 0.8.23",
+ "unicode-segmentation",
  "wv-core",
  "wv-i18n",
  "wv-io",

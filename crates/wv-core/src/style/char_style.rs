@@ -8,4 +8,6 @@ pub struct CharStyle {
     pub size_pt: Option<u16>,
     /// 0xRRGGBB; `None` = default text colour.
     pub color: Option<u32>,
+    /// Font family name; `None` = the document default.
+    pub font: Option<String>,
 }

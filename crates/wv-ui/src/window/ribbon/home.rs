@@ -13,9 +13,16 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         (view.core.current_style(), view.core.align())
     };
     let size = style.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
+    let font_name = style
+        .font
+        .clone()
+        .unwrap_or_else(|| crate::theme::DEFAULT_FONT.to_string());
+    this.font_picker
+        .update(cx, |picker, _| picker.set_current(&font_name));
     let font = block_group(
         t(lang, Key::GroupFont),
         vec![
+            this.font_picker.clone().into_any_element(),
             button("size-down", "A\u{2212}", ButtonKind::Default, cx)
                 .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.bump_size(-1))))
                 .into_any_element(),

@@ -71,6 +71,8 @@ Rust 2024, GPUI (+ gpui-component), cosmic-text, ropey/собственная м
 - Итог задачи в чате — 2–3 строки: ветка, ссылка на PR, смержено или нет.
 
 ## Gotchas
+- В `#[cfg(test)]` модулях не пиши `use super::*` рядом с `use gpui_kit::*` в родителе: глоб тянет макрос `gpui_kit::test` и `#[test]` падает с «recursion limit». Импортируй конкретные имена.
+- В этой версии GPUI позиция `anchored()` задаётся типом `Anchor` (не `Corner`); выпадающие меню — `deferred(anchored().anchor(..).offset(..).child(..))`, они не обрезаются `overflow_hidden` родителей.
 - GPUI: `absolute()` без `top_0()/left_0()` встаёт после предыдущих детей, а не в угол родителя — всегда задавай позицию (датчики/оверлеи).
 - Hover-анимации: `ui_kit/hover.rs` (`track_hover` + `hover_layer`), не `.hover()` — он мгновенный (D-016).
 - Текст документа рисуем сами по `wv-layout` (`editor/page_paint.rs`), не через GPUI `StyledText`/`TextLayout` (нет разных размеров, ломается align) — D-020.

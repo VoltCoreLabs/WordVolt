@@ -52,6 +52,13 @@ impl Editor {
                     .then_some(first)
                     .flatten()
             },
+            font: {
+                let first = self.doc.paragraphs[s.para].style_at(s.offset + 1).font;
+                self.doc
+                    .all_chars(s, e, |c| c.font == first)
+                    .then_some(first)
+                    .flatten()
+            },
             ..CharStyle::default()
         }
     }
@@ -74,6 +81,30 @@ impl Editor {
             let from = if i == 0 { start.offset } else { 0 };
             let to = if i == last { end.offset } else { p.len() };
             p.map_style(from, to, |s| s.size_pt = Some(size));
+        }
+        let sel = self.sel;
+        self.edit_paragraphs(start.para, last + 1, paras, sel);
+    }
+
+    /// Sets the font family of the selection; with a caret it applies to the next typed text.
+    /// `None` = back to the default font.
+    pub fn set_font_family(&mut self, font: Option<String>) {
+        let (start, end) = self.sel.range();
+        if start == end {
+            let mut style = self
+                .pending_style
+                .clone()
+                .unwrap_or_else(|| self.doc.paragraphs[start.para].style_at(start.offset));
+            style.font = font;
+            self.pending_style = Some(style);
+            return;
+        }
+        let mut paras = self.doc.paragraphs[start.para..=end.para].to_vec();
+        let last = paras.len() - 1;
+        for (i, p) in paras.iter_mut().enumerate() {
+            let from = if i == 0 { start.offset } else { 0 };
+            let to = if i == last { end.offset } else { p.len() };
+            p.map_style(from, to, |s| s.font = font.clone());
         }
         let sel = self.sel;
         self.edit_paragraphs(start.para, last + 1, paras, sel);

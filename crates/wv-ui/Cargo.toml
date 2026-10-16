@@ -11,6 +11,7 @@ wv-layout = { path = "../wv-layout" }
 wv-i18n = { path = "../wv-i18n" }
 wv-io = { path = "../wv-io" }
 rfd = "0.17"
+unicode-segmentation = "1"
 rust-embed = { version = "8", features = ["interpolate-folder-path"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"

@@ -26,7 +26,7 @@ scrolls smoothly, and does not carry decades of legacy UI. No Electron, no web v
 | --- | --- |
 | **Editing** | Typing (Latin, Cyrillic), Enter, Backspace/Delete by whole grapheme, multi-paragraph selection, clipboard (cut/copy/paste) |
 | **Navigation** | Arrow keys (also line up/down with column memory), Home/End, Ctrl+Home/End, click, drag, double-click (word), triple-click (paragraph), Shift-select |
-| **Formatting** | Bold, italic, underline, font size (A− / A+), paragraph alignment (left / center / right / justify) — from the ribbon or with <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
+| **Formatting** | Bold, italic, underline, font family (type a name or pick from the installed fonts), font size (A− / A+), paragraph alignment (left / center / right / justify) — from the ribbon or with <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | **Files** | New / Open / Save / Save as (<kbd>Ctrl</kbd>+<kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> / <kbd>Shift</kbd>+<kbd>S</kbd>); the Save dialog lets you pick the format: native `.wvd`, Word `.docx`, plain `.txt`, Markdown `.md`; asks before discarding unsaved changes |
 | **History** | Unlimited undo / redo (<kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd>) |
 | **Pages** | Paged A4 view with real pagination: text flows onto new pages, mixed font sizes in one line, justified text, caret and selection across pages |
@@ -120,7 +120,7 @@ Next up:
 - [x] Live editor: typing, caret, selection, clipboard, formatting
 - [x] Custom title bar, ribbon, animations, smooth scrolling
 - [x] Layout engine and paged view: pagination, font sizes, justified text
-- [ ] Font family & colour pickers, tab stops, indents, line spacing controls, page setup (size, margins)
+- [ ] Colour pickers, tab stops, indents, line spacing controls, page setup (size, margins)
 - [x] Open / save: native `.wvd`, Word `.docx` (basic), `.txt`, `.md`
 - [ ] Full `.docx` (lists, tables, images, headers) and `.rtf`, `.html`, `.odt`
 - [ ] IME input, lists, styles (Heading 1–3), find & replace, spell check
