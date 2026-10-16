@@ -196,3 +196,42 @@ fn revision_counts_changes_and_current_style_reflects_selection() {
     assert!(!e.current_style().bold);
     assert_eq!(e.revision(), 3);
 }
+
+#[test]
+fn font_size_on_selection_caret_and_bump() {
+    let mut e = typed("hello world");
+    e.sel.anchor = Position::new(0, 0);
+    e.sel.head = Position::new(0, 5);
+    e.set_size_pt(20);
+    assert_eq!(e.current_style().size_pt, Some(20));
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 2);
+    e.bump_size(1);
+    assert_eq!(e.current_style().size_pt, Some(22));
+    e.bump_size(-1);
+    e.bump_size(-1);
+    assert_eq!(e.current_style().size_pt, Some(18));
+    e.undo();
+    e.undo();
+    e.undo();
+    e.undo();
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 1);
+    e.sel = crate::Selection::caret(Position::new(0, 11));
+    e.set_size_pt(30);
+    e.insert_text("!");
+    assert_eq!(
+        e.doc.paragraphs[0].runs.last().unwrap().style.size_pt,
+        Some(30)
+    );
+}
+
+#[test]
+fn bump_size_stops_at_the_ends() {
+    let mut e = typed("x");
+    e.select_all();
+    e.set_size_pt(8);
+    e.bump_size(-1);
+    assert_eq!(e.current_style().size_pt, Some(8));
+    e.set_size_pt(288);
+    e.bump_size(1);
+    assert_eq!(e.current_style().size_pt, Some(288));
+}

@@ -45,8 +45,61 @@ impl Editor {
             bold: self.doc.all_chars(s, e, |c| c.bold),
             italic: self.doc.all_chars(s, e, |c| c.italic),
             underline: self.doc.all_chars(s, e, |c| c.underline),
+            size_pt: {
+                let first = self.doc.paragraphs[s.para].style_at(s.offset + 1).size_pt;
+                self.doc
+                    .all_chars(s, e, |c| c.size_pt == first)
+                    .then_some(first)
+                    .flatten()
+            },
             ..CharStyle::default()
         }
+    }
+
+    /// Sets the font size (pt) of the selection; with a caret it applies to the next typed text.
+    pub fn set_size_pt(&mut self, size: u16) {
+        let (start, end) = self.sel.range();
+        if start == end {
+            let mut style = self
+                .pending_style
+                .clone()
+                .unwrap_or_else(|| self.doc.paragraphs[start.para].style_at(start.offset));
+            style.size_pt = Some(size);
+            self.pending_style = Some(style);
+            return;
+        }
+        let mut paras = self.doc.paragraphs[start.para..=end.para].to_vec();
+        let last = paras.len() - 1;
+        for (i, p) in paras.iter_mut().enumerate() {
+            let from = if i == 0 { start.offset } else { 0 };
+            let to = if i == last { end.offset } else { p.len() };
+            p.map_style(from, to, |s| s.size_pt = Some(size));
+        }
+        let sel = self.sel;
+        self.edit_paragraphs(start.para, last + 1, paras, sel);
+    }
+
+    /// Next bigger (`step > 0`) or smaller (`step < 0`) size from the usual Word size list.
+    pub fn bump_size(&mut self, step: i32) {
+        const SIZES: [u16; 21] = [
+            8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72, 96, 120, 144, 192, 288,
+        ];
+        let current = self.current_style().size_pt.unwrap_or(12);
+        let next = if step > 0 {
+            SIZES
+                .iter()
+                .copied()
+                .find(|s| *s > current)
+                .unwrap_or(current)
+        } else {
+            SIZES
+                .iter()
+                .rev()
+                .copied()
+                .find(|s| *s < current)
+                .unwrap_or(current)
+        };
+        self.set_size_pt(next);
     }
 
     pub fn toggle_bold(&mut self) {

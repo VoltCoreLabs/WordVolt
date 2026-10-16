@@ -12,9 +12,22 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         let view = this.editor.read(cx);
         (view.core.current_style(), view.core.align())
     };
+    let size = style.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
     let font = block_group(
         t(lang, Key::GroupFont),
         vec![
+            button("size-down", "A\u{2212}", ButtonKind::Default, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.bump_size(-1))))
+                .into_any_element(),
+            div()
+                .w(px(28.))
+                .flex()
+                .justify_center()
+                .child(size.to_string())
+                .into_any_element(),
+            button("size-up", "A+", ButtonKind::Default, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.bump_size(1))))
+                .into_any_element(),
             icon_button("bold", Icon::TextB, style.bold, cx)
                 .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.toggle_bold())))
                 .into_any_element(),

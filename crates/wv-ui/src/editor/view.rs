@@ -4,29 +4,35 @@ use std::time::Instant;
 
 use gpui_kit::*;
 use wv_core::{Document, Editor};
+use wv_layout::{DocLayout, PageSetup};
 
-use super::paragraph::paragraph_el;
+use super::measure::{GpuiMeasurer, MeasureCache};
+use super::page_paint::{PageView, paint_page};
 use super::scroll::ScrollState;
 use crate::theme::{Theme, space};
 
-pub const PAGE_WIDTH: f32 = 620.;
-pub const PAGE_HEIGHT: f32 = 877.;
-pub const PAGE_MARGIN: f32 = 64.;
+/// Space between pages.
+const PAGE_GAP: f32 = 24.0;
 
-/// The editable sheet inside a smooth-scrolling viewport. Owns the document (`core`)
-/// and the per-frame text layouts used for hit-testing.
+/// The paged editing surface inside a smooth-scrolling viewport. Owns the document (`core`);
+/// the page layout is recomputed whenever the document changes.
 pub struct EditorView {
     pub core: Editor,
     pub(super) focus: FocusHandle,
-    pub(super) layouts: Rc<RefCell<Vec<TextLayout>>>,
     pub(super) selecting: bool,
     /// Time of the last edit/caret move; drives the caret fade/blink animation.
     pub(super) caret_epoch: Rc<Cell<Instant>>,
     pub(super) scroll: Rc<ScrollState>,
     /// Scroll to the caret on the next paint (set after keyboard/mouse edits).
     pub(super) reveal_caret: Rc<Cell<bool>>,
-    /// Column (x) kept while moving the caret up/down.
-    pub(super) goal_x: Option<Pixels>,
+    /// Caret column (page x) kept while moving up/down.
+    pub(super) goal_x: Option<f32>,
+    pub(super) layout: Option<Rc<DocLayout>>,
+    layout_key: (u64, u64),
+    doc_epoch: u64,
+    measure_cache: Rc<RefCell<MeasureCache>>,
+    /// Window bounds of every page, written while painting (used for mouse hit-testing).
+    pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
     focused_once: bool,
 }
 
@@ -35,12 +41,16 @@ impl EditorView {
         Self {
             core: Editor::new(Document::default()),
             focus: cx.focus_handle(),
-            layouts: Rc::default(),
             selecting: false,
             caret_epoch: Rc::new(Cell::new(Instant::now())),
             scroll: Rc::default(),
             reveal_caret: Rc::default(),
             goal_x: None,
+            layout: None,
+            layout_key: (0, 0),
+            doc_epoch: 0,
+            measure_cache: Rc::default(),
+            page_bounds: Rc::default(),
             focused_once: false,
         }
     }
@@ -48,6 +58,7 @@ impl EditorView {
     /// Replaces the document (open / new): fresh history, caret at the start, scrolled to the top.
     pub fn load(&mut self, doc: Document, cx: &mut Context<Self>) {
         self.core = Editor::new(doc);
+        self.doc_epoch += 1;
         self.scroll.reset();
         self.goal_x = None;
         self.caret_epoch.set(Instant::now());
@@ -62,6 +73,27 @@ impl EditorView {
         self.reveal_caret.set(true);
         cx.notify();
     }
+
+    pub(super) fn measurer(&self, window: &Window) -> GpuiMeasurer {
+        GpuiMeasurer::new(window, self.measure_cache.clone())
+    }
+
+    fn ensure_layout(&mut self, window: &Window) -> Rc<DocLayout> {
+        let key = (self.core.revision(), self.doc_epoch);
+        match &self.layout {
+            Some(layout) if key == self.layout_key => layout.clone(),
+            _ => {
+                let layout = Rc::new(DocLayout::new(
+                    &self.core.doc,
+                    PageSetup::a4(),
+                    &self.measurer(window),
+                ));
+                self.layout = Some(layout.clone());
+                self.layout_key = key;
+                layout
+            }
+        }
+    }
 }
 
 impl Render for EditorView {
@@ -70,37 +102,54 @@ impl Render for EditorView {
             self.focused_once = true;
             window.focus(&self.focus, cx);
         }
+        let layout = self.ensure_layout(window);
         let theme = cx.global::<Theme>();
-        let (page, border, thumb) = (theme.page, theme.border, theme.border_strong);
-        self.layouts.borrow_mut().clear();
+        let (page_bg, border, thumb) = (theme.page, theme.border, theme.border_strong);
         let focused = self.focus.is_focused(window);
-        let paragraphs: Vec<_> = (0..self.core.doc.paragraphs.len())
-            .map(|ix| paragraph_el(self, ix, focused, cx))
+        self.page_bounds
+            .borrow_mut()
+            .resize(layout.pages.len(), Bounds::default());
+
+        let pages: Vec<_> = (0..layout.pages.len())
+            .map(|ix| {
+                let view = PageView {
+                    layout: layout.clone(),
+                    measure: self.measure_cache.clone(),
+                    page: ix,
+                    selection: self.core.sel.range(),
+                    head: self.core.sel.head,
+                    focused,
+                    text: theme.text,
+                    selection_color: theme.accent_subtle,
+                    epoch: self.caret_epoch.clone(),
+                    scroll: self.scroll.clone(),
+                    reveal: self.reveal_caret.clone(),
+                };
+                let bounds_store = self.page_bounds.clone();
+                div()
+                    .relative()
+                    .flex_none()
+                    .w(px(layout.setup.width))
+                    .h(px(layout.setup.height))
+                    .bg(page_bg)
+                    .border_1()
+                    .border_color(border)
+                    .child(
+                        canvas(
+                            move |bounds, _, _| {
+                                if let Some(slot) = bounds_store.borrow_mut().get_mut(ix) {
+                                    *slot = bounds;
+                                }
+                            },
+                            move |bounds, (), window, cx| paint_page(&view, bounds, window, cx),
+                        )
+                        .absolute()
+                        .size_full(),
+                    )
+            })
             .collect();
+
         let offset = self.scroll.tick(window);
-
-        let sheet = div()
-            .id("sheet")
-            .track_focus(&self.focus)
-            .key_context("Editor")
-            .on_key_down(cx.listener(Self::on_key_down))
-            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_sheet_mouse_down))
-            .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
-            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
-            .cursor_text()
-            .flex_none()
-            .w(px(PAGE_WIDTH))
-            .min_h(px(PAGE_HEIGHT))
-            .p(px(PAGE_MARGIN))
-            .bg(page)
-            .border_1()
-            .border_color(border)
-            .text_size(px(16.))
-            .line_height(px(24.))
-            .flex()
-            .flex_col()
-            .children(paragraphs);
-
         let (content_scroll, viewport_scroll) = (self.scroll.clone(), self.scroll.clone());
         let content_probe = canvas(
             move |b, _, _| content_scroll.set_content_height(b.size.height),
@@ -120,26 +169,33 @@ impl Render for EditorView {
 
         div()
             .id("doc-scroll")
-            .relative()
-            .size_full()
-            .overflow_hidden()
-            .on_mouse_move(
-                cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.on_drag_move(ev, cx)),
-            )
+            .track_focus(&self.focus)
+            .key_context("Editor")
+            .on_key_down(cx.listener(Self::on_key_down))
+            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
+            .on_mouse_move(cx.listener(Self::on_drag_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_scroll_wheel(cx.listener(|this, ev: &ScrollWheelEvent, _, cx| {
                 this.scroll
                     .scroll_by(-f32::from(ev.delta.pixel_delta(px(48.)).y));
                 cx.notify();
             }))
+            .cursor_text()
+            .relative()
+            .size_full()
+            .overflow_hidden()
             .child(
                 div()
                     .relative()
                     .w_full()
                     .flex()
-                    .justify_center()
+                    .flex_col()
+                    .items_center()
+                    .gap(px(PAGE_GAP))
                     .py(space::xl())
                     .mt(px(-offset))
-                    .child(sheet)
+                    .children(pages)
                     .child(content_probe),
             )
             .child(viewport_probe)

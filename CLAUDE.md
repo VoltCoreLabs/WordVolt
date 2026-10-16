@@ -72,7 +72,7 @@ Rust 2024, GPUI (+ gpui-component), cosmic-text, ropey/собственная м
 
 ## Gotchas
 - Hover-анимации: `ui_kit/hover.rs` (`track_hover` + `hover_layer`), не `.hover()` — он мгновенный (D-016).
-- GPUI `TextLayout::position_for_index/index_for_position` игнорируют align абзаца — используй `editor/align.rs`.
+- Текст документа рисуем сами по `wv-layout` (`editor/page_paint.rs`), не через GPUI `StyledText`/`TextLayout` (нет разных размеров, ломается align) — D-020.
 - GPUI `svg()` рисуется только с `text_color` на самом svg (не наследуется от родителя) — см. `ui_kit/icon.rs`.
 - SF Pro лежит локально в `assets/fonts/SFPro*` и в git не попадает (лицензия, D-012).
 - `gpui-kit 0.7.x` — API нужно сверять с docs.rs перед использованием (код в `src/main.rs` — набросок, может не компилироваться).

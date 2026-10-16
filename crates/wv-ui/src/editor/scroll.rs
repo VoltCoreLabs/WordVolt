@@ -34,6 +34,14 @@ impl ScrollState {
         (self.content_h.get() - self.viewport_h.get()).max(0.)
     }
 
+    /// Viewport top and bottom in window coordinates.
+    pub fn visible(&self) -> (f32, f32) {
+        (
+            self.viewport_top.get(),
+            self.viewport_top.get() + self.viewport_h.get(),
+        )
+    }
+
     pub fn set_viewport(&self, bounds: Bounds<Pixels>) {
         self.viewport_top.set(f32::from(bounds.top()));
         self.viewport_h.set(f32::from(bounds.size.height));
