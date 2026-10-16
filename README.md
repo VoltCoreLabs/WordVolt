@@ -109,6 +109,11 @@ See [`docs/structure.md`](docs/structure.md) for the full file tree and [`docs/d
 
 ## 🗺 Roadmap
 
+**Long-term goal:** a full-featured Word alternative — every tab of the ribbon — plus features of its own
+(command palette, document tabs, scripting instead of VBA, version history, …). The full map is in [`plan.md`](plan.md#7-видение-полный-клон-word--свои-функции).
+
+Next up:
+
 - [x] Workspace, theme tokens, reusable block UI kit
 - [x] Document model with undo/redo
 - [x] Live editor: typing, caret, selection, clipboard, formatting
