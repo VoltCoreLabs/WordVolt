@@ -9,4 +9,4 @@ pub mod style;
 pub use document::{Document, Paragraph, Run};
 pub use editor::{CaseKind, Editor};
 pub use position::{Position, Selection};
-pub use style::{Align, CharStyle, ListKind, ParaStyle, Script};
+pub use style::{Align, CharStyle, ListKind, NamedStyle, ParaStyle, Script};

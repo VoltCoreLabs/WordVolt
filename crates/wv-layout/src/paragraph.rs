@@ -38,6 +38,8 @@ pub struct ParagraphLayout {
     pub indent: f32,
     /// Bullet or number drawn in front of the first line (set by `DocLayout`, which counts the items).
     pub marker: Option<String>,
+    /// Gap above the paragraph (named styles such as headings); dropped at the top of a page.
+    pub space_before: f32,
     /// Gap after the paragraph; `None` = the page setup's default.
     pub space_after: Option<f32>,
     pub lines: Vec<Line>,
@@ -110,7 +112,12 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
     let mut layout = build(p, text, lines, opts, m);
     layout.quote = p.style.quote;
     layout.indent = indent;
-    layout.space_after = p.style.list.map(|_| LIST_SPACE_AFTER);
+    layout.space_before = p.style.named.space_before();
+    layout.space_after = p
+        .style
+        .list
+        .map(|_| LIST_SPACE_AFTER)
+        .or(p.style.named.space_after());
     layout.lines.iter_mut().for_each(|line| line.x += indent);
     layout
 }
@@ -189,7 +196,8 @@ fn build(
     opts: &Options,
     m: &dyn Measurer,
 ) -> ParagraphLayout {
-    let default_style = p.runs.first().map(|r| r.style.clone()).unwrap_or_default();
+    let mut default_style = p.runs.first().map(|r| r.style.clone()).unwrap_or_default();
+    p.style.named.apply(&mut default_style);
     let last_row = rows.len() - 1;
     let mut lines = Vec::with_capacity(rows.len());
     let mut y = 0.0;
@@ -203,6 +211,7 @@ fn build(
         quote: false,
         indent: 0.0,
         marker: None,
+        space_before: 0.0,
         space_after: None,
         lines,
         height: y,

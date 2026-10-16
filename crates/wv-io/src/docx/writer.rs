@@ -1,4 +1,4 @@
-use wv_core::{Align, CharStyle, Document, ListKind, Paragraph, Run, Script};
+use wv_core::{Align, CharStyle, Document, ListKind, NamedStyle, Paragraph, Run, Script};
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const REL_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -59,11 +59,14 @@ fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>, lis
         || p.style.quote
         || num_id.is_some()
         || p.style.indent > 0
-        || p.style.line_spacing.is_some();
+        || p.style.line_spacing.is_some()
+        || p.style.named != NamedStyle::Normal;
     if has_props {
         // Child order follows the schema: pStyle, numPr, spacing, ind, jc.
         xml.push_str("<w:pPr>");
-        if p.style.quote {
+        if let Some(id) = docx_style_id(p.style.named) {
+            xml.push_str(&format!("<w:pStyle w:val=\"{id}\"/>"));
+        } else if p.style.quote {
             xml.push_str("<w:pStyle w:val=\"Quote\"/>");
         }
         if let Some(num_id) = num_id {
@@ -206,4 +209,16 @@ fn escape(text: &str) -> String {
 
 fn escape_attr(text: &str) -> String {
     escape(text).replace('"', "&quot;")
+}
+
+/// Word style id of a built-in style (`None` = Normal).
+fn docx_style_id(style: NamedStyle) -> Option<&'static str> {
+    match style {
+        NamedStyle::Normal => None,
+        NamedStyle::Title => Some("Title"),
+        NamedStyle::Subtitle => Some("Subtitle"),
+        NamedStyle::Heading1 => Some("Heading1"),
+        NamedStyle::Heading2 => Some("Heading2"),
+        NamedStyle::Heading3 => Some("Heading3"),
+    }
 }

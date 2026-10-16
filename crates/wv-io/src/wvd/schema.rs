@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use wv_core::{Align, CharStyle, Document, ListKind, ParaStyle, Paragraph, Run, Script};
+use wv_core::{
+    Align, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
+};
 
 use crate::IoError;
 
@@ -17,6 +19,8 @@ pub struct File {
 struct Para {
     #[serde(default)]
     align: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    style: String,
     #[serde(default, skip_serializing_if = "is_false")]
     quote: bool,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -89,6 +93,11 @@ impl File {
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
+                style: if p.style.named == NamedStyle::Normal {
+                    String::new()
+                } else {
+                    p.style.named.id().to_string()
+                },
                 list: list_name(p.style.list).to_string(),
                 indent: p.style.indent,
                 line_spacing: p.style.line_spacing,
@@ -141,6 +150,7 @@ impl File {
                 style: ParaStyle {
                     align: align_from(&p.align),
                     quote: p.quote,
+                    named: NamedStyle::from_id(&p.style).unwrap_or_default(),
                     list: list_from(&p.list),
                     indent: p.indent.min(8),
                     line_spacing: p.line_spacing,

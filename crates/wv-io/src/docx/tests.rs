@@ -32,6 +32,7 @@ fn round_trip_keeps_text_styles_alignment_size_and_colour() {
     e.doc.paragraphs[1].runs[0].style.caps = true;
     e.doc.paragraphs[1].runs[0].style.link = Some("https://example.com/?a=1&b=<2>".into());
     e.doc.paragraphs[1].style.quote = true;
+    e.doc.paragraphs[0].style.named = wv_core::NamedStyle::Heading2;
     e.doc.paragraphs[1].style.line_spacing = Some(1.5);
     e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
     e.doc.paragraphs[0].style.indent = 2;
@@ -60,10 +61,7 @@ fn reads_a_word_style_document() {
     let doc = decode(&docx_with(xml)).unwrap();
     assert_eq!(doc.text(), "Title\nplain under\n\none\ntwo");
     assert_eq!(doc.paragraphs[0].style.align, Align::Center);
-    assert!(
-        doc.paragraphs[0].runs[0].style.bold,
-        "Heading style reads as bold"
-    );
+    assert_eq!(doc.paragraphs[0].style.named, wv_core::NamedStyle::Heading1);
     let second = &doc.paragraphs[1].runs;
     assert!(!second[0].style.bold && second[0].style.italic);
     assert_eq!(second[0].style.size_pt, Some(14));

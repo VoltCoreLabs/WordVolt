@@ -1,6 +1,6 @@
 use super::Editor;
 use crate::position::Selection;
-use crate::style::{ListKind, ParaStyle};
+use crate::style::{ListKind, NamedStyle, ParaStyle};
 
 impl Editor {
     /// Applies `f` to the style of paragraphs `first..=last`; the selection stays as it is.
@@ -42,6 +42,16 @@ impl Editor {
     pub fn set_line_spacing(&mut self, spacing: Option<f32>) {
         let (a, b) = self.selected_paras();
         self.edit_para_styles(a, b, |s| s.line_spacing = spacing);
+    }
+
+    /// Applies a built-in style to the selected paragraphs.
+    pub fn set_named_style(&mut self, named: NamedStyle) {
+        let (a, b) = self.selected_paras();
+        self.edit_para_styles(a, b, |s| s.named = named);
+    }
+
+    pub fn named_style(&self) -> NamedStyle {
+        self.doc.paragraphs[self.sel.head.para].style.named
     }
 
     pub fn list_kind(&self) -> Option<ListKind> {

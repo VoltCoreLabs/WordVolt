@@ -1,4 +1,4 @@
-use wv_core::{CharStyle, Document, ListKind, Paragraph, Run};
+use wv_core::{CharStyle, Document, ListKind, NamedStyle, Paragraph, Run};
 
 /// Blocks are separated by blank lines; lines inside a block are joined with a space.
 pub fn decode(text: &str) -> Document {
@@ -30,19 +30,22 @@ fn paragraph(block: &str) -> Paragraph {
     if block.trim() == "&nbsp;" {
         return Paragraph::default();
     }
-    let (text, heading) = match block.trim_start_matches('#') {
-        rest if rest.len() < block.len()
-            && block.len() - rest.len() <= 6
-            && rest.starts_with(' ') =>
-        {
-            (rest.trim_start(), true)
-        }
-        _ => (block, false),
+    let hashes = block.chars().take_while(|c| *c == '#').count();
+    let (text, named) = if (1..=6).contains(&hashes) && block[hashes..].starts_with(' ') {
+        let style = match hashes {
+            1 => NamedStyle::Heading1,
+            2 => NamedStyle::Heading2,
+            _ => NamedStyle::Heading3,
+        };
+        (block[hashes..].trim_start(), style)
+    } else {
+        (block, NamedStyle::Normal)
     };
     let mut p = Paragraph {
-        runs: inline(text, heading),
+        runs: inline(text, false),
         ..Default::default()
     };
+    p.style.named = named;
     p.runs.retain(|r| !r.text.is_empty());
     p
 }

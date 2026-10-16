@@ -464,3 +464,34 @@ fn indent_clamps_and_line_spacing_round_trips() {
     e.undo();
     assert_eq!(e.line_spacing(), None);
 }
+
+#[test]
+fn named_styles_apply_enter_at_end_returns_to_normal_and_size_bumps_from_the_style() {
+    use crate::NamedStyle;
+    let mut e = typed("Chapter");
+    e.set_named_style(NamedStyle::Heading1);
+    assert_eq!(e.named_style(), NamedStyle::Heading1);
+    e.enter();
+    assert_eq!(
+        e.doc.paragraphs[1].style.named,
+        NamedStyle::Normal,
+        "Enter at the end of a heading"
+    );
+    e.sel = crate::Selection::caret(Position::new(0, 3));
+    e.enter();
+    assert_eq!(
+        e.doc.paragraphs[1].style.named,
+        NamedStyle::Heading1,
+        "splitting keeps the style"
+    );
+    e.sel = crate::Selection::caret(Position::new(0, 1));
+    e.bump_size(1);
+    assert_eq!(
+        e.current_style().size_pt,
+        Some(22),
+        "bumps from the heading size (20), not from 12"
+    );
+    let resolved = e.doc.paragraphs[1].with_named_style().unwrap();
+    assert!(resolved.runs[0].style.bold && resolved.runs[0].style.size_pt == Some(20));
+    assert!(e.doc.paragraphs[2].with_named_style().is_none());
+}

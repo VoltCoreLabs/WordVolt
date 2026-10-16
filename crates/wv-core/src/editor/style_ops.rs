@@ -147,7 +147,9 @@ impl Editor {
         const SIZES: [u16; 21] = [
             8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72, 96, 120, 144, 192, 288,
         ];
-        let current = self.current_style().size_pt.unwrap_or(12);
+        let mut shown = self.current_style();
+        self.named_style().apply(&mut shown);
+        let current = shown.size_pt.unwrap_or(12);
         let next = if step > 0 {
             SIZES
                 .iter()

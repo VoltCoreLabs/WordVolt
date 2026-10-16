@@ -5,20 +5,27 @@ use wv_i18n::{Key, t};
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::{ButtonKind, Icon, Tip, block_group, button, icon_button};
 use crate::window::state::MainWindow;
+use crate::window::style_names::style_label;
 
 /// Home tab: font, text style, paragraph, history, file. State comes from the document (caret/selection).
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
     let lang = this.lang;
-    let (style, align, quote, list) = {
+    let (style, align, quote, list, named) = {
         let view = this.editor.read(cx);
         (
             view.core.current_style(),
             view.core.align(),
             view.core.quote_active(),
             view.core.list_kind(),
+            view.core.named_style(),
         )
     };
-    let size = style.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
+    // The size shown includes what the paragraph style supplies (a heading is bigger than 12 pt).
+    let mut shown = style.clone();
+    named.apply(&mut shown);
+    let size = shown.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
+    this.style_combo
+        .update(cx, |c, _| c.set_current(style_label(lang, named)));
     let font_name = style
         .font
         .clone()
@@ -174,6 +181,12 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     para.push(this.spacing_menu.clone().into_any_element());
     let paragraph = block_group(t(lang, Key::GroupParagraph), para, cx);
 
+    let styles = block_group(
+        t(lang, Key::GroupStyles),
+        vec![this.style_combo.clone().into_any_element()],
+        cx,
+    );
+
     let history = block_group(
         t(lang, Key::GroupHistory),
         vec![
@@ -209,6 +222,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         font.into_any_element(),
         text_style.into_any_element(),
         paragraph.into_any_element(),
+        styles.into_any_element(),
         history.into_any_element(),
         file.into_any_element(),
     ]

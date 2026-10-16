@@ -8,10 +8,11 @@ use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
+use super::style_names::{style_from_label, style_label};
 use crate::editor::EditorView;
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::Icon;
-use wv_core::CaseKind;
+use wv_core::{CaseKind, NamedStyle};
 
 /// Ribbon tabs.
 #[derive(Clone, Copy, PartialEq)]
@@ -55,6 +56,7 @@ pub struct MainWindow {
     pub link_editor: Entity<LinkEditor>,
     pub case_menu: Entity<MenuButton>,
     pub spacing_menu: Entity<MenuButton>,
+    pub style_combo: Entity<Combo>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -215,10 +217,40 @@ impl MainWindow {
             },
         )
         .detach();
+        let style_combo = cx.new(|cx| {
+            let config = ComboConfig {
+                id: "style",
+                width: 160.0,
+                default_label: None,
+                preview_font: false,
+                items: |_| {
+                    NamedStyle::ALL
+                        .iter()
+                        .map(|s| style_label(Lang::default(), *s).to_string())
+                        .collect()
+                },
+            };
+            Combo::new(
+                config,
+                style_label(lang, NamedStyle::Normal).to_string(),
+                cx,
+            )
+        });
+        cx.subscribe(
+            &style_combo,
+            move |this, _, ComboEvent::Picked(label): &ComboEvent, cx| {
+                if let Some(style) = label.as_deref().and_then(|l| style_from_label(lang, l)) {
+                    this.edit(cx, move |c| c.set_named_style(style));
+                }
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         Self {
             editor,
             case_menu,
             spacing_menu,
+            style_combo,
             font_combo,
             size_combo,
             text_color,

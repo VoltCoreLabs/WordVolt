@@ -147,3 +147,25 @@ fn indent_shrinks_the_text_width_and_line_spacing_scales_height() {
     assert_eq!(l.paragraphs[0].lines.len(), 2);
     assert_eq!(l.paragraphs[0].lines[0].height, 32.0);
 }
+
+#[test]
+fn headings_are_bigger_have_space_before_and_it_is_dropped_at_the_page_top() {
+    use wv_core::NamedStyle;
+    let mut doc = Document::from_text("intro\nTitle");
+    doc.paragraphs[1].style.named = NamedStyle::Heading1;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    // 20 pt = 26.67 px font; bold in Fixed is wider, the line is taller than a normal one.
+    assert!(l.paragraphs[1].lines[0].height > 16.0);
+    assert_eq!(l.paragraphs[1].space_before, 18.0);
+    assert!(
+        l.pages[0].slices[1].y > 16.0 + 18.0 - 0.01,
+        "space before pushes the heading down"
+    );
+    // A heading that starts a page gets no gap above it.
+    let mut doc = Document::from_text("a\nb\nc\nd\nHead");
+    doc.paragraphs[4].style.named = NamedStyle::Heading1;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    if l.pages.len() > 1 {
+        assert_eq!(l.pages[1].slices[0].y, 0.0);
+    }
+}

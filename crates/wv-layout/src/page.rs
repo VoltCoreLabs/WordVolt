@@ -64,6 +64,7 @@ pub struct Page {
 }
 
 /// Flows laid-out paragraphs onto pages; a paragraph may continue on the next page (between lines).
+/// The gap above a paragraph is dropped at the top of a page.
 pub fn paginate(paragraphs: &[ParagraphLayout], setup: &PageSetup) -> Vec<Page> {
     let limit = setup.content_height();
     let mut pages = vec![Page::default()];
@@ -71,9 +72,16 @@ pub fn paginate(paragraphs: &[ParagraphLayout], setup: &PageSetup) -> Vec<Page> 
     for (para_ix, para) in paragraphs.iter().enumerate() {
         for (line_ix, line) in para.lines.iter().enumerate() {
             let page_has_content = pages.last().is_some_and(|p| !p.slices.is_empty());
-            if y + line.height > limit + EPS && page_has_content {
+            let lead = if line_ix == 0 && y > 0.0 {
+                para.space_before
+            } else {
+                0.0
+            };
+            if y + lead + line.height > limit + EPS && page_has_content {
                 pages.push(Page::default());
                 y = 0.0;
+            } else {
+                y += lead;
             }
             let page = pages.last_mut().expect("at least one page");
             match page.slices.last_mut() {

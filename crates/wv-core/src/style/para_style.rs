@@ -17,6 +17,8 @@ pub enum ListKind {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParaStyle {
     pub align: Align,
+    /// Built-in style (Normal, Title, Heading 1, ...).
+    pub named: super::NamedStyle,
     /// Block quote: indented with a bar on the left.
     pub quote: bool,
     /// List item (bullet or number). The nesting level is `indent`.

@@ -50,6 +50,19 @@ impl Paragraph {
             .unwrap_or_default()
     }
 
+    /// The paragraph with its named style's defaults written into the runs (what is drawn);
+    /// `None` for Normal paragraphs, which need no change. Text and offsets stay the same.
+    pub fn with_named_style(&self) -> Option<Paragraph> {
+        if self.style.named == crate::style::NamedStyle::Normal {
+            return None;
+        }
+        let mut resolved = self.clone();
+        for run in &mut resolved.runs {
+            self.style.named.apply(&mut run.style);
+        }
+        Some(resolved)
+    }
+
     /// Style of the character right after `offset` (`None` at the end of the paragraph).
     pub fn style_after(&self, offset: usize) -> Option<CharStyle> {
         let mut pos = 0;
