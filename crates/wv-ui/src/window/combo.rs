@@ -1,7 +1,16 @@
 use gpui_kit::*;
 
 use crate::theme::{Theme, radius, space};
-use crate::ui_kit::{Icon, LineEdit, Outcome, Weight, icon};
+use crate::ui_kit::{Icon, LineEdit, Outcome, Weight, icon, pop_in};
+
+/// How a list entry is drawn.
+#[derive(Default)]
+pub struct ItemLook {
+    pub family: Option<String>,
+    pub size_px: Option<f32>,
+    pub bold: bool,
+    pub color: Option<u32>,
+}
 
 pub enum ComboEvent {
     /// The typed or chosen text; `None` = the "default" entry.
@@ -14,8 +23,8 @@ pub struct ComboConfig {
     pub width: f32,
     /// Label of the first entry that resets to the default (fonts only).
     pub default_label: Option<String>,
-    /// Show every entry in its own font (font list).
-    pub preview_font: bool,
+    /// How to draw an entry (its own font, or the look of a paragraph style); `None` = plain.
+    pub look: Option<fn(&str) -> ItemLook>,
     pub items: fn(&App) -> Vec<String>,
 }
 
@@ -27,6 +36,8 @@ pub struct Combo {
     focus: FocusHandle,
     list_scroll: ScrollHandle,
     open: bool,
+    /// Counts openings so the pop-in animation restarts each time.
+    epoch: u64,
     shown: String,
     items: Vec<String>,
     /// The user typed something, so the list is filtered by it.
@@ -43,6 +54,7 @@ impl Combo {
             focus: cx.focus_handle(),
             list_scroll: ScrollHandle::new(),
             open: false,
+            epoch: 0,
             shown,
             items: Vec::new(),
             typed: false,
@@ -61,6 +73,7 @@ impl Combo {
             self.items = (self.config.items)(cx);
         }
         self.open = true;
+        self.epoch += 1;
         self.typed = false;
         self.list_scroll.set_offset(point(px(0.), px(0.)));
         self.edit.set(&self.shown, true);
@@ -114,13 +127,14 @@ impl Combo {
             .take(400)
             .cloned()
             .collect();
-        let preview = self.config.preview_font;
+        let look = self.config.look;
         let id = self.config.id;
         let item = |index: usize, label: String, value: Option<String>, cx: &mut Context<Self>| {
             let picked = value.clone();
             let mut row = div()
                 .id((SharedString::from(format!("{id}-item")), index))
-                .h(px(30.))
+                .min_h(px(30.))
+                .py(px(3.))
                 .px(px(10.))
                 .flex()
                 .items_center()
@@ -134,8 +148,20 @@ impl Combo {
                     cx.listener(move |this, _, _, cx| this.pick(picked.clone(), cx)),
                 )
                 .child(label);
-            if preview && let Some(family) = value {
-                row = row.font_family(family);
+            if let (Some(look), Some(text)) = (look, value.as_deref()) {
+                let look = look(text);
+                if let Some(family) = look.family {
+                    row = row.font_family(family);
+                }
+                if let Some(size) = look.size_px {
+                    row = row.text_size(px(size));
+                }
+                if look.bold {
+                    row = row.font_weight(FontWeight::BOLD);
+                }
+                if let Some(color) = look.color {
+                    row = row.text_color(rgb(color));
+                }
             }
             row
         };
@@ -214,7 +240,10 @@ impl Render for Combo {
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .offset(point(px(0.), px(36.)))
-                    .child(self.list(cx)),
+                    .child(pop_in(
+                        self.list(cx),
+                        format!("{}-pop-{}", self.config.id, self.epoch),
+                    )),
             )
             .with_priority(10)
         });

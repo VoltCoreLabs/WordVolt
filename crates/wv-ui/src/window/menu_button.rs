@@ -2,7 +2,7 @@ use gpui_kit::*;
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius};
-use crate::ui_kit::{Icon, Tip, icon_button};
+use crate::ui_kit::{Icon, Tip, icon_button, pop_in};
 
 /// A menu entry: a translated label or plain text (numbers).
 #[derive(Clone, Copy)]
@@ -25,6 +25,8 @@ pub struct MenuButton {
     lang: Lang,
     active: bool,
     open: bool,
+    /// Counts openings so the pop-in animation restarts each time.
+    epoch: u64,
 }
 
 impl EventEmitter<MenuEvent> for MenuButton {}
@@ -46,6 +48,7 @@ impl MenuButton {
             lang,
             active: false,
             open: false,
+            epoch: 0,
         }
     }
 
@@ -67,6 +70,7 @@ impl Render for MenuButton {
         .tip(tr(lang, self.tip))
         .on_click(cx.listener(|this, _, _, cx| {
             this.open = !this.open;
+            this.epoch += 1;
             cx.notify();
         }));
         let menu = self.open.then(|| {
@@ -118,7 +122,7 @@ impl Render for MenuButton {
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .offset(point(px(0.), px(36.)))
-                    .child(panel),
+                    .child(pop_in(panel, format!("{id}-pop-{}", self.epoch))),
             )
             .with_priority(10)
         });

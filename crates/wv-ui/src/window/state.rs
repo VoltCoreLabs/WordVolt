@@ -5,7 +5,7 @@ use wv_core::Editor;
 use wv_i18n::{APP_NAME, Key, Lang, t};
 
 use super::color_picker::{ColorEvent, ColorPicker};
-use super::combo::{Combo, ComboConfig, ComboEvent};
+use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::style_names::{style_from_label, style_label};
@@ -33,6 +33,21 @@ impl Tab {
             Tab::Layout => t(lang, Key::TabLayout),
             Tab::View => t(lang, Key::TabView),
         }
+    }
+}
+
+/// Drop-down preview of a paragraph style: roughly its size (capped to keep rows compact), weight and colour.
+fn style_look(label: &str) -> ItemLook {
+    let Some(style) = style_from_label(Lang::default(), label) else {
+        return ItemLook::default();
+    };
+    ItemLook {
+        size_px: style
+            .size_pt()
+            .map(|pt| (f32::from(pt) * 96.0 / 72.0).min(24.0)),
+        bold: style.bold(),
+        color: style.color(),
+        ..ItemLook::default()
     }
 }
 
@@ -81,7 +96,10 @@ impl MainWindow {
                 id: "font",
                 width: 168.0,
                 default_label: Some(format!("{DEFAULT_FONT} ·")),
-                preview_font: true,
+                look: Some(|name| ItemLook {
+                    family: Some(name.to_string()),
+                    ..ItemLook::default()
+                }),
                 items: |cx| {
                     let mut fonts: Vec<String> = cx
                         .text_system()
@@ -110,7 +128,7 @@ impl MainWindow {
                 id: "size",
                 width: 64.0,
                 default_label: None,
-                preview_font: false,
+                look: None,
                 items: |_| {
                     [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72]
                         .iter()
@@ -220,9 +238,9 @@ impl MainWindow {
         let style_combo = cx.new(|cx| {
             let config = ComboConfig {
                 id: "style",
-                width: 160.0,
+                width: 210.0,
                 default_label: None,
-                preview_font: false,
+                look: Some(style_look),
                 items: |_| {
                     NamedStyle::ALL
                         .iter()
