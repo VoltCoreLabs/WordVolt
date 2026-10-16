@@ -28,6 +28,7 @@ fn round_trip_keeps_text_styles_alignment_size_and_colour() {
     e.set_align(Align::Right);
     e.doc.paragraphs[1].runs[0].style.size_pt = Some(18);
     e.doc.paragraphs[1].runs[0].style.color = Some(0x2563EB);
+    e.doc.paragraphs[1].runs[0].style.font = Some("Georgia \"Serif\" & Co".into());
     let back = decode(&encode(&e.doc).unwrap()).unwrap();
     assert_eq!(back, e.doc);
 }

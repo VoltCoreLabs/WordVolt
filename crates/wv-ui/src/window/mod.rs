@@ -1,4 +1,5 @@
 mod file_ops;
+mod font_picker;
 mod main_window;
 mod ribbon;
 mod side_panel;

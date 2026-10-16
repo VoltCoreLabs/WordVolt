@@ -83,6 +83,11 @@ impl State {
             }
             b"r" => self.run = CharStyle::default(),
             b"rPr" if !self.in_paragraph_props => self.in_run_props = true,
+            b"rFonts" if self.in_run_props => {
+                self.run.font = attr(e, b"ascii")
+                    .or_else(|| attr(e, b"hAnsi"))
+                    .filter(|f| !f.is_empty());
+            }
             b"b" if self.in_run_props => self.run.bold = flag(e),
             b"i" if self.in_run_props => self.run.italic = flag(e),
             b"u" if self.in_run_props => self.run.underline = flag(e),

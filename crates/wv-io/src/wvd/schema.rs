@@ -33,6 +33,8 @@ struct RunDto {
     size_pt: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     color: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    font: Option<String>,
 }
 
 fn is_false(v: &bool) -> bool {
@@ -74,6 +76,7 @@ impl File {
                         underline: r.style.underline,
                         size_pt: r.style.size_pt,
                         color: r.style.color,
+                        font: r.style.font.clone(),
                     })
                     .collect(),
             })
@@ -115,6 +118,7 @@ impl File {
                             underline: r.underline,
                             size_pt: r.size_pt,
                             color: r.color,
+                            font: r.font,
                         };
                         Run::new(r.text, style)
                     })

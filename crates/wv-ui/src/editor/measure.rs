@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -9,13 +11,20 @@ use wv_layout::{DEFAULT_SIZE_PT, Measurer, font_px};
 
 use crate::theme::ui_font;
 
-type StyleKey = (bool, bool, u16);
+/// bold, italic, size (pt), hash of the font family (0 = default).
+type StyleKey = (bool, bool, u16, u64);
 
 fn key(style: &CharStyle) -> StyleKey {
+    let family = style.font.as_deref().map_or(0, |f| {
+        let mut hasher = DefaultHasher::new();
+        f.hash(&mut hasher);
+        hasher.finish()
+    });
     (
         style.bold,
         style.italic,
         style.size_pt.unwrap_or(DEFAULT_SIZE_PT),
+        family,
     )
 }
 
@@ -28,6 +37,9 @@ pub struct MeasureCache {
 
 pub fn font_for(style: &CharStyle) -> Font {
     let mut font = ui_font();
+    if let Some(family) = &style.font {
+        font.family = family.clone().into();
+    }
     if style.bold {
         font.weight = FontWeight::BOLD;
     }

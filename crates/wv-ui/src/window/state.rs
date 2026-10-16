@@ -4,6 +4,7 @@ use gpui_kit::*;
 use wv_core::Editor;
 use wv_i18n::{APP_NAME, Key, Lang, t};
 
+use super::font_picker::{FontPicker, FontPickerEvent};
 use crate::editor::EditorView;
 
 /// Ribbon tabs.
@@ -31,6 +32,7 @@ impl Tab {
 /// UI state of the main window. The document itself lives in `editor` (wv-core inside).
 pub struct MainWindow {
     pub editor: Entity<EditorView>,
+    pub font_picker: Entity<FontPicker>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -49,8 +51,17 @@ impl MainWindow {
             cx.notify();
         })
         .detach();
+        let font_picker = cx.new(FontPicker::new);
+        cx.subscribe(&font_picker, |this, _, event: &FontPickerEvent, cx| {
+            let FontPickerEvent::Picked(name) = event;
+            let name = name.clone();
+            this.edit(cx, move |c| c.set_font_family(name));
+            this.editor.update(cx, |view, cx| view.request_focus(cx));
+        })
+        .detach();
         Self {
             editor,
+            font_picker,
             file_path: None,
             dirty: false,
             lang: Lang::default(),

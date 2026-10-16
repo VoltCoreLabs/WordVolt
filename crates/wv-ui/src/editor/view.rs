@@ -65,6 +65,12 @@ impl EditorView {
         cx.notify();
     }
 
+    /// Gives the keyboard focus back to the document (e.g. after picking a font).
+    pub fn request_focus(&mut self, cx: &mut Context<Self>) {
+        self.focused_once = false;
+        cx.notify();
+    }
+
     /// Runs an editing action (from keyboard or ribbon) and redraws.
     pub fn apply(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut Editor)) {
         f(&mut self.core);

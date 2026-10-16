@@ -1,10 +1,13 @@
 use gpui_kit::{Font, FontFallbacks, FontFeatures, FontStyle, FontWeight};
 
+/// Name shown for the default font.
+pub const DEFAULT_FONT: &str = "SF Pro Text";
+
 /// Default UI font: SF Pro Text if installed, otherwise bundled Inter, then Segoe UI.
 /// (SF Pro's licence forbids bundling it, so it is never shipped with the app.)
 pub fn ui_font() -> Font {
     Font {
-        family: "SF Pro Text".into(),
+        family: DEFAULT_FONT.into(),
         features: FontFeatures::default(),
         fallbacks: Some(FontFallbacks::from_fonts(vec![
             "Inter Variable".into(),

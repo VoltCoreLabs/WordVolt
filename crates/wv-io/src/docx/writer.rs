@@ -56,6 +56,12 @@ fn write_properties(xml: &mut String, s: &CharStyle) {
         return;
     }
     xml.push_str("<w:rPr>");
+    if let Some(font) = &s.font {
+        let name = escape_attr(font);
+        xml.push_str(&format!(
+            "<w:rFonts w:ascii=\"{name}\" w:hAnsi=\"{name}\" w:cs=\"{name}\"/>"
+        ));
+    }
     if s.bold {
         xml.push_str("<w:b/>");
     }
@@ -87,4 +93,8 @@ fn escape(text: &str) -> String {
         }
     }
     out
+}
+
+fn escape_attr(text: &str) -> String {
+    escape(text).replace('"', "&quot;")
 }
