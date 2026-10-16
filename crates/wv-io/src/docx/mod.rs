@@ -14,12 +14,13 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
     document_xml::parse(
         &package::read_document_xml(bytes)?,
         &package::read_links(bytes),
+        &package::read_numbering(bytes),
     )
 }
 
 pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
-    let (xml, links) = writer::document_xml(doc);
-    package::write(&xml, &links)
+    let (xml, links, number_lists) = writer::document_xml(doc);
+    package::write(&xml, &links, number_lists)
 }
 
 #[cfg(test)]

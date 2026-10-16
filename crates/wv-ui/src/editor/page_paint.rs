@@ -63,6 +63,40 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
+        if slice.lines.start == 0
+            && let Some(marker) = &para.marker
+        {
+            let line = &para.lines[0];
+            let top = setup.margin_top + slice.y;
+            if visible(top, line.height) {
+                // The marker looks like the first character of the item, without decorations.
+                let mut style = line
+                    .fragments
+                    .first()
+                    .map(|f| f.style.clone())
+                    .unwrap_or_default();
+                (
+                    style.underline,
+                    style.strike,
+                    style.spoiler,
+                    style.highlight,
+                    style.link,
+                ) = (false, false, false, None, None);
+                let color: Hsla = style.color.map_or(v.text, rgb).into();
+                let (ascent, descent) = (m.ascent(&style), m.descent(&style));
+                let x = setup.margin_left + para.indent - 6.0 - m.width(marker, &style);
+                let y = top + line.baseline - ascent;
+                let shaped = m.shape(marker, &style, color);
+                let _ = shaped.paint(
+                    at(x, y),
+                    px(ascent + descent),
+                    TextAlign::Left,
+                    None,
+                    window,
+                    cx,
+                );
+            }
+        }
         if para.quote {
             let bar = Bounds::new(
                 at(setup.margin_left + 4.0, setup.margin_top + slice.y),

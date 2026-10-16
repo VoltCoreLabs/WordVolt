@@ -73,6 +73,9 @@ pub enum Key {
     CaseTitle,
     CaseSentence,
     CaseDisplay,
+    TipIndent,
+    TipOutdent,
+    TipLineSpacing,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -146,6 +149,9 @@ fn ru(key: Key) -> &'static str {
         Key::CaseTitle => "Каждое Слово С Прописной",
         Key::CaseSentence => "Как в предложениях",
         Key::CaseDisplay => "Только показывать прописными",
+        Key::TipIndent => "Увеличить отступ (Tab в списке)",
+        Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
+        Key::TipLineSpacing => "Межстрочный интервал",
     }
 }
 
@@ -213,6 +219,9 @@ fn en(key: Key) -> &'static str {
         Key::CaseTitle => "Capitalize Each Word",
         Key::CaseSentence => "Sentence case",
         Key::CaseDisplay => "Display as capitals only",
+        Key::TipIndent => "Increase indent (Tab in a list)",
+        Key::TipOutdent => "Decrease indent (Shift+Tab)",
+        Key::TipLineSpacing => "Line spacing",
     }
 }
 

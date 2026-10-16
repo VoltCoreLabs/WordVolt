@@ -1,26 +1,52 @@
-use wv_core::{Align, CharStyle, Document, Paragraph, Run, Script};
+use wv_core::{Align, CharStyle, Document, ListKind, Paragraph, Run, Script};
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const REL_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /// word/document.xml for the document (A4, 2.5 cm margins). Also returns the hyperlink targets:
 /// relationship `rIdL<n>` is the n-th entry.
-pub fn document_xml(doc: &Document) -> (String, Vec<String>) {
+pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     let mut xml = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
 <w:document xmlns:w=\"{NS}\" xmlns:r=\"{REL_NS}\"><w:body>"
     );
     let mut links: Vec<String> = Vec::new();
+    let mut lists = Lists::default();
     for paragraph in &doc.paragraphs {
-        write_paragraph(&mut xml, paragraph, &mut links);
+        write_paragraph(&mut xml, paragraph, &mut links, &mut lists);
     }
     xml.push_str(
         "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
     );
-    (xml, links)
+    (xml, links, lists.number_lists)
 }
 
-fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>) {
+/// Which `w:num` a list paragraph belongs to: bullets share num 1, every run of numbered paragraphs
+/// gets its own num (2, 3, ...) so it restarts at 1.
+#[derive(Default)]
+struct Lists {
+    number_lists: usize,
+    previous_was_number: bool,
+}
+
+impl Lists {
+    fn num_id(&mut self, kind: Option<ListKind>) -> Option<usize> {
+        let id = match kind {
+            Some(ListKind::Bullet) => Some(1),
+            Some(ListKind::Number) => {
+                if !self.previous_was_number {
+                    self.number_lists += 1;
+                }
+                Some(self.number_lists + 1)
+            }
+            None => None,
+        };
+        self.previous_was_number = kind == Some(ListKind::Number);
+        id
+    }
+}
+
+fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>, lists: &mut Lists) {
     xml.push_str("<w:p>");
     let jc = match p.style.align {
         Align::Left => None,
@@ -28,10 +54,35 @@ fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>) {
         Align::Right => Some("right"),
         Align::Justify => Some("both"),
     };
-    if jc.is_some() || p.style.quote {
+    let num_id = lists.num_id(p.style.list);
+    let has_props = jc.is_some()
+        || p.style.quote
+        || num_id.is_some()
+        || p.style.indent > 0
+        || p.style.line_spacing.is_some();
+    if has_props {
+        // Child order follows the schema: pStyle, numPr, spacing, ind, jc.
         xml.push_str("<w:pPr>");
         if p.style.quote {
             xml.push_str("<w:pStyle w:val=\"Quote\"/>");
+        }
+        if let Some(num_id) = num_id {
+            xml.push_str(&format!(
+                "<w:numPr><w:ilvl w:val=\"{}\"/><w:numId w:val=\"{num_id}\"/></w:numPr>",
+                p.style.indent
+            ));
+        }
+        if let Some(spacing) = p.style.line_spacing {
+            xml.push_str(&format!(
+                "<w:spacing w:line=\"{}\" w:lineRule=\"auto\"/>",
+                (spacing * 240.0).round() as u32
+            ));
+        }
+        if num_id.is_none() && p.style.indent > 0 {
+            xml.push_str(&format!(
+                "<w:ind w:left=\"{}\"/>",
+                u32::from(p.style.indent) * 720
+            ));
         }
         if let Some(jc) = jc {
             xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));

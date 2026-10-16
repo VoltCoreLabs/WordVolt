@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Align, Script};
+use wv_core::{Align, ListKind, Script};
 use wv_i18n::{Key, t};
 
 use crate::theme::DEFAULT_FONT;
@@ -9,12 +9,13 @@ use crate::window::state::MainWindow;
 /// Home tab: font, text style, paragraph, history, file. State comes from the document (caret/selection).
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
     let lang = this.lang;
-    let (style, align, quote) = {
+    let (style, align, quote, list) = {
         let view = this.editor.read(cx);
         (
             view.core.current_style(),
             view.core.align(),
             view.core.quote_active(),
+            view.core.list_kind(),
         )
     };
     let size = style.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
@@ -137,16 +138,40 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.toggle_quote())))
             .into_any_element(),
     );
+    for (id, glyph, kind, tip) in [
+        (
+            "bullets",
+            Icon::ListBullets,
+            ListKind::Bullet,
+            Key::TipBullets,
+        ),
+        (
+            "numbers",
+            Icon::ListNumbers,
+            ListKind::Number,
+            Key::TipNumbers,
+        ),
+    ] {
+        para.push(
+            icon_button(id, glyph, list == Some(kind), cx)
+                .tip(t(lang, tip))
+                .on_click(cx.listener(move |t, _, _, cx| t.edit(cx, |c| c.toggle_list(kind))))
+                .into_any_element(),
+        );
+    }
     para.push(
-        icon_button("bullets", Icon::ListBullets, false, cx)
-            .tip(t(lang, Key::TipBullets))
+        icon_button("outdent", Icon::Outdent, false, cx)
+            .tip(t(lang, Key::TipOutdent))
+            .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.change_indent(-1))))
             .into_any_element(),
     );
     para.push(
-        icon_button("numbers", Icon::ListNumbers, false, cx)
-            .tip(t(lang, Key::TipNumbers))
+        icon_button("indent", Icon::Indent, false, cx)
+            .tip(t(lang, Key::TipIndent))
+            .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.change_indent(1))))
             .into_any_element(),
     );
+    para.push(this.spacing_menu.clone().into_any_element());
     let paragraph = block_group(t(lang, Key::GroupParagraph), para, cx);
 
     let history = block_group(

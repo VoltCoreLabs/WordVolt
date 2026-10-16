@@ -90,7 +90,7 @@ pub fn paginate(paragraphs: &[ParagraphLayout], setup: &PageSetup) -> Vec<Page> 
             }
             y += line.height;
         }
-        y += setup.paragraph_spacing;
+        y += para.space_after.unwrap_or(setup.paragraph_spacing);
     }
     pages
 }

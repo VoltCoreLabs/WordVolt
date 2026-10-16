@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use wv_core::{Align, CharStyle, Document, ParaStyle, Paragraph, Run, Script};
+use wv_core::{Align, CharStyle, Document, ListKind, ParaStyle, Paragraph, Run, Script};
 
 use crate::IoError;
 
@@ -19,6 +19,12 @@ struct Para {
     align: String,
     #[serde(default, skip_serializing_if = "is_false")]
     quote: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    list: String,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    indent: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    line_spacing: Option<f32>,
     runs: Vec<RunDto>,
 }
 
@@ -83,6 +89,9 @@ impl File {
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
+                list: list_name(p.style.list).to_string(),
+                indent: p.style.indent,
+                line_spacing: p.style.line_spacing,
                 runs: p
                     .runs
                     .iter()
@@ -132,6 +141,9 @@ impl File {
                 style: ParaStyle {
                     align: align_from(&p.align),
                     quote: p.quote,
+                    list: list_from(&p.list),
+                    indent: p.indent.min(8),
+                    line_spacing: p.line_spacing,
                 },
                 runs: p
                     .runs
@@ -178,5 +190,25 @@ fn script_from(name: &str) -> Script {
         "super" => Script::Super,
         "sub" => Script::Sub,
         _ => Script::Normal,
+    }
+}
+
+fn is_zero(v: &u8) -> bool {
+    *v == 0
+}
+
+fn list_name(kind: Option<ListKind>) -> &'static str {
+    match kind {
+        None => "",
+        Some(ListKind::Bullet) => "bullet",
+        Some(ListKind::Number) => "number",
+    }
+}
+
+fn list_from(name: &str) -> Option<ListKind> {
+    match name {
+        "bullet" => Some(ListKind::Bullet),
+        "number" => Some(ListKind::Number),
+        _ => None,
     }
 }

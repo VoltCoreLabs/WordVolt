@@ -2,15 +2,20 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, CharStyle, Document, Paragraph, Script};
+use wv_core::{Align, CharStyle, Document, ListKind, Paragraph, Script};
 
 use crate::IoError;
 
 /// Reads word/document.xml. Matching is by local name, so any namespace prefix works.
-pub fn parse(xml: &[u8], links: &HashMap<String, String>) -> Result<Document, IoError> {
+pub fn parse(
+    xml: &[u8],
+    links: &HashMap<String, String>,
+    numbering: &HashMap<String, ListKind>,
+) -> Result<Document, IoError> {
     let mut reader = Reader::from_reader(xml);
     let mut state = State {
         links: links.clone(),
+        numbering: numbering.clone(),
         ..State::default()
     };
     let mut buf = Vec::new();
@@ -38,6 +43,10 @@ pub fn parse(xml: &[u8], links: &HashMap<String, String>) -> Result<Document, Io
 
 #[derive(Default)]
 struct State {
+    numbering: HashMap<String, ListKind>,
+    list: Option<ListKind>,
+    indent: u8,
+    line_spacing: Option<f32>,
     links: HashMap<String, String>,
     link: Option<String>,
     paragraphs: Vec<Paragraph>,
@@ -99,6 +108,30 @@ impl State {
                 }
             }
             b"pPr" => self.in_paragraph_props = true,
+            b"ilvl" if self.in_paragraph_props => {
+                self.indent = attr(e, b"val")
+                    .and_then(|v| v.parse::<u8>().ok())
+                    .unwrap_or(0)
+                    .min(8);
+            }
+            b"numId" if self.in_paragraph_props => {
+                self.list = attr(e, b"val").and_then(|id| self.numbering.get(&id).copied());
+            }
+            b"ind" if self.in_paragraph_props && self.list.is_none() => {
+                let left = attr(e, b"left")
+                    .or_else(|| attr(e, b"start"))
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .unwrap_or(0.0);
+                self.indent = (left / 720.0).round().clamp(0.0, 8.0) as u8;
+            }
+            b"spacing" if self.in_paragraph_props => {
+                let auto = attr(e, b"lineRule").is_none_or(|rule| rule == "auto");
+                if let (true, Some(line)) =
+                    (auto, attr(e, b"line").and_then(|v| v.parse::<f32>().ok()))
+                {
+                    self.line_spacing = Some((line / 240.0).clamp(0.5, 5.0));
+                }
+            }
             b"hyperlink" if !empty => {
                 self.link = attr(e, b"id").and_then(|id| self.links.get(&id).cloned())
             }
@@ -175,12 +208,18 @@ impl State {
         self.align = Align::default();
         self.heading = false;
         self.quote = false;
+        self.list = None;
+        self.indent = 0;
+        self.line_spacing = None;
     }
 
     fn end_paragraph(&mut self) {
         if let Some(mut p) = self.current.take() {
             p.style.align = self.align;
             p.style.quote = self.quote;
+            p.style.list = self.list;
+            p.style.indent = self.indent;
+            p.style.line_spacing = self.line_spacing;
             self.paragraphs.push(p);
         }
     }

@@ -1,23 +1,49 @@
-use wv_core::{CharStyle, Document, Run};
+use wv_core::{CharStyle, Document, ListKind, Run};
 
-/// Paragraphs are separated by a blank line; an empty paragraph is written as `&nbsp;`.
+/// Paragraphs are separated by a blank line (list items by a single newline); an empty paragraph is
+/// written as `&nbsp;`. List nesting is two spaces per level.
 pub fn encode(doc: &Document) -> String {
-    doc.paragraphs
-        .iter()
-        .map(|p| {
-            let text: String = if p.is_empty() {
-                "&nbsp;".to_string()
-            } else {
-                p.runs.iter().map(run).collect()
-            };
-            if p.style.quote {
-                format!("> {text}")
-            } else {
-                text
+    let mut out = String::new();
+    let mut counters = [0u32; 9];
+    let mut previous_was_item = false;
+    for (i, p) in doc.paragraphs.iter().enumerate() {
+        let text: String = if p.is_empty() {
+            "&nbsp;".to_string()
+        } else {
+            p.runs.iter().map(run).collect()
+        };
+        let level = usize::from(p.style.indent).min(8);
+        let line = match p.style.list {
+            Some(ListKind::Bullet) => {
+                counters[level..].fill(0);
+                format!("{}- {text}", "  ".repeat(level))
             }
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n")
+            Some(ListKind::Number) => {
+                counters[level] += 1;
+                counters[level + 1..].fill(0);
+                format!("{}{}. {text}", "  ".repeat(level), counters[level])
+            }
+            None => {
+                counters = [0; 9];
+                if p.style.quote {
+                    format!("> {text}")
+                } else {
+                    text
+                }
+            }
+        };
+        let is_item = p.style.list.is_some();
+        if i > 0 {
+            out.push_str(if previous_was_item && is_item {
+                "\n"
+            } else {
+                "\n\n"
+            });
+        }
+        out.push_str(&line);
+        previous_was_item = is_item;
+    }
+    out
 }
 
 fn run(run: &Run) -> String {
