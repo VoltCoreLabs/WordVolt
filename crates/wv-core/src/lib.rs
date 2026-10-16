@@ -7,6 +7,6 @@ pub mod position;
 pub mod style;
 
 pub use document::{Document, Paragraph, Run};
-pub use editor::Editor;
+pub use editor::{CaseKind, Editor};
 pub use position::{Position, Selection};
 pub use style::{Align, CharStyle, ParaStyle, Script};

@@ -6,7 +6,7 @@ use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
 use crate::ui_kit::color_math::{hex, hsv_to_rgb, mix, parse_hex, rgb_to_hsv};
-use crate::ui_kit::{Icon, LineEdit, Outcome, RecentColors, icon_button};
+use crate::ui_kit::{Icon, LineEdit, Outcome, RecentColors, Tip, icon_button};
 
 pub enum ColorEvent {
     /// `None` = no colour (automatic text colour / no highlight).
@@ -27,6 +27,7 @@ const HUE_HEIGHT: f32 = 14.0;
 pub struct ColorPicker {
     id: &'static str,
     glyph: Icon,
+    tip: Key,
     lang: Lang,
     /// Colour shown in the bar under the icon.
     current: Option<u32>,
@@ -69,10 +70,17 @@ fn palette() -> Vec<Vec<u32>> {
 }
 
 impl ColorPicker {
-    pub fn new(id: &'static str, glyph: Icon, lang: Lang, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        id: &'static str,
+        glyph: Icon,
+        tip: Key,
+        lang: Lang,
+        cx: &mut Context<Self>,
+    ) -> Self {
         Self {
             id,
             glyph,
+            tip,
             lang,
             current: None,
             open: false,
@@ -440,6 +448,7 @@ impl Render for ColorPicker {
             self.open,
             cx,
         )
+        .tip(tr(self.lang, self.tip))
         .on_click(cx.listener(|this, _, _, cx| this.toggle(cx)))
         .child(
             div()

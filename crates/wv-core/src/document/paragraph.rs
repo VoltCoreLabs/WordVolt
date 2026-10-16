@@ -131,6 +131,19 @@ impl Paragraph {
         self.normalize();
     }
 
+    /// Rewrites the text of `start..end` run by run through `f` (run styles are kept).
+    pub fn map_text(&mut self, start: usize, end: usize, f: &mut dyn FnMut(&str) -> String) {
+        if start >= end {
+            return;
+        }
+        let a = self.split_at(start);
+        let b = self.split_at(end);
+        for run in &mut self.runs[a..b] {
+            run.text = f(&run.text);
+        }
+        self.normalize();
+    }
+
     pub fn map_style(&mut self, start: usize, end: usize, f: impl Fn(&mut CharStyle)) {
         if start >= end {
             return;

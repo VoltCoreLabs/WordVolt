@@ -2,7 +2,7 @@ use gpui_kit::*;
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
-use crate::ui_kit::{Icon, LineEdit, Outcome, icon_button};
+use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button};
 
 pub enum LinkEvent {
     /// `None` removes the link.
@@ -36,13 +36,12 @@ impl LinkEditor {
         self.current = link;
     }
 
-    fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.open = !self.open;
-        if self.open {
-            self.edit
-                .set(self.current.as_deref().unwrap_or("https://"), true);
-            window.focus(&self.focus, cx);
-        }
+    /// Opens the address popover (button or Ctrl+K), pre-filled with the current link.
+    pub fn open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.open = true;
+        self.edit
+            .set(self.current.as_deref().unwrap_or("https://"), true);
+        window.focus(&self.focus, cx);
         cx.notify();
     }
 
@@ -84,7 +83,15 @@ impl Render for LinkEditor {
             self.current.is_some() || self.open,
             cx,
         )
-        .on_click(cx.listener(|this, _, window, cx| this.open_menu(window, cx)));
+        .tip(tr(lang, Key::TipLink))
+        .on_click(cx.listener(|this, _, window, cx| {
+            if this.open {
+                this.open = false;
+                cx.notify();
+            } else {
+                this.open(window, cx);
+            }
+        }));
         let panel = self.open.then(|| {
             let remove = self.current.is_some().then(|| {
                 div()

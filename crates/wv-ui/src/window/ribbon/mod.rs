@@ -14,7 +14,8 @@ use crate::theme::space;
 
 pub use tabs::tab_bar;
 
-const HEIGHT: f32 = 104.;
+/// Upper bound of the ribbon height while open (it grows with the number of wrapped rows).
+const MAX_HEIGHT: f32 = 480.;
 
 /// Command groups of the active tab. Fades in on tab switch; collapses with animation.
 pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoElement {
@@ -25,10 +26,9 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
         Tab::Layout | Tab::View => placeholder::groups(tab, this.lang, cx),
     };
     let row = div()
-        .id("ribbon-row")
         .flex()
+        .flex_wrap()
         .gap(space::md())
-        .overflow_x_scroll()
         .children(groups)
         .with_animation(
             SharedString::from(format!("ribbon-fade-{}", tab.label(this.lang))),
@@ -44,7 +44,7 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
             Animation::new(Duration::from_millis(240)).with_easing(ease_out_quint()),
             move |el, delta| {
                 let k = if open { delta } else { 1.0 - delta };
-                el.h(px(HEIGHT * k))
+                el.max_h(px(MAX_HEIGHT * k))
             },
         )
 }
