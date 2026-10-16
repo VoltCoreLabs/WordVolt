@@ -16,6 +16,10 @@ pub struct Theme {
     pub on_accent: Rgba,
     pub danger: Rgba,
     pub page: Rgba,
+    /// Background of inline code.
+    pub code_bg: Rgba,
+    /// Block that hides spoiler text.
+    pub spoiler: Rgba,
 }
 
 impl Global for Theme {}

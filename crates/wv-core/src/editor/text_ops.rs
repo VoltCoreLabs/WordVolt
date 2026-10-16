@@ -7,10 +7,19 @@ use crate::position::{Position, Selection};
 impl Editor {
     /// Replaces `start..end` with `text` (`\n` starts a new paragraph). Caret goes after the text.
     pub fn replace_range(&mut self, start: Position, end: Position, text: &str) {
-        let style = self
+        let mut style = self
             .pending_style
             .take()
             .unwrap_or_else(|| self.doc.paragraphs[start.para].style_at(start.offset));
+        // Text typed at the end of a link does not become part of it.
+        if style.link.is_some() {
+            let inside = self.doc.paragraphs[start.para]
+                .style_after(start.offset)
+                .is_some_and(|next| next.link == style.link);
+            if !inside {
+                style.link = None;
+            }
+        }
         let mut first = self.doc.paragraphs[start.para].clone();
         let mut last = self.doc.paragraphs[end.para].clone();
         let tail = last.split_off(end.offset);

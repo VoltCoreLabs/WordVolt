@@ -20,6 +20,8 @@ struct ThemeFile {
     on_accent: String,
     danger: String,
     page: String,
+    code_bg: String,
+    spoiler: String,
 }
 
 fn color(hex: &str) -> Result<Rgba, String> {
@@ -51,6 +53,8 @@ impl Theme {
             on_accent: color(&f.on_accent)?,
             danger: color(&f.danger)?,
             page: color(&f.page)?,
+            code_bg: color(&f.code_bg)?,
+            spoiler: color(&f.spoiler)?,
         })
     }
 }

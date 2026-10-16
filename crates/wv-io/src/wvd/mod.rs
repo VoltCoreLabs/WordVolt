@@ -35,6 +35,14 @@ mod tests {
         e.sel.head = wv_core::Position::new(1, 3);
         e.set_align(Align::Center);
         e.doc.paragraphs[0].runs[0].style.font = Some("Georgia".into());
+        e.doc.paragraphs[0].runs[0].style.strike = true;
+        e.doc.paragraphs[0].runs[0].style.caps = true;
+        e.doc.paragraphs[0].runs[0].style.mono = true;
+        e.doc.paragraphs[0].runs[0].style.spoiler = true;
+        e.doc.paragraphs[0].runs[0].style.link = Some("https://example.com/?a=1&b=2".into());
+        e.doc.paragraphs[1].style.quote = true;
+        e.doc.paragraphs[0].runs[0].style.highlight = Some(0xFFFF00);
+        e.doc.paragraphs[0].runs[0].style.script = wv_core::Script::Sub;
         let back = decode(&encode(&e.doc).unwrap()).unwrap();
         assert_eq!(back, e.doc);
     }

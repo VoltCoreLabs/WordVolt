@@ -28,6 +28,12 @@ fn round_trip_keeps_text_styles_alignment_size_and_colour() {
     e.set_align(Align::Right);
     e.doc.paragraphs[1].runs[0].style.size_pt = Some(18);
     e.doc.paragraphs[1].runs[0].style.color = Some(0x2563EB);
+    e.doc.paragraphs[1].runs[0].style.strike = true;
+    e.doc.paragraphs[1].runs[0].style.caps = true;
+    e.doc.paragraphs[1].runs[0].style.link = Some("https://example.com/?a=1&b=<2>".into());
+    e.doc.paragraphs[1].style.quote = true;
+    e.doc.paragraphs[1].runs[0].style.highlight = Some(0x00FF00);
+    e.doc.paragraphs[1].runs[0].style.script = wv_core::Script::Super;
     e.doc.paragraphs[1].runs[0].style.font = Some("Georgia \"Serif\" & Co".into());
     let back = decode(&encode(&e.doc).unwrap()).unwrap();
     assert_eq!(back, e.doc);
@@ -77,4 +83,15 @@ fn drops_characters_xml_forbids() {
     let mut doc = Document::from_text("a");
     doc.paragraphs[0].runs[0].text = "a\u{1}b".into();
     assert_eq!(decode(&encode(&doc).unwrap()).unwrap().text(), "ab");
+}
+
+#[test]
+fn reads_word_highlight_names_strike_and_vert_align() {
+    let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:rPr><w:strike/><w:highlight w:val="yellow"/><w:vertAlign w:val="subscript"/></w:rPr><w:t>x</w:t></w:r></w:p></w:body></w:document>"#;
+    let doc = decode(&docx_with(xml)).unwrap();
+    let style = &doc.paragraphs[0].runs[0].style;
+    assert!(style.strike);
+    assert_eq!(style.highlight, Some(0xFFFF00));
+    assert_eq!(style.script, wv_core::Script::Sub);
 }

@@ -25,8 +25,10 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
         Tab::Layout | Tab::View => placeholder::groups(tab, this.lang, cx),
     };
     let row = div()
+        .id("ribbon-row")
         .flex()
         .gap(space::md())
+        .overflow_x_scroll()
         .children(groups)
         .with_animation(
             SharedString::from(format!("ribbon-fade-{}", tab.label(this.lang))),

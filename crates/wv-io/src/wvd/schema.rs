@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use wv_core::{Align, CharStyle, Document, ParaStyle, Paragraph, Run};
+use wv_core::{Align, CharStyle, Document, ParaStyle, Paragraph, Run, Script};
 
 use crate::IoError;
 
@@ -17,6 +17,8 @@ pub struct File {
 struct Para {
     #[serde(default)]
     align: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    quote: bool,
     runs: Vec<RunDto>,
 }
 
@@ -29,6 +31,20 @@ struct RunDto {
     italic: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     underline: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    strike: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    highlight: Option<u32>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    script: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    caps: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    mono: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    spoiler: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    link: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     size_pt: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -66,6 +82,7 @@ impl File {
             .iter()
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
+                quote: p.style.quote,
                 runs: p
                     .runs
                     .iter()
@@ -74,6 +91,13 @@ impl File {
                         bold: r.style.bold,
                         italic: r.style.italic,
                         underline: r.style.underline,
+                        strike: r.style.strike,
+                        highlight: r.style.highlight,
+                        script: script_name(r.style.script).to_string(),
+                        caps: r.style.caps,
+                        mono: r.style.mono,
+                        spoiler: r.style.spoiler,
+                        link: r.style.link.clone(),
                         size_pt: r.style.size_pt,
                         color: r.style.color,
                         font: r.style.font.clone(),
@@ -107,6 +131,7 @@ impl File {
             .map(|p| Paragraph {
                 style: ParaStyle {
                     align: align_from(&p.align),
+                    quote: p.quote,
                 },
                 runs: p
                     .runs
@@ -116,6 +141,13 @@ impl File {
                             bold: r.bold,
                             italic: r.italic,
                             underline: r.underline,
+                            strike: r.strike,
+                            highlight: r.highlight,
+                            script: script_from(&r.script),
+                            caps: r.caps,
+                            mono: r.mono,
+                            spoiler: r.spoiler,
+                            link: r.link,
                             size_pt: r.size_pt,
                             color: r.color,
                             font: r.font,
@@ -130,5 +162,21 @@ impl File {
         } else {
             Document { paragraphs }
         })
+    }
+}
+
+fn script_name(s: Script) -> &'static str {
+    match s {
+        Script::Normal => "",
+        Script::Super => "super",
+        Script::Sub => "sub",
+    }
+}
+
+fn script_from(name: &str) -> Script {
+    match name {
+        "super" => Script::Super,
+        "sub" => Script::Sub,
+        _ => Script::Normal,
     }
 }

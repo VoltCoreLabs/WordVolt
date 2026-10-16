@@ -50,6 +50,18 @@ impl Paragraph {
             .unwrap_or_default()
     }
 
+    /// Style of the character right after `offset` (`None` at the end of the paragraph).
+    pub fn style_after(&self, offset: usize) -> Option<CharStyle> {
+        let mut pos = 0;
+        for run in &self.runs {
+            pos += run.text.len();
+            if pos > offset {
+                return Some(run.style.clone());
+            }
+        }
+        None
+    }
+
     /// Makes sure a run boundary exists at `offset`; returns the index of the run starting there.
     fn split_at(&mut self, offset: usize) -> usize {
         let mut pos = 0;

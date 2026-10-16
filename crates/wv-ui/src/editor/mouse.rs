@@ -31,6 +31,15 @@ impl EditorView {
         let Some(at) = self.hit(ev.position, window) else {
             return;
         };
+        // Ctrl/Cmd + click on a link opens it.
+        if ev.modifiers.secondary()
+            && let Some(url) = self.core.doc.paragraphs[at.para]
+                .style_after(at.offset)
+                .and_then(|s| s.link)
+        {
+            cx.open_url(&url);
+            return;
+        }
         self.apply(cx, |core| match ev.click_count {
             2 => core.select_word(at),
             3.. => core.select_paragraph(at.para),

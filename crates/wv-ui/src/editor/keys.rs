@@ -26,6 +26,11 @@ impl EditorView {
             ("end", _) => self.move_line_edge(true, shift, cx),
             ("up", _) => self.move_vertical(-1, shift, window, cx),
             ("down", _) => self.move_vertical(1, shift, window, cx),
+            // Telegram-style: Ctrl+Shift+X strike, +M code, +P spoiler, +N plain text.
+            ("x", true) if shift => self.apply(cx, |c| c.toggle_strike()),
+            ("m", true) if shift => self.apply(cx, |c| c.toggle_mono()),
+            ("p", true) if shift => self.apply(cx, |c| c.toggle_spoiler()),
+            ("n", true) if shift => self.apply(cx, |c| c.clear_formatting()),
             ("a", true) => self.apply(cx, |c| c.select_all()),
             ("z", true) if shift => self.apply(cx, |c| _ = c.redo()),
             ("z", true) => self.apply(cx, |c| _ = c.undo()),

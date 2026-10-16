@@ -1,22 +1,26 @@
-use wv_core::{Align, CharStyle, Document, Paragraph, Run};
+use wv_core::{Align, CharStyle, Document, Paragraph, Run, Script};
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const REL_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
-/// word/document.xml for the document: A4, 2.5 cm margins.
-pub fn document_xml(doc: &Document) -> String {
+/// word/document.xml for the document (A4, 2.5 cm margins). Also returns the hyperlink targets:
+/// relationship `rIdL<n>` is the n-th entry.
+pub fn document_xml(doc: &Document) -> (String, Vec<String>) {
     let mut xml = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:document xmlns:w=\"{NS}\"><w:body>"
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
+<w:document xmlns:w=\"{NS}\" xmlns:r=\"{REL_NS}\"><w:body>"
     );
+    let mut links: Vec<String> = Vec::new();
     for paragraph in &doc.paragraphs {
-        write_paragraph(&mut xml, paragraph);
+        write_paragraph(&mut xml, paragraph, &mut links);
     }
     xml.push_str(
         "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
     );
-    xml
+    (xml, links)
 }
 
-fn write_paragraph(xml: &mut String, p: &Paragraph) {
+fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>) {
     xml.push_str("<w:p>");
     let jc = match p.style.align {
         Align::Left => None,
@@ -24,11 +28,33 @@ fn write_paragraph(xml: &mut String, p: &Paragraph) {
         Align::Right => Some("right"),
         Align::Justify => Some("both"),
     };
-    if let Some(jc) = jc {
-        xml.push_str(&format!("<w:pPr><w:jc w:val=\"{jc}\"/></w:pPr>"));
+    if jc.is_some() || p.style.quote {
+        xml.push_str("<w:pPr>");
+        if p.style.quote {
+            xml.push_str("<w:pStyle w:val=\"Quote\"/>");
+        }
+        if let Some(jc) = jc {
+            xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));
+        }
+        xml.push_str("</w:pPr>");
     }
+    let mut open_link: Option<&str> = None;
     for run in &p.runs {
+        let link = run.style.link.as_deref();
+        if link != open_link {
+            if open_link.is_some() {
+                xml.push_str("</w:hyperlink>");
+            }
+            if let Some(url) = link {
+                links.push(url.to_string());
+                xml.push_str(&format!("<w:hyperlink r:id=\"rIdL{}\">", links.len()));
+            }
+            open_link = link;
+        }
         write_run(xml, run);
+    }
+    if open_link.is_some() {
+        xml.push_str("</w:hyperlink>");
     }
     xml.push_str("</w:p>");
 }
@@ -50,13 +76,28 @@ fn write_run(xml: &mut String, run: &Run) {
     xml.push_str("</w:r>");
 }
 
-/// Child order follows the schema: b, i, color, sz, u.
+/// Child order follows the schema: rStyle, rFonts, b, i, caps, strike, color, sz, u, shd, vertAlign.
 fn write_properties(xml: &mut String, s: &CharStyle) {
-    if *s == CharStyle::default() {
+    let font = s.font.as_deref().or(s.mono.then_some("Consolas"));
+    if !(s.bold
+        || s.italic
+        || s.caps
+        || s.strike
+        || s.underline
+        || s.color.is_some()
+        || s.size_pt.is_some()
+        || s.highlight.is_some()
+        || s.script != Script::Normal
+        || s.link.is_some()
+        || font.is_some())
+    {
         return;
     }
     xml.push_str("<w:rPr>");
-    if let Some(font) = &s.font {
+    if s.link.is_some() {
+        xml.push_str("<w:rStyle w:val=\"Hyperlink\"/>");
+    }
+    if let Some(font) = font {
         let name = escape_attr(font);
         xml.push_str(&format!(
             "<w:rFonts w:ascii=\"{name}\" w:hAnsi=\"{name}\" w:cs=\"{name}\"/>"
@@ -68,6 +109,12 @@ fn write_properties(xml: &mut String, s: &CharStyle) {
     if s.italic {
         xml.push_str("<w:i/>");
     }
+    if s.caps {
+        xml.push_str("<w:caps/>");
+    }
+    if s.strike {
+        xml.push_str("<w:strike/>");
+    }
     if let Some(color) = s.color {
         xml.push_str(&format!("<w:color w:val=\"{:06X}\"/>", color & 0xFF_FFFF));
     }
@@ -76,6 +123,17 @@ fn write_properties(xml: &mut String, s: &CharStyle) {
     }
     if s.underline {
         xml.push_str("<w:u w:val=\"single\"/>");
+    }
+    if let Some(fill) = s.highlight {
+        xml.push_str(&format!(
+            "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"{:06X}\"/>",
+            fill & 0xFF_FFFF
+        ));
+    }
+    match s.script {
+        Script::Normal => {}
+        Script::Super => xml.push_str("<w:vertAlign w:val=\"superscript\"/>"),
+        Script::Sub => xml.push_str("<w:vertAlign w:val=\"subscript\"/>"),
     }
     xml.push_str("</w:rPr>");
 }

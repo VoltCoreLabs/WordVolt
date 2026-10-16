@@ -12,7 +12,7 @@ use wv_layout::{DEFAULT_SIZE_PT, Measurer, font_px};
 use crate::theme::ui_font;
 
 /// bold, italic, size (pt), hash of the font family (0 = default).
-type StyleKey = (bool, bool, u16, u64);
+type StyleKey = (bool, bool, u16, u64, u8, u8);
 
 fn key(style: &CharStyle) -> StyleKey {
     let family = style.font.as_deref().map_or(0, |f| {
@@ -25,6 +25,8 @@ fn key(style: &CharStyle) -> StyleKey {
         style.italic,
         style.size_pt.unwrap_or(DEFAULT_SIZE_PT),
         family,
+        style.script as u8,
+        u8::from(style.caps) | u8::from(style.mono) << 1,
     )
 }
 
@@ -39,6 +41,13 @@ pub fn font_for(style: &CharStyle) -> Font {
     let mut font = ui_font();
     if let Some(family) = &style.font {
         font.family = family.clone().into();
+    } else if style.mono {
+        font.family = "Cascadia Mono".into();
+        font.fallbacks = Some(FontFallbacks::from_fonts(vec![
+            "Consolas".into(),
+            "Courier New".into(),
+            "monospace".into(),
+        ]));
     }
     if style.bold {
         font.weight = FontWeight::BOLD;
@@ -55,12 +64,15 @@ pub fn text_run(len: usize, style: &CharStyle, color: Hsla) -> TextRun {
         font: font_for(style),
         color,
         background_color: None,
-        underline: style.underline.then(|| UnderlineStyle {
+        strikethrough: style.strike.then(|| StrikethroughStyle {
+            thickness: px(1.),
+            color: None,
+        }),
+        underline: (style.underline || style.link.is_some()).then(|| UnderlineStyle {
             thickness: px(1.),
             color: None,
             wavy: false,
         }),
-        strikethrough: None,
     }
 }
 
@@ -79,10 +91,16 @@ impl GpuiMeasurer {
     }
 
     pub fn shape(&self, text: &str, style: &CharStyle, color: Hsla) -> ShapedLine {
+        let shown = if style.caps {
+            text.to_uppercase()
+        } else {
+            text.to_string()
+        };
+        let len = shown.len();
         self.system.shape_line(
-            text.to_string().into(),
+            shown.into(),
             px(font_px(style)),
-            &[text_run(text.len(), style, color)],
+            &[text_run(len, style, color)],
             None,
         )
     }

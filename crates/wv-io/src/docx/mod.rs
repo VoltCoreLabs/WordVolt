@@ -11,11 +11,15 @@ use wv_core::Document;
 use crate::IoError;
 
 pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
-    document_xml::parse(&package::read_document_xml(bytes)?)
+    document_xml::parse(
+        &package::read_document_xml(bytes)?,
+        &package::read_links(bytes),
+    )
 }
 
 pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
-    package::write(&writer::document_xml(doc))
+    let (xml, links) = writer::document_xml(doc);
+    package::write(&xml, &links)
 }
 
 #[cfg(test)]

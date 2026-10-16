@@ -158,3 +158,14 @@ fn caret_at_wrap_point_belongs_to_the_next_line() {
     assert_eq!(l.line_of(4), 1);
     assert_eq!(l.line_of(7), 1);
 }
+
+#[test]
+fn quote_is_indented_and_wraps_narrower() {
+    let mut p = plain("aaaa bbbb");
+    p.style.quote = true;
+    let l = layout_paragraph(&p, &opts(10.0), &Fixed);
+    assert!(l.quote);
+    assert_eq!(l.lines[0].x, QUOTE_INDENT);
+    // 80 px - 24 px indent = 56 px = 7 chars: the second word moves to the next line.
+    assert_eq!(l.lines.len(), 2);
+}
