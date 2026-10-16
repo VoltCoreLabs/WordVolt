@@ -1,5 +1,6 @@
 use gpui_kit::{Pixels, px};
 
+#[allow(dead_code)]
 pub mod space {
     use super::*;
     pub fn xs() -> Pixels {
@@ -19,6 +20,7 @@ pub mod space {
     }
 }
 
+#[allow(dead_code)]
 pub mod radius {
     use super::*;
     pub fn sm() -> Pixels {

@@ -1,6 +1,7 @@
 use gpui_kit::{Global, Rgba};
 
 /// Colour tokens of the current theme. Stored as a GPUI global.
+#[allow(dead_code)] // tokens are defined ahead of use
 pub struct Theme {
     pub bg: Rgba,
     pub surface: Rgba,
