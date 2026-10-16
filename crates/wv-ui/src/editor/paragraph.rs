@@ -3,7 +3,7 @@ use std::ops::Range;
 use gpui_kit::*;
 use wv_core::{Align, CharStyle, Paragraph};
 
-use super::align::caret_point;
+use super::align::{caret_point, selection_rects};
 use super::caret::caret_alpha;
 use super::view::EditorView;
 use crate::theme::{Theme, ui_font};
@@ -19,13 +19,27 @@ pub fn paragraph_el(
 ) -> Stateful<Div> {
     let theme = cx.global::<Theme>();
     let para = &view.core.doc.paragraphs[ix];
-    let (text, runs) = text_and_runs(para, selection_in(view, ix), theme);
+    let (text, runs) = text_and_runs(para, theme);
     let styled = StyledText::new(text).with_runs(runs);
     let layout = styled.layout().clone();
     view.layouts.borrow_mut().push(layout.clone());
 
     let head = view.core.sel.head;
     let align = para.style.align;
+    // Drawn by us (GPUI's run background ignores paragraph alignment), under the text.
+    let selection = selection_in(view, ix).map(|range| {
+        let (layout, color) = (layout.clone(), theme.accent_subtle);
+        canvas(
+            |_, _, _| (),
+            move |_, _, window, _| {
+                for rect in selection_rects(&layout, range.clone(), align) {
+                    window.paint_quad(fill(rect, color));
+                }
+            },
+        )
+        .absolute()
+        .size_full()
+    });
     let caret = (focused && head.para == ix).then(|| {
         let color = theme.text;
         let (epoch, scroll, reveal) = (
@@ -70,7 +84,7 @@ pub fn paragraph_el(
         Align::Center => base.text_center(),
         Align::Right => base.text_right(),
     };
-    aligned.child(styled).children(caret)
+    aligned.children(selection).child(styled).children(caret)
 }
 
 /// Selected byte range inside paragraph `ix`, if any.
@@ -88,44 +102,20 @@ fn selection_in(view: &EditorView, ix: usize) -> Option<Range<usize>> {
     (start < end).then_some(start..end)
 }
 
-/// Text plus runs (split at the selection edges). An empty paragraph shows one space so it keeps its height.
-fn text_and_runs(
-    para: &Paragraph,
-    sel: Option<Range<usize>>,
-    theme: &Theme,
-) -> (SharedString, Vec<TextRun>) {
+/// Text plus one run per style span. An empty paragraph shows one space so it keeps its height.
+fn text_and_runs(para: &Paragraph, theme: &Theme) -> (SharedString, Vec<TextRun>) {
     if para.is_empty() {
-        return (
-            " ".into(),
-            vec![make_run(1, &CharStyle::default(), false, theme)],
-        );
+        return (" ".into(), vec![make_run(1, &CharStyle::default(), theme)]);
     }
-    let mut runs = Vec::new();
-    let mut pos = 0;
-    for run in &para.runs {
-        let end = pos + run.text.len();
-        let mut cuts = vec![pos];
-        if let Some(sel) = &sel {
-            cuts.extend(
-                [sel.start, sel.end]
-                    .into_iter()
-                    .filter(|b| *b > pos && *b < end),
-            );
-        }
-        cuts.sort_unstable();
-        cuts.push(end);
-        for w in cuts.windows(2) {
-            let selected = sel
-                .as_ref()
-                .is_some_and(|s| w[0] >= s.start && w[1] <= s.end);
-            runs.push(make_run(w[1] - w[0], &run.style, selected, theme));
-        }
-        pos = end;
-    }
+    let runs = para
+        .runs
+        .iter()
+        .map(|run| make_run(run.text.len(), &run.style, theme))
+        .collect();
     (para.text().into(), runs)
 }
 
-fn make_run(len: usize, style: &CharStyle, selected: bool, theme: &Theme) -> TextRun {
+fn make_run(len: usize, style: &CharStyle, theme: &Theme) -> TextRun {
     let mut font = ui_font();
     if style.bold {
         font.weight = FontWeight::BOLD;
@@ -137,7 +127,7 @@ fn make_run(len: usize, style: &CharStyle, selected: bool, theme: &Theme) -> Tex
         len,
         font,
         color: theme.text.into(),
-        background_color: selected.then(|| theme.accent_subtle.into()),
+        background_color: None,
         underline: style.underline.then(|| UnderlineStyle {
             thickness: px(1.),
             color: None,

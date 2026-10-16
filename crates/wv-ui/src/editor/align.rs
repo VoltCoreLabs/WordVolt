@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use gpui_kit::*;
 use wv_core::Align;
 
@@ -51,4 +53,33 @@ pub fn index_at(layout: &TextLayout, pos: Point<Pixels>, align: Align) -> usize 
     layout
         .index_for_position(point(pos.x - shift, pos.y))
         .unwrap_or_else(|i| i)
+}
+
+/// Highlight rectangles for the selected byte `range`, one per visual line, aligned like the text.
+pub fn selection_rects(
+    layout: &TextLayout,
+    range: Range<usize>,
+    align: Align,
+) -> Vec<Bounds<Pixels>> {
+    let lines = visual_lines(layout);
+    let all = layout.line_layouts();
+    let Some(wrapped) = all.first() else {
+        return vec![];
+    };
+    let (bounds, height) = (layout.bounds(), layout.line_height());
+    let mut rects = Vec::new();
+    let mut line_start = 0;
+    for (row, line) in lines.iter().enumerate() {
+        let (from, to) = (range.start.max(line_start), range.end.min(line.0));
+        if from < to {
+            let shift = line_offset(layout, line, align);
+            let x = |ix: usize| {
+                bounds.left() + shift + wrapped.unwrapped_layout.x_for_index(ix) - line.1
+            };
+            let origin = point(x(from), bounds.top() + height * row as f32);
+            rects.push(Bounds::new(origin, size(x(to) - x(from), height)));
+        }
+        line_start = line.0;
+    }
+    rects
 }
