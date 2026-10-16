@@ -28,6 +28,10 @@ pub enum Icon {
     Printer,
     Highlighter,
     PaintBucket,
+    Minimize,
+    Maximize,
+    Restore,
+    Close,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -65,6 +69,10 @@ impl Icon {
             Icon::Printer => "printer",
             Icon::Highlighter => "highlighter",
             Icon::PaintBucket => "paint-bucket",
+            Icon::Minimize => "minus",
+            Icon::Maximize => "square",
+            Icon::Restore => "copy",
+            Icon::Close => "x",
         }
     }
 }

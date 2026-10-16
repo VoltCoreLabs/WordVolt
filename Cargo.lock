@@ -7919,6 +7919,7 @@ dependencies = [
  "serde",
  "toml 0.8.23",
  "wv-core",
+ "wv-i18n",
  "wv-layout",
 ]
 
