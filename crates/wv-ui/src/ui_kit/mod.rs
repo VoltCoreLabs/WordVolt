@@ -23,11 +23,12 @@ pub use icon_button::icon_button;
 pub use line_edit::{LineEdit, Outcome};
 pub use recent_colors::RecentColors;
 pub use tab::tab;
-pub use tooltip::Tip;
+pub use tooltip::{Tip, layer as tooltip_layer};
 pub use window_controls::{CONTROLS_WIDTH, window_controls};
 
 /// Registers the global state widgets need (hover fades, recent colours). Call once at startup.
 pub fn init(cx: &mut App) {
     cx.set_global(hover::HoverMap::default());
     cx.set_global(RecentColors::load());
+    tooltip::init(cx);
 }

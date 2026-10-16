@@ -39,6 +39,9 @@ pub fn track_hover(el: Stateful<Div>, id: &ElementId) -> Stateful<Div> {
     let id = id.clone();
     el.on_hover(move |hovered, window, cx| {
         cx.global::<HoverMap>().set(&id, *hovered);
+        if !*hovered {
+            super::tooltip::hide(window, cx);
+        }
         window.refresh();
     })
 }
