@@ -14,4 +14,4 @@ pub use button::{ButtonKind, button};
 pub use icon::Icon;
 pub use icon_button::icon_button;
 pub use tab::tab;
-pub use window_controls::window_controls;
+pub use window_controls::{CONTROLS_WIDTH, window_controls};

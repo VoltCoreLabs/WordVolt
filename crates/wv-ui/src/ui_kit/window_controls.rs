@@ -3,6 +3,9 @@ use gpui_kit::*;
 use super::icon::{Icon, Weight, icon};
 use crate::theme::{Theme, radius, space};
 
+/// Width of the three buttons plus gaps (3 * 32 + 2 * 4).
+pub const CONTROLS_WIDTH: Pixels = px(104.);
+
 /// Minimise / maximise-restore / close buttons for the custom titlebar.
 /// `window_control_area` lets Windows handle them natively (snap layouts, etc.).
 pub fn window_controls(window: &Window, cx: &App) -> Div {

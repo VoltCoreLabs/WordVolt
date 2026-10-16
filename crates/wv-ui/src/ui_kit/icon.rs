@@ -70,8 +70,8 @@ impl Icon {
             Icon::Highlighter => "highlighter",
             Icon::PaintBucket => "paint-bucket",
             Icon::Minimize => "minus",
-            Icon::Maximize => "square",
-            Icon::Restore => "copy",
+            Icon::Maximize => "corners-out",
+            Icon::Restore => "corners-in",
             Icon::Close => "x",
         }
     }
