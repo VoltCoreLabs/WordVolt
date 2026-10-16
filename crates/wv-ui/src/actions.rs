@@ -7,7 +7,11 @@ actions!(
         OpenDocument,
         SaveDocument,
         SaveDocumentAs,
-        InsertLink
+        InsertLink,
+        FindInDocument,
+        ReplaceInDocument,
+        FindNext,
+        FindPrevious
     ]
 );
 
@@ -19,5 +23,9 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("secondary-s", SaveDocument, None),
         KeyBinding::new("secondary-shift-s", SaveDocumentAs, None),
         KeyBinding::new("secondary-k", InsertLink, None),
+        KeyBinding::new("secondary-f", FindInDocument, None),
+        KeyBinding::new("secondary-h", ReplaceInDocument, None),
+        KeyBinding::new("f3", FindNext, None),
+        KeyBinding::new("shift-f3", FindPrevious, None),
     ]);
 }

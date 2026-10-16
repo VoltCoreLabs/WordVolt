@@ -22,6 +22,8 @@ struct ThemeFile {
     page: String,
     code_bg: String,
     spoiler: String,
+    find_match: String,
+    find_current: String,
 }
 
 fn color(hex: &str) -> Result<Rgba, String> {
@@ -55,6 +57,8 @@ impl Theme {
             page: color(&f.page)?,
             code_bg: color(&f.code_bg)?,
             spoiler: color(&f.spoiler)?,
+            find_match: color(&f.find_match)?,
+            find_current: color(&f.find_current)?,
         })
     }
 }

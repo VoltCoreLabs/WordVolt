@@ -6,6 +6,7 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
+use super::find_bar::FindBar;
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::style_names::{style_from_label, style_label};
@@ -72,6 +73,7 @@ pub struct MainWindow {
     pub case_menu: Entity<MenuButton>,
     pub spacing_menu: Entity<MenuButton>,
     pub style_combo: Entity<Combo>,
+    pub find_bar: Entity<FindBar>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -264,11 +266,13 @@ impl MainWindow {
             },
         )
         .detach();
+        let find_bar = cx.new(|cx| FindBar::new(editor.clone(), lang, cx));
         Self {
             editor,
             case_menu,
             spacing_menu,
             style_combo,
+            find_bar,
             font_combo,
             size_combo,
             text_color,

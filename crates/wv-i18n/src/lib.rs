@@ -83,6 +83,19 @@ pub enum Key {
     StyleHeading1,
     StyleHeading2,
     StyleHeading3,
+    FindPlaceholder,
+    ReplacePlaceholder,
+    ReplaceOne,
+    ReplaceAll,
+    NoMatches,
+    TipMatchCase,
+    TipWholeWord,
+    TipFindPrev,
+    TipFindNext,
+    TipFindClose,
+    GroupEditing,
+    TipFind,
+    TipReplace,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -166,6 +179,19 @@ fn ru(key: Key) -> &'static str {
         Key::StyleHeading1 => "Заголовок 1",
         Key::StyleHeading2 => "Заголовок 2",
         Key::StyleHeading3 => "Заголовок 3",
+        Key::FindPlaceholder => "Найти",
+        Key::ReplacePlaceholder => "Заменить на",
+        Key::ReplaceOne => "Заменить",
+        Key::ReplaceAll => "Заменить все",
+        Key::NoMatches => "Нет совпадений",
+        Key::TipMatchCase => "С учётом регистра",
+        Key::TipWholeWord => "Слово целиком",
+        Key::TipFindPrev => "Предыдущее (Shift+Enter, Shift+F3)",
+        Key::TipFindNext => "Следующее (Enter, F3)",
+        Key::TipFindClose => "Закрыть (Esc)",
+        Key::GroupEditing => "Правка",
+        Key::TipFind => "Найти (Ctrl+F)",
+        Key::TipReplace => "Заменить (Ctrl+H)",
     }
 }
 
@@ -243,6 +269,19 @@ fn en(key: Key) -> &'static str {
         Key::StyleHeading1 => "Heading 1",
         Key::StyleHeading2 => "Heading 2",
         Key::StyleHeading3 => "Heading 3",
+        Key::FindPlaceholder => "Find",
+        Key::ReplacePlaceholder => "Replace with",
+        Key::ReplaceOne => "Replace",
+        Key::ReplaceAll => "Replace all",
+        Key::NoMatches => "No matches",
+        Key::TipMatchCase => "Match case",
+        Key::TipWholeWord => "Whole word",
+        Key::TipFindPrev => "Previous (Shift+Enter, Shift+F3)",
+        Key::TipFindNext => "Next (Enter, F3)",
+        Key::TipFindClose => "Close (Esc)",
+        Key::GroupEditing => "Editing",
+        Key::TipFind => "Find (Ctrl+F)",
+        Key::TipReplace => "Replace (Ctrl+H)",
     }
 }
 
@@ -268,6 +307,22 @@ pub fn unsaved_detail(lang: Lang, name: &str) -> String {
         Lang::En => {
             format!("\u{201C}{name}\u{201D} has unsaved changes. Save them before continuing?")
         }
+    }
+}
+
+/// "3 из 12" / "3 of 12" (current match of all matches).
+pub fn match_of(lang: Lang, current: usize, total: usize) -> String {
+    match lang {
+        Lang::Ru => format!("{current} из {total}"),
+        Lang::En => format!("{current} of {total}"),
+    }
+}
+
+/// "Заменено: 3" / "Replaced 3".
+pub fn replaced_count(lang: Lang, n: usize) -> String {
+    match lang {
+        Lang::Ru => format!("Заменено: {n}"),
+        Lang::En => format!("Replaced {n}"),
     }
 }
 

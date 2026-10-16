@@ -27,7 +27,15 @@ pub struct PageView {
     pub spoiler_color: Rgba,
     pub link_color: Rgba,
     pub bar_color: Rgba,
+    /// Search matches (all, and which one is current) with their colours.
+    pub find: Rc<Vec<(Position, Position)>>,
+    pub find_current: Option<usize>,
+    pub find_color: Rgba,
+    pub find_current_color: Rgba,
 }
+
+/// More matches than this are still found and counted, but not all highlighted.
+const MAX_HIGHLIGHTS: usize = 2000;
 
 /// Slack around the viewport in which lines are still painted.
 const CULL: f32 = 80.0;
@@ -55,6 +63,26 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             window.paint_quad(fill(
                 Bounds::new(at(r.x, r.y), size(px(r.width), px(r.height))),
                 v.selection_color,
+            ));
+        }
+    }
+
+    // Search matches go over the selection (the current match is usually selected too).
+    for (i, (from, to)) in v.find.iter().enumerate().take(MAX_HIGHLIGHTS) {
+        let color = if Some(i) == v.find_current {
+            v.find_current_color
+        } else {
+            v.find_color
+        };
+        for r in v
+            .layout
+            .selection_rects(*from, *to, &m)
+            .iter()
+            .filter(|r| r.page == v.page && visible(r.y, r.height))
+        {
+            window.paint_quad(fill(
+                Bounds::new(at(r.x, r.y), size(px(r.width), px(r.height))),
+                color,
             ));
         }
     }

@@ -42,6 +42,8 @@ pub enum Icon {
     Indent,
     Outdent,
     LineSpacing,
+    WholeWord,
+    Replace,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -93,6 +95,8 @@ impl Icon {
             Icon::Indent => "text-indent",
             Icon::Outdent => "text-outdent",
             Icon::LineSpacing => "arrows-vertical",
+            Icon::WholeWord => "brackets-square",
+            Icon::Replace => "swap",
         }
     }
 }

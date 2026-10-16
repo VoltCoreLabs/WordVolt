@@ -495,3 +495,58 @@ fn named_styles_apply_enter_at_end_returns_to_normal_and_size_bumps_from_the_sty
     assert!(resolved.runs[0].style.bold && resolved.runs[0].style.size_pt == Some(20));
     assert!(e.doc.paragraphs[2].with_named_style().is_none());
 }
+
+#[test]
+fn replace_match_keeps_the_formatting_of_the_matched_text() {
+    let mut e = typed("one two three");
+    e.sel.anchor = Position::new(0, 4);
+    e.sel.head = Position::new(0, 7);
+    e.toggle_bold();
+    let m = e.find_matches("two", crate::SearchOptions::default());
+    assert_eq!(m.len(), 1);
+    e.replace_match(m[0].0, m[0].1, "2");
+    assert_eq!(e.doc.text(), "one 2 three");
+    let bold: Vec<_> = e.doc.paragraphs[0]
+        .runs
+        .iter()
+        .filter(|r| r.style.bold)
+        .map(|r| r.text.as_str())
+        .collect();
+    assert_eq!(bold, ["2"]);
+}
+
+#[test]
+fn replace_all_is_one_undo_step_and_handles_line_breaks_and_unicode() {
+    let mut e = typed(
+        "Привет мир
+привет всем
+ничего",
+    );
+    let before = e.doc.clone();
+    let opts = crate::SearchOptions::default();
+    assert_eq!(e.replace_all("привет", "hi", opts), 2);
+    assert_eq!(
+        e.doc.text(),
+        "hi мир
+hi всем
+ничего"
+    );
+    assert!(e.undo());
+    assert_eq!(e.doc, before, "one undo restores everything");
+    assert!(e.redo());
+    assert_eq!(
+        e.replace_all(
+            "мир", "a
+b", opts
+        ),
+        1
+    );
+    assert_eq!(
+        e.doc.text(),
+        "hi a
+b
+hi всем
+ничего"
+    );
+    assert_eq!(e.replace_all("нет такого", "x", opts), 0);
+}

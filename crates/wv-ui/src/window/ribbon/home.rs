@@ -187,6 +187,26 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         cx,
     );
 
+    let editing =
+        block_group(
+            t(lang, Key::GroupEditing),
+            vec![
+                icon_button("find", Icon::Search, false, cx)
+                    .tip(t(lang, Key::TipFind))
+                    .on_click(cx.listener(|t, _, w, cx| {
+                        t.find_bar.update(cx, |bar, cx| bar.open(false, w, cx))
+                    }))
+                    .into_any_element(),
+                icon_button("replace", Icon::Replace, false, cx)
+                    .tip(t(lang, Key::TipReplace))
+                    .on_click(cx.listener(|t, _, w, cx| {
+                        t.find_bar.update(cx, |bar, cx| bar.open(true, w, cx))
+                    }))
+                    .into_any_element(),
+            ],
+            cx,
+        );
+
     let history = block_group(
         t(lang, Key::GroupHistory),
         vec![
@@ -224,6 +244,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         paragraph.into_any_element(),
         styles.into_any_element(),
         history.into_any_element(),
+        editing.into_any_element(),
         file.into_any_element(),
     ]
 }

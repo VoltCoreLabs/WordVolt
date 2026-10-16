@@ -5,7 +5,10 @@ use super::side_panel::side_panel;
 pub use super::state::MainWindow;
 use super::status_bar::status_bar;
 use super::titlebar::titlebar;
-use crate::actions::{InsertLink, NewDocument, OpenDocument, SaveDocument, SaveDocumentAs};
+use crate::actions::{
+    FindInDocument, FindNext, FindPrevious, InsertLink, NewDocument, OpenDocument,
+    ReplaceInDocument, SaveDocument, SaveDocumentAs,
+};
 use crate::theme::{Theme, space, ui_font};
 use crate::ui_kit::{block, tooltip_layer};
 
@@ -41,6 +44,32 @@ impl Render for MainWindow {
                 this.link_editor
                     .update(cx, |editor, cx| editor.open(window, cx));
             }))
+            .on_action(cx.listener(|this, _: &FindInDocument, window, cx| {
+                this.find_bar
+                    .update(cx, |bar, cx| bar.open(false, window, cx));
+            }))
+            .on_action(cx.listener(|this, _: &ReplaceInDocument, window, cx| {
+                this.find_bar
+                    .update(cx, |bar, cx| bar.open(true, window, cx));
+            }))
+            .on_action(cx.listener(|this, _: &FindNext, window, cx| {
+                this.find_bar.update(cx, |bar, cx| {
+                    if bar.is_open() {
+                        bar.step(1, cx)
+                    } else {
+                        bar.open(false, window, cx)
+                    }
+                });
+            }))
+            .on_action(cx.listener(|this, _: &FindPrevious, window, cx| {
+                this.find_bar.update(cx, |bar, cx| {
+                    if bar.is_open() {
+                        bar.step(-1, cx)
+                    } else {
+                        bar.open(false, window, cx)
+                    }
+                });
+            }))
             .on_action(
                 cx.listener(|this, _: &OpenDocument, window, cx| this.open_document(window, cx)),
             )
@@ -69,6 +98,7 @@ impl Render for MainWindow {
                     .overflow_hidden()
                     .child(tab_bar(self, cx))
                     .child(ribbon(self, cx))
+                    .child(self.find_bar.clone())
                     .child(workspace)
                     .child(status_bar(self.lang, pages, words, cx)),
             )
