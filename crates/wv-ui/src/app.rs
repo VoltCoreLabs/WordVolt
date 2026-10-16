@@ -17,6 +17,13 @@ pub fn run() {
                 size(px(1280.), px(800.)),
                 cx,
             ))),
+            titlebar: Some(TitlebarOptions {
+                title: Some(wv_i18n::APP_NAME.into()),
+                appears_transparent: true,
+                traffic_light_position: Some(point(px(16.), px(14.))),
+            }),
+            window_decorations: Some(WindowDecorations::Client),
+            window_min_size: Some(size(px(720.), px(480.))),
             ..Default::default()
         };
         gpui_kit::open_window(options, cx, |_, cx| cx.new(|_| MainWindow::new()))

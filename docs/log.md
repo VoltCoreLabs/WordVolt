@@ -11,3 +11,4 @@
 - Грабля: GPUI `svg()` рисуется только если `text_color` задан на самом svg, наследование от родителя не работает.
 - Ветка `feat/core-editor`: `wv-core` — модель (Document/Paragraph/Run), Selection, Editor (insert/delete/enter/backspace, стили B/I/U, выравнивание, движение каретки по графемам), undo/redo через Edit-splice абзацев, 16 тестов. Не сделано: склейка undo при наборе, движение по словам, up/down (нужна вёрстка).
 - В plan.md добавлена задача пользователя: кастомный titlebar (свернуть/развернуть/закрыть, «WordVolt — Новый документ»).
+- Ветка `feat/titlebar`: кастомный titlebar (окно без системной рамки), кнопки свернуть/развернуть/закрыть (`window_control_area` для Windows, `start_window_move`/double-click для Linux, macOS — родные traffic lights), заголовок «WordVolt — Новый документ» (wv-i18n, en/ru), точка при несохранённых изменениях. Не проверено вживую: Linux/macOS.
