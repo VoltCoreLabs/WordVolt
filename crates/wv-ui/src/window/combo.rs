@@ -1,59 +1,64 @@
 use gpui_kit::*;
 
-use crate::theme::{DEFAULT_FONT, Theme, radius, space};
+use crate::theme::{Theme, radius, space};
 use crate::ui_kit::{Icon, LineEdit, Outcome, Weight, icon};
 
-pub enum FontPickerEvent {
-    /// `None` = back to the default font.
+pub enum ComboEvent {
+    /// The typed or chosen text; `None` = the "default" entry.
     Picked(Option<String>),
 }
 
-/// Font family field: shows the current font; click to type a name by hand or pick from the list
-/// of installed fonts (the list filters while typing).
-pub struct FontPicker {
+/// How a combo gets its entries and looks.
+pub struct ComboConfig {
+    pub id: &'static str,
+    pub width: f32,
+    /// Label of the first entry that resets to the default (fonts only).
+    pub default_label: Option<String>,
+    /// Show every entry in its own font (font list).
+    pub preview_font: bool,
+    pub items: fn(&App) -> Vec<String>,
+}
+
+/// Editable drop-down: type a value by hand (Enter applies) or pick from the list, which filters
+/// while typing. Used for the font family and the font size.
+pub struct Combo {
+    config: ComboConfig,
     edit: LineEdit,
     focus: FocusHandle,
     list_scroll: ScrollHandle,
     open: bool,
     shown: String,
-    fonts: Vec<String>,
+    items: Vec<String>,
     /// The user typed something, so the list is filtered by it.
     typed: bool,
 }
 
-impl EventEmitter<FontPickerEvent> for FontPicker {}
+impl EventEmitter<ComboEvent> for Combo {}
 
-impl FontPicker {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+impl Combo {
+    pub fn new(config: ComboConfig, shown: String, cx: &mut Context<Self>) -> Self {
         Self {
+            config,
             edit: LineEdit::default(),
             focus: cx.focus_handle(),
             list_scroll: ScrollHandle::new(),
             open: false,
-            shown: DEFAULT_FONT.to_string(),
-            fonts: Vec::new(),
+            shown,
+            items: Vec::new(),
             typed: false,
         }
     }
 
-    /// Font of the caret/selection, shown while the menu is closed.
-    pub fn set_current(&mut self, name: &str) {
-        if !self.open && self.shown != name {
-            self.shown = name.to_string();
+    /// Value of the caret/selection, shown while the menu is closed.
+    pub fn set_current(&mut self, text: &str) {
+        if !self.open && self.shown != text {
+            self.shown = text.to_string();
         }
     }
 
     fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.fonts.is_empty() {
-            let mut fonts: Vec<String> = cx
-                .text_system()
-                .all_font_names()
-                .into_iter()
-                .filter(|n| !n.starts_with('.'))
-                .collect();
-            fonts.sort_by_key(|n| n.to_lowercase());
-            fonts.dedup();
-            self.fonts = fonts;
+        if self.items.is_empty() {
+            self.items = (self.config.items)(cx);
         }
         self.open = true;
         self.typed = false;
@@ -68,12 +73,12 @@ impl FontPicker {
         cx.notify();
     }
 
-    fn pick(&mut self, name: Option<String>, cx: &mut Context<Self>) {
+    fn pick(&mut self, value: Option<String>, cx: &mut Context<Self>) {
         self.open = false;
-        if let Some(name) = &name {
-            self.shown = name.clone();
+        if let Some(value) = &value {
+            self.shown = value.clone();
         }
-        cx.emit(FontPickerEvent::Picked(name));
+        cx.emit(ComboEvent::Picked(value));
         cx.notify();
     }
 
@@ -103,16 +108,18 @@ impl FontPicker {
             String::new()
         };
         let names: Vec<String> = self
-            .fonts
+            .items
             .iter()
             .filter(|n| filter.is_empty() || n.to_lowercase().contains(&filter))
             .take(400)
             .cloned()
             .collect();
-        let item = |id: usize, label: String, family: Option<String>, cx: &mut Context<Self>| {
-            let picked = family.clone();
+        let preview = self.config.preview_font;
+        let id = self.config.id;
+        let item = |index: usize, label: String, value: Option<String>, cx: &mut Context<Self>| {
+            let picked = value.clone();
             let mut row = div()
-                .id(("font-item", id))
+                .id((SharedString::from(format!("{id}-item")), index))
                 .h(px(30.))
                 .px(px(10.))
                 .flex()
@@ -127,12 +134,15 @@ impl FontPicker {
                     cx.listener(move |this, _, _, cx| this.pick(picked.clone(), cx)),
                 )
                 .child(label);
-            if let Some(family) = family {
+            if preview && let Some(family) = value {
                 row = row.font_family(family);
             }
             row
         };
-        let mut rows = vec![item(0, format!("{DEFAULT_FONT} ·"), None, cx)];
+        let mut rows = Vec::new();
+        if let Some(label) = &self.config.default_label {
+            rows.push(item(0, label.clone(), None, cx));
+        }
         rows.extend(
             names
                 .into_iter()
@@ -140,10 +150,10 @@ impl FontPicker {
                 .map(|(i, name)| item(i + 1, name.clone(), Some(name), cx)),
         );
         div()
-            .id("font-list")
+            .id(SharedString::from(format!("{id}-list")))
             .track_scroll(&self.list_scroll)
             .occlude()
-            .w(px(280.))
+            .w(px(self.config.width.max(160.)))
             .max_h(px(320.))
             .overflow_y_scroll()
             .p(px(4.))
@@ -158,7 +168,7 @@ impl FontPicker {
     }
 }
 
-impl Render for FontPicker {
+impl Render for Combo {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.global::<Theme>();
         let (surface, border, accent, muted) = (t.surface, t.border, t.accent, t.text_muted);
@@ -171,7 +181,7 @@ impl Render for FontPicker {
                 .into_any_element()
         };
         let field = div()
-            .id("font-field")
+            .id(SharedString::from(format!("{}-field", self.config.id)))
             .track_focus(&self.focus)
             .on_key_down(cx.listener(Self::on_key))
             .on_mouse_down(
@@ -182,7 +192,7 @@ impl Render for FontPicker {
                     }
                 }),
             )
-            .w(px(168.))
+            .w(px(self.config.width))
             .h(px(32.))
             .px(space::md())
             .flex()

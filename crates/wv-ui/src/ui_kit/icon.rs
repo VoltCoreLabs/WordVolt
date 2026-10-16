@@ -32,6 +32,13 @@ pub enum Icon {
     Maximize,
     Restore,
     Close,
+    Strikethrough,
+    Superscript,
+    Subscript,
+    Code,
+    EyeSlash,
+    Quotes,
+    TextColor,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -73,6 +80,13 @@ impl Icon {
             Icon::Maximize => "corners-out",
             Icon::Restore => "corners-in",
             Icon::Close => "x",
+            Icon::Strikethrough => "text-strikethrough",
+            Icon::Superscript => "text-superscript",
+            Icon::Subscript => "text-subscript",
+            Icon::Code => "code",
+            Icon::EyeSlash => "eye-slash",
+            Icon::Quotes => "quotes",
+            Icon::TextColor => "text-a-underline",
         }
     }
 }

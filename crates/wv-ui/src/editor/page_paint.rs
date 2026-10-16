@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use gpui_kit::*;
 use wv_core::Position;
-use wv_layout::{DocLayout, Measurer};
+use wv_layout::{DocLayout, Measurer, script_shift};
 
 use super::caret::caret_alpha;
 use super::measure::{GpuiMeasurer, MeasureCache};
@@ -23,6 +23,10 @@ pub struct PageView {
     pub epoch: Rc<Cell<Instant>>,
     pub scroll: Rc<ScrollState>,
     pub reveal: Rc<Cell<bool>>,
+    pub code_bg: Rgba,
+    pub spoiler_color: Rgba,
+    pub link_color: Rgba,
+    pub bar_color: Rgba,
 }
 
 /// Slack around the viewport in which lines are still painted.
@@ -59,6 +63,13 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
+        if para.quote {
+            let bar = Bounds::new(
+                at(setup.margin_left + 4.0, setup.margin_top + slice.y),
+                size(px(3.), px(slice.height)),
+            );
+            window.paint_quad(fill(bar, v.bar_color));
+        }
         for line in &para.lines[slice.lines.clone()] {
             let top = setup.margin_top + slice.y + line.y - first_y;
             if !visible(top, line.height) {
@@ -66,10 +77,44 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             }
             for f in &line.fragments {
                 let text = &para.text[f.range.clone()];
-                let color: Hsla = f.style.color.map_or(v.text, rgb).into();
+                let color: Hsla = f
+                    .style
+                    .color
+                    .map_or(
+                        if f.style.link.is_some() {
+                            v.link_color
+                        } else {
+                            v.text
+                        },
+                        rgb,
+                    )
+                    .into();
                 let (ascent, descent) = (m.ascent(&f.style), m.descent(&f.style));
-                let y = top + line.baseline - ascent;
+                let y = top + line.baseline - ascent + script_shift(&f.style);
                 let mut x = setup.margin_left + line.x + f.x;
+                let background = f
+                    .style
+                    .highlight
+                    .map(rgb)
+                    .or(f.style.mono.then_some(v.code_bg));
+                if let Some(background) = background {
+                    window.paint_quad(fill(
+                        Bounds::new(at(x, top), size(px(f.width), px(line.height))),
+                        background,
+                    ));
+                }
+                if f.style.spoiler && !revealed(v, slice.para, &f.range) {
+                    let block =
+                        Bounds::new(at(x, top + 2.0), size(px(f.width), px(line.height - 4.0)));
+                    window.paint_quad(fill(
+                        block,
+                        Rgba {
+                            a: 0.75,
+                            ..v.spoiler_color
+                        },
+                    ));
+                    continue;
+                }
                 let paint = |piece: &str, x: f32, window: &mut Window, cx: &mut App| {
                     if !piece.trim().is_empty() || f.style.underline {
                         let shaped = m.shape(piece, &f.style, color);
@@ -115,4 +160,14 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
         window.request_animation_frame();
     }
+}
+
+/// A spoiler shows its text while the caret or the selection touches it.
+fn revealed(v: &PageView, para: usize, range: &std::ops::Range<usize>) -> bool {
+    let (start, end) = v.selection;
+    let (lo, hi) = (
+        Position::new(para, range.start),
+        Position::new(para, range.end),
+    );
+    (v.head >= lo && v.head <= hi) || (start != end && start <= hi && end >= lo)
 }

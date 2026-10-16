@@ -37,10 +37,50 @@ mod tests {
                     styled("both", true, true, false),
                     styled(" ", false, false, false),
                     styled("under", false, false, true),
+                    styled(" ", false, false, false),
+                    Run::new(
+                        "gone",
+                        CharStyle {
+                            strike: true,
+                            ..Default::default()
+                        },
+                    ),
                 ],
                 ..Default::default()
             },
             Paragraph::default(),
+            Paragraph {
+                runs: vec![
+                    Run::new(
+                        "code",
+                        CharStyle {
+                            mono: true,
+                            ..Default::default()
+                        },
+                    ),
+                    styled(" ", false, false, false),
+                    Run::new(
+                        "secret",
+                        CharStyle {
+                            spoiler: true,
+                            ..Default::default()
+                        },
+                    ),
+                    styled(" ", false, false, false),
+                    Run::new(
+                        "link",
+                        CharStyle {
+                            link: Some("https://example.com/a_(b)".replace("_(b)", "")),
+                            bold: true,
+                            ..Default::default()
+                        },
+                    ),
+                ],
+                style: wv_core::ParaStyle {
+                    quote: true,
+                    ..Default::default()
+                },
+            },
             Paragraph {
                 runs: vec![styled("2 * 3 = 6, a_b, <tag>, \\", false, false, false)],
                 ..Default::default()

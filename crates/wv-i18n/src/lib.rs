@@ -35,6 +35,12 @@ pub enum Key {
     FormatTxt,
     FormatMd,
     AllSupported,
+    GroupStyle,
+    NoColor,
+    RecentColors,
+    CustomColor,
+    LinkAddress,
+    RemoveLink,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -70,6 +76,12 @@ fn ru(key: Key) -> &'static str {
         Key::FormatTxt => "Текст (.txt)",
         Key::FormatMd => "Markdown (.md)",
         Key::AllSupported => "Все поддерживаемые документы",
+        Key::GroupStyle => "Начертание",
+        Key::NoColor => "Без цвета",
+        Key::RecentColors => "Последние",
+        Key::CustomColor => "Свой цвет",
+        Key::LinkAddress => "Адрес ссылки",
+        Key::RemoveLink => "Убрать ссылку",
     }
 }
 
@@ -99,6 +111,12 @@ fn en(key: Key) -> &'static str {
         Key::FormatTxt => "Plain text (.txt)",
         Key::FormatMd => "Markdown (.md)",
         Key::AllSupported => "All supported documents",
+        Key::GroupStyle => "Style",
+        Key::NoColor => "No colour",
+        Key::RecentColors => "Recent",
+        Key::CustomColor => "Custom colour",
+        Key::LinkAddress => "Link address",
+        Key::RemoveLink => "Remove link",
     }
 }
 

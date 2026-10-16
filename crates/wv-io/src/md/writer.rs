@@ -5,10 +5,15 @@ pub fn encode(doc: &Document) -> String {
     doc.paragraphs
         .iter()
         .map(|p| {
-            if p.is_empty() {
+            let text: String = if p.is_empty() {
                 "&nbsp;".to_string()
             } else {
                 p.runs.iter().map(run).collect()
+            };
+            if p.style.quote {
+                format!("> {text}")
+            } else {
+                text
             }
         })
         .collect::<Vec<_>>()
@@ -24,7 +29,26 @@ fn run(run: &Run) -> String {
     let lead = &text[..text.len() - text.trim_start().len()];
     let trail = &text[text.trim_end().len()..];
     let mark = emphasis(&run.style);
-    let body = format!("{mark}{}{mark}", escape(core));
+    let inner = if run.style.mono {
+        format!("`{core}`")
+    } else {
+        escape(core)
+    };
+    let body = format!("{mark}{inner}{mark}");
+    let body = if run.style.spoiler {
+        format!("||{body}||")
+    } else {
+        body
+    };
+    let body = match &run.style.link {
+        Some(url) => format!("[{body}]({url})"),
+        None => body,
+    };
+    let body = if run.style.strike {
+        format!("~~{body}~~")
+    } else {
+        body
+    };
     let body = if run.style.underline {
         format!("<u>{body}</u>")
     } else {
@@ -45,7 +69,7 @@ fn emphasis(style: &CharStyle) -> &'static str {
 fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for ch in text.chars() {
-        if matches!(ch, '\\' | '*' | '<') {
+        if matches!(ch, '\\' | '*' | '<' | '~' | '[' | ']' | '`' | '|') {
             out.push('\\');
         }
         out.push(ch);

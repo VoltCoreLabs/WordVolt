@@ -266,3 +266,91 @@ fn font_family_on_selection_caret_and_default() {
         Some("Arial")
     );
 }
+
+#[test]
+fn strike_colour_highlight_and_script() {
+    use crate::Script;
+    let mut e = typed("hello world");
+    e.sel.anchor = Position::new(0, 0);
+    e.sel.head = Position::new(0, 5);
+    e.toggle_strike();
+    e.set_color(Some(0xFF0000));
+    e.set_highlight(Some(0xFFFF00));
+    e.toggle_script(Script::Super);
+    let s = e.current_style();
+    assert!(
+        s.strike
+            && s.color == Some(0xFF0000)
+            && s.highlight == Some(0xFFFF00)
+            && s.script == Script::Super
+    );
+    e.toggle_script(Script::Super);
+    assert_eq!(e.current_style().script, Script::Normal);
+    e.toggle_script(Script::Sub);
+    e.toggle_script(Script::Super);
+    assert_eq!(
+        e.current_style().script,
+        Script::Super,
+        "super replaces sub"
+    );
+    e.toggle_strike();
+    assert!(!e.current_style().strike);
+    e.set_color(None);
+    e.set_highlight(None);
+    assert_eq!(e.current_style().color, None);
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 2);
+    e.select_all();
+    assert_eq!(
+        e.current_style().highlight,
+        None,
+        "mixed selection reports none"
+    );
+}
+
+#[test]
+fn caps_mono_spoiler_link_and_quote() {
+    let mut e = typed("see docs here");
+    e.sel.anchor = Position::new(0, 4);
+    e.sel.head = Position::new(0, 8);
+    e.toggle_caps();
+    e.toggle_mono();
+    e.toggle_spoiler();
+    e.set_link(Some("https://example.com".into()));
+    let s = e.current_style();
+    assert!(s.caps && s.mono && s.spoiler && s.link.as_deref() == Some("https://example.com"));
+    e.toggle_mono();
+    assert!(!e.current_style().mono);
+    e.set_link(None);
+    assert_eq!(e.current_style().link, None);
+    assert!(!e.quote_active());
+    e.toggle_quote();
+    assert!(e.quote_active());
+    e.toggle_quote();
+    assert!(!e.quote_active());
+}
+
+#[test]
+fn typing_after_a_link_does_not_extend_it_but_typing_inside_does() {
+    let mut e = typed("abc");
+    e.select_all();
+    e.set_link(Some("u".into()));
+    e.sel = crate::Selection::caret(Position::new(0, 3));
+    e.insert_text("!");
+    assert_eq!(e.doc.paragraphs[0].runs.last().unwrap().style.link, None);
+    e.sel = crate::Selection::caret(Position::new(0, 1));
+    e.insert_text("X");
+    assert_eq!(e.doc.paragraphs[0].runs[0].text, "aXbc");
+    assert_eq!(e.doc.paragraphs[0].runs[0].style.link.as_deref(), Some("u"));
+}
+
+#[test]
+fn clear_formatting_resets_everything() {
+    let mut e = typed("hello");
+    e.select_all();
+    e.toggle_bold();
+    e.set_color(Some(0xFF0000));
+    e.set_link(Some("u".into()));
+    e.clear_formatting();
+    assert_eq!(e.current_style(), crate::CharStyle::default());
+    assert_eq!(e.doc.paragraphs[0].runs.len(), 1);
+}

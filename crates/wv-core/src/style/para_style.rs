@@ -11,4 +11,6 @@ pub enum Align {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParaStyle {
     pub align: Align,
+    /// Block quote: indented with a bar on the left.
+    pub quote: bool,
 }

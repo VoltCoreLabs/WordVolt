@@ -8,6 +8,10 @@ use crate::line::{Fragment, Line};
 
 const EPS: f32 = 0.01;
 
+/// Left indent of a block quote (px).
+pub const QUOTE_INDENT: f32 = 24.0;
+
+#[derive(Clone, Copy)]
 pub struct Options {
     /// Width available for text (page width minus margins).
     pub width: f32,
@@ -19,6 +23,8 @@ pub struct Options {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParagraphLayout {
     pub text: String,
+    /// Block quote: drawn with a bar and indented by [`QUOTE_INDENT`].
+    pub quote: bool,
     pub lines: Vec<Line>,
     pub height: f32,
 }
@@ -42,6 +48,11 @@ struct Piece {
 
 /// Lays out one paragraph for the given width.
 pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> ParagraphLayout {
+    let indent = if p.style.quote { QUOTE_INDENT } else { 0.0 };
+    let opts = &Options {
+        width: opts.width - indent,
+        ..*opts
+    };
     let text = p.text();
     let spans = run_spans(p);
     let mut lines: Vec<Vec<Piece>> = Vec::new();
@@ -75,7 +86,10 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         current.extend(spaces);
     }
     lines.push(current);
-    build(p, text, lines, opts, m)
+    let mut layout = build(p, text, lines, opts, m);
+    layout.quote = p.style.quote;
+    layout.lines.iter_mut().for_each(|line| line.x += indent);
+    layout
 }
 
 fn run_spans(p: &Paragraph) -> Vec<Range<usize>> {
@@ -163,6 +177,7 @@ fn build(
     }
     ParagraphLayout {
         text,
+        quote: false,
         lines,
         height: y,
     }

@@ -139,6 +139,10 @@ impl Render for EditorView {
                     epoch: self.caret_epoch.clone(),
                     scroll: self.scroll.clone(),
                     reveal: self.reveal_caret.clone(),
+                    code_bg: theme.code_bg,
+                    spoiler_color: theme.spoiler,
+                    link_color: theme.accent,
+                    bar_color: theme.border_strong,
                 };
                 let bounds_store = self.page_bounds.clone();
                 div()
