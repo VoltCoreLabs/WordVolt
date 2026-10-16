@@ -4,9 +4,11 @@ pub mod document;
 pub mod editor;
 pub mod history;
 pub mod position;
+pub mod search;
 pub mod style;
 
 pub use document::{Document, Paragraph, Run};
 pub use editor::{CaseKind, Editor};
 pub use position::{Position, Selection};
+pub use search::SearchOptions;
 pub use style::{Align, CharStyle, ListKind, NamedStyle, ParaStyle, Script};

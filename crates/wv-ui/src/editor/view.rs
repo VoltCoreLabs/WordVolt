@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use gpui_kit::*;
-use wv_core::{Document, Editor};
+use wv_core::{Document, Editor, Position};
 use wv_layout::{DocLayout, PageSetup};
 
 use super::measure::{GpuiMeasurer, MeasureCache};
@@ -28,6 +28,9 @@ pub struct EditorView {
     /// Caret column (page x) kept while moving up/down.
     pub(super) goal_x: Option<f32>,
     pub(super) layout: Option<Rc<DocLayout>>,
+    /// Search matches to highlight and the index of the current one.
+    find: Rc<Vec<(Position, Position)>>,
+    find_current: Option<usize>,
     layout_key: (u64, u64),
     doc_epoch: u64,
     measure_cache: Rc<RefCell<MeasureCache>>,
@@ -47,6 +50,8 @@ impl EditorView {
             reveal_caret: Rc::default(),
             goal_x: None,
             layout: None,
+            find: Rc::default(),
+            find_current: None,
             layout_key: (0, 0),
             doc_epoch: 0,
             measure_cache: Rc::default(),
@@ -62,6 +67,18 @@ impl EditorView {
         self.scroll.reset();
         self.goal_x = None;
         self.caret_epoch.set(Instant::now());
+        cx.notify();
+    }
+
+    /// Sets the search highlights (all matches, and the current one).
+    pub fn set_find(
+        &mut self,
+        matches: Vec<(Position, Position)>,
+        current: Option<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        self.find = Rc::new(matches);
+        self.find_current = current;
         cx.notify();
     }
 
@@ -143,6 +160,10 @@ impl Render for EditorView {
                     spoiler_color: theme.spoiler,
                     link_color: theme.accent,
                     bar_color: theme.border_strong,
+                    find: self.find.clone(),
+                    find_current: self.find_current,
+                    find_color: theme.find_match,
+                    find_current_color: theme.find_current,
                 };
                 let bounds_store = self.page_bounds.clone();
                 div()

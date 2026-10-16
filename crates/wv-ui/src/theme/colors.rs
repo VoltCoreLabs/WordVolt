@@ -20,6 +20,9 @@ pub struct Theme {
     pub code_bg: Rgba,
     /// Block that hides spoiler text.
     pub spoiler: Rgba,
+    /// Highlight of every search match and of the current one.
+    pub find_match: Rgba,
+    pub find_current: Rgba,
 }
 
 impl Global for Theme {}
