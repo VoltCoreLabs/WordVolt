@@ -38,6 +38,9 @@ impl Editor {
         }
         let new_last = paras.len() - 1;
         let caret_offset = paras[new_last].len();
+        if new_last > 0 && tail.is_empty() {
+            paras[new_last].style.named = paras[0].style.named.next();
+        }
         paras[new_last].append(tail);
 
         let caret = Position::new(start.para + new_last, caret_offset);

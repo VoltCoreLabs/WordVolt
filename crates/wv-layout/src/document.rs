@@ -42,7 +42,10 @@ impl DocLayout {
         let mut paragraphs: Vec<_> = doc
             .paragraphs
             .iter()
-            .map(|p| layout_paragraph(p, &options, m))
+            .map(|p| match p.with_named_style() {
+                Some(resolved) => layout_paragraph(&resolved, &options, m),
+                None => layout_paragraph(p, &options, m),
+            })
             .collect();
         let mut counters = Counters::default();
         for (layout, p) in paragraphs.iter_mut().zip(&doc.paragraphs) {

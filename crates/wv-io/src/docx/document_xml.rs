@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, CharStyle, Document, ListKind, Paragraph, Script};
+use wv_core::{Align, CharStyle, Document, ListKind, NamedStyle, Paragraph, Script};
 
 use crate::IoError;
 
@@ -52,7 +52,7 @@ struct State {
     paragraphs: Vec<Paragraph>,
     current: Option<Paragraph>,
     align: Align,
-    heading: bool,
+    named: NamedStyle,
     quote: bool,
     run: CharStyle,
     in_paragraph_props: bool,
@@ -145,7 +145,7 @@ impl State {
             }
             b"pStyle" if self.in_paragraph_props => {
                 let style = attr(e, b"val").unwrap_or_default();
-                self.heading = style.starts_with("Heading") || style == "Title";
+                self.named = named_from_docx(&style);
                 self.quote = style == "Quote";
             }
             b"r" => self.run = CharStyle::default(),
@@ -206,7 +206,7 @@ impl State {
         self.end_paragraph();
         self.current = Some(Paragraph::default());
         self.align = Align::default();
-        self.heading = false;
+        self.named = NamedStyle::Normal;
         self.quote = false;
         self.list = None;
         self.indent = 0;
@@ -217,6 +217,7 @@ impl State {
         if let Some(mut p) = self.current.take() {
             p.style.align = self.align;
             p.style.quote = self.quote;
+            p.style.named = self.named;
             p.style.list = self.list;
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
@@ -227,11 +228,11 @@ impl State {
     /// A manual line break splits the paragraph (the model has no soft breaks yet).
     fn line_break(&mut self) {
         if self.current.is_some() {
-            let (align, heading) = (self.align, self.heading);
+            let (align, named) = (self.align, self.named);
             self.end_paragraph();
             self.current = Some(Paragraph::default());
             self.align = align;
-            self.heading = heading;
+            self.named = named;
         }
     }
 
@@ -240,7 +241,6 @@ impl State {
             return;
         };
         let mut style = self.run.clone();
-        style.bold |= self.heading;
         style.link = self.link.clone();
         let clean = text.replace(['\n', '\r'], " ");
         let end = p.len();
@@ -256,5 +256,22 @@ impl State {
                 paragraphs: self.paragraphs,
             }
         }
+    }
+}
+
+/// Word's built-in style ids ("Heading1", "heading 2", "Title", ...) -> our styles; deeper headings map to Heading 3.
+fn named_from_docx(id: &str) -> NamedStyle {
+    let key: String = id
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase();
+    match key.as_str() {
+        "title" => NamedStyle::Title,
+        "subtitle" => NamedStyle::Subtitle,
+        "heading1" => NamedStyle::Heading1,
+        "heading2" => NamedStyle::Heading2,
+        k if k.starts_with("heading") => NamedStyle::Heading3,
+        _ => NamedStyle::Normal,
     }
 }

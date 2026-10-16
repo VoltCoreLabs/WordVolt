@@ -1,4 +1,4 @@
-use wv_core::{CharStyle, Document, ListKind, Run};
+use wv_core::{CharStyle, Document, ListKind, NamedStyle, Run};
 
 /// Paragraphs are separated by a blank line (list items by a single newline); an empty paragraph is
 /// written as `&nbsp;`. List nesting is two spaces per level.
@@ -25,10 +25,12 @@ pub fn encode(doc: &Document) -> String {
             }
             None => {
                 counters = [0; 9];
-                if p.style.quote {
-                    format!("> {text}")
-                } else {
-                    text
+                match p.style.named {
+                    NamedStyle::Title | NamedStyle::Heading1 => format!("# {text}"),
+                    NamedStyle::Heading2 => format!("## {text}"),
+                    NamedStyle::Heading3 => format!("### {text}"),
+                    _ if p.style.quote => format!("> {text}"),
+                    _ => text,
                 }
             }
         };

@@ -93,7 +93,7 @@ mod tests {
     fn reads_headings_lists_and_soft_wrapped_lines() {
         let doc = decode("# Title\n\nline one\nline two\n\n- item");
         assert_eq!(doc.text(), "Title\nline one line two\nitem");
-        assert!(doc.paragraphs[0].runs[0].style.bold);
+        assert_eq!(doc.paragraphs[0].style.named, wv_core::NamedStyle::Heading1);
     }
 
     #[test]

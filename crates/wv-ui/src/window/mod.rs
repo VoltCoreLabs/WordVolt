@@ -8,6 +8,7 @@ mod ribbon;
 mod side_panel;
 mod state;
 mod status_bar;
+mod style_names;
 mod titlebar;
 
 pub use main_window::MainWindow;

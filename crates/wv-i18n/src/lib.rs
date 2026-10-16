@@ -76,6 +76,13 @@ pub enum Key {
     TipIndent,
     TipOutdent,
     TipLineSpacing,
+    GroupStyles,
+    StyleNormal,
+    StyleTitle,
+    StyleSubtitle,
+    StyleHeading1,
+    StyleHeading2,
+    StyleHeading3,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -152,6 +159,13 @@ fn ru(key: Key) -> &'static str {
         Key::TipIndent => "Увеличить отступ (Tab в списке)",
         Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
         Key::TipLineSpacing => "Межстрочный интервал",
+        Key::GroupStyles => "Стили",
+        Key::StyleNormal => "Обычный",
+        Key::StyleTitle => "Название",
+        Key::StyleSubtitle => "Подзаголовок",
+        Key::StyleHeading1 => "Заголовок 1",
+        Key::StyleHeading2 => "Заголовок 2",
+        Key::StyleHeading3 => "Заголовок 3",
     }
 }
 
@@ -222,6 +236,13 @@ fn en(key: Key) -> &'static str {
         Key::TipIndent => "Increase indent (Tab in a list)",
         Key::TipOutdent => "Decrease indent (Shift+Tab)",
         Key::TipLineSpacing => "Line spacing",
+        Key::GroupStyles => "Styles",
+        Key::StyleNormal => "Normal",
+        Key::StyleTitle => "Title",
+        Key::StyleSubtitle => "Subtitle",
+        Key::StyleHeading1 => "Heading 1",
+        Key::StyleHeading2 => "Heading 2",
+        Key::StyleHeading3 => "Heading 3",
     }
 }
 
