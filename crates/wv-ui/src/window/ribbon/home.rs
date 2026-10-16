@@ -1,30 +1,28 @@
 use gpui_kit::*;
+use wv_core::Align;
+use wv_i18n::{Key, t};
 
 use crate::ui_kit::{ButtonKind, Icon, block_group, button, icon_button};
-use crate::window::state::{Align, MainWindow};
+use crate::window::state::MainWindow;
 
-/// Home tab: font, paragraph, history, file.
+/// Home tab: font, paragraph, history, file. State comes from the document (caret/selection).
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
+    let lang = this.lang;
+    let (style, align) = {
+        let view = this.editor.read(cx);
+        (view.core.current_style(), view.core.align())
+    };
     let font = block_group(
-        "Font",
+        t(lang, Key::GroupFont),
         vec![
-            icon_button("bold", Icon::TextB, this.bold, cx)
-                .on_click(cx.listener(|t, _, _, cx| {
-                    t.bold = !t.bold;
-                    cx.notify();
-                }))
+            icon_button("bold", Icon::TextB, style.bold, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.toggle_bold())))
                 .into_any_element(),
-            icon_button("italic", Icon::TextItalic, this.italic, cx)
-                .on_click(cx.listener(|t, _, _, cx| {
-                    t.italic = !t.italic;
-                    cx.notify();
-                }))
+            icon_button("italic", Icon::TextItalic, style.italic, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.toggle_italic())))
                 .into_any_element(),
-            icon_button("underline", Icon::TextUnderline, this.underline, cx)
-                .on_click(cx.listener(|t, _, _, cx| {
-                    t.underline = !t.underline;
-                    cx.notify();
-                }))
+            icon_button("underline", Icon::TextUnderline, style.underline, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| c.toggle_underline())))
                 .into_any_element(),
             icon_button("highlight", Icon::Highlighter, false, cx).into_any_element(),
         ],
@@ -39,31 +37,32 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     let mut para: Vec<AnyElement> = aligns
         .into_iter()
         .map(|(id, glyph, a)| {
-            icon_button(id, glyph, this.align == a, cx)
-                .on_click(cx.listener(move |t, _, _, cx| {
-                    t.align = a;
-                    cx.notify();
-                }))
+            icon_button(id, glyph, align == a, cx)
+                .on_click(cx.listener(move |t, _, _, cx| t.edit(cx, |c| c.set_align(a))))
                 .into_any_element()
         })
         .collect();
     para.push(icon_button("bullets", Icon::ListBullets, false, cx).into_any_element());
     para.push(icon_button("numbers", Icon::ListNumbers, false, cx).into_any_element());
-    let paragraph = block_group("Paragraph", para, cx);
+    let paragraph = block_group(t(lang, Key::GroupParagraph), para, cx);
     let history = block_group(
-        "History",
+        t(lang, Key::GroupHistory),
         vec![
-            icon_button("undo", Icon::Undo, false, cx).into_any_element(),
-            icon_button("redo", Icon::Redo, false, cx).into_any_element(),
+            icon_button("undo", Icon::Undo, false, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| _ = c.undo())))
+                .into_any_element(),
+            icon_button("redo", Icon::Redo, false, cx)
+                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| _ = c.redo())))
+                .into_any_element(),
         ],
         cx,
     );
     let file = block_group(
-        "File",
+        t(lang, Key::GroupFile),
         vec![
             icon_button("new", Icon::FilePlus, false, cx).into_any_element(),
             icon_button("open", Icon::FolderOpen, false, cx).into_any_element(),
-            button("save", "Save", ButtonKind::Primary, cx).into_any_element(),
+            button("save", t(lang, Key::Save), ButtonKind::Primary, cx).into_any_element(),
         ],
         cx,
     );

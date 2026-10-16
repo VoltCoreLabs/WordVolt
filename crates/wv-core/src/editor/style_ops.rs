@@ -32,6 +32,23 @@ impl Editor {
         self.edit_paragraphs(start.para, last + 1, paras, sel);
     }
 
+    /// Formatting at the caret (or the common formatting of the selection) for toolbar state.
+    pub fn current_style(&self) -> CharStyle {
+        let (s, e) = self.sel.range();
+        if s == e {
+            return self
+                .pending_style
+                .clone()
+                .unwrap_or_else(|| self.doc.paragraphs[s.para].style_at(s.offset));
+        }
+        CharStyle {
+            bold: self.doc.all_chars(s, e, |c| c.bold),
+            italic: self.doc.all_chars(s, e, |c| c.italic),
+            underline: self.doc.all_chars(s, e, |c| c.underline),
+            ..CharStyle::default()
+        }
+    }
+
     pub fn toggle_bold(&mut self) {
         self.change_char_style(|s| s.bold, |s, on| s.bold = on);
     }

@@ -1,4 +1,8 @@
+use gpui_kit::*;
+use wv_core::Editor;
 use wv_i18n::{APP_NAME, Key, Lang, t};
+
+use crate::editor::EditorView;
 
 /// Ribbon tabs.
 #[derive(Clone, Copy, PartialEq)]
@@ -12,26 +16,19 @@ pub enum Tab {
 impl Tab {
     pub const ALL: [Tab; 4] = [Tab::Home, Tab::Insert, Tab::Layout, Tab::View];
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self, lang: Lang) -> &'static str {
         match self {
-            Tab::Home => "Home",
-            Tab::Insert => "Insert",
-            Tab::Layout => "Layout",
-            Tab::View => "View",
+            Tab::Home => t(lang, Key::TabHome),
+            Tab::Insert => t(lang, Key::TabInsert),
+            Tab::Layout => t(lang, Key::TabLayout),
+            Tab::View => t(lang, Key::TabView),
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum Align {
-    Left,
-    Center,
-    Right,
-    Justify,
-}
-
-/// UI state of the main window (document state lives in wv-core).
+/// UI state of the main window. The document itself lives in `editor` (wv-core inside).
 pub struct MainWindow {
+    pub editor: Entity<EditorView>,
     /// `None` = document was never saved (shown as "New document").
     pub file_name: Option<String>,
     pub dirty: bool,
@@ -40,15 +37,18 @@ pub struct MainWindow {
     pub tab: Tab,
     pub ribbon_open: bool,
     pub panel_open: bool,
-    pub bold: bool,
-    pub italic: bool,
-    pub underline: bool,
-    pub align: Align,
 }
 
 impl MainWindow {
-    pub fn new() -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let editor = cx.new(EditorView::new);
+        cx.observe(&editor, |this, editor, cx| {
+            this.dirty = editor.read(cx).core.revision() != 0;
+            cx.notify();
+        })
+        .detach();
         Self {
+            editor,
             file_name: None,
             dirty: false,
             lang: Lang::default(),
@@ -56,15 +56,14 @@ impl MainWindow {
             tab: Tab::Home,
             ribbon_open: true,
             panel_open: false,
-            bold: false,
-            italic: false,
-            underline: false,
-            align: Align::Left,
         }
     }
-}
 
-impl MainWindow {
+    /// Runs an editing action on the document (used by ribbon buttons).
+    pub fn edit(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut Editor)) {
+        self.editor.update(cx, |view, cx| view.apply(cx, f));
+    }
+
     /// File name, or "New document" if there is none; `•` marks unsaved changes.
     pub fn document_title(&self) -> String {
         let name = self

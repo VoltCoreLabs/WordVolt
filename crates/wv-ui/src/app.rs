@@ -26,7 +26,7 @@ pub fn run() {
             window_min_size: Some(size(px(720.), px(480.))),
             ..Default::default()
         };
-        gpui_kit::open_window(options, cx, |_, cx| cx.new(|_| MainWindow::new()))
+        gpui_kit::open_window(options, cx, |_, cx| cx.new(MainWindow::new))
             .expect("failed to open window");
         cx.activate(true);
     });

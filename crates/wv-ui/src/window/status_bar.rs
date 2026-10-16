@@ -1,9 +1,10 @@
 use gpui_kit::*;
+use wv_i18n::{Lang, page_of, words};
 
 use crate::theme::{Theme, space};
 use crate::ui_kit::block;
 
-pub fn status_bar(cx: &App) -> Div {
+pub fn status_bar(lang: Lang, word_count: usize, cx: &App) -> Div {
     let muted = cx.global::<Theme>().text_muted;
     block(cx)
         .px(space::lg())
@@ -13,6 +14,10 @@ pub fn status_bar(cx: &App) -> Div {
         .justify_between()
         .text_xs()
         .text_color(muted)
-        .child("Page 1 of 1 · 0 words")
+        .child(format!(
+            "{} · {}",
+            page_of(lang, 1, 1),
+            words(lang, word_count)
+        ))
         .child("100%")
 }

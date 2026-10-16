@@ -10,6 +10,7 @@ pub struct Editor {
     /// Style for the next typed text when the caret is collapsed (e.g. after pressing Bold).
     pub pending_style: Option<CharStyle>,
     pub(super) history: History,
+    revision: u64,
 }
 
 impl Default for Editor {
@@ -25,7 +26,13 @@ impl Editor {
             sel: Selection::default(),
             pending_style: None,
             history: History::default(),
+            revision: 0,
         }
+    }
+
+    /// Grows with every change (also undo/redo); 0 = untouched document.
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn can_undo(&self) -> bool {
@@ -41,6 +48,7 @@ impl Editor {
             return false;
         };
         edit.revert(&mut self.doc);
+        self.revision += 1;
         self.sel = edit.before;
         self.pending_style = None;
         true
@@ -51,6 +59,7 @@ impl Editor {
             return false;
         };
         edit.apply(&mut self.doc);
+        self.revision += 1;
         self.sel = edit.after;
         self.pending_style = None;
         true
@@ -72,6 +81,7 @@ impl Editor {
             after,
         };
         edit.apply(&mut self.doc);
+        self.revision += 1;
         self.sel = after;
         self.history.push(edit);
     }
