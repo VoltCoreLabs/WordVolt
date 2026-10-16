@@ -7899,6 +7899,9 @@ version = "0.1.0"
 name = "wv-io"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "wv-core",
 ]
 
@@ -7920,6 +7923,7 @@ dependencies = [
  "toml 0.8.23",
  "wv-core",
  "wv-i18n",
+ "wv-io",
  "wv-layout",
 ]
 

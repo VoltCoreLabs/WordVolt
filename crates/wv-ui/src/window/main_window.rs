@@ -5,6 +5,7 @@ use super::side_panel::side_panel;
 pub use super::state::MainWindow;
 use super::status_bar::status_bar;
 use super::titlebar::titlebar;
+use crate::actions::{NewDocument, OpenDocument, SaveDocument, SaveDocumentAs};
 use crate::theme::{Theme, space, ui_font};
 use crate::ui_kit::block;
 
@@ -32,6 +33,20 @@ impl Render for MainWindow {
             .child(side_panel(self, cx));
         div()
             .size_full()
+            .on_action(
+                cx.listener(|this, _: &NewDocument, window, cx| this.new_document(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &OpenDocument, window, cx| this.open_document(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &SaveDocument, window, cx| this.save_document(window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &SaveDocumentAs, window, cx| {
+                    this.save_document_as(window, cx)
+                }),
+            )
             .bg(bg)
             .font(ui_font())
             .flex()

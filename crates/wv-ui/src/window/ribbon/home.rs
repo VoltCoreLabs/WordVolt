@@ -60,9 +60,15 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     let file = block_group(
         t(lang, Key::GroupFile),
         vec![
-            icon_button("new", Icon::FilePlus, false, cx).into_any_element(),
-            icon_button("open", Icon::FolderOpen, false, cx).into_any_element(),
-            button("save", t(lang, Key::Save), ButtonKind::Primary, cx).into_any_element(),
+            icon_button("new", Icon::FilePlus, false, cx)
+                .on_click(cx.listener(|t, _, w, cx| t.new_document(w, cx)))
+                .into_any_element(),
+            icon_button("open", Icon::FolderOpen, false, cx)
+                .on_click(cx.listener(|t, _, w, cx| t.open_document(w, cx)))
+                .into_any_element(),
+            button("save", t(lang, Key::Save), ButtonKind::Primary, cx)
+                .on_click(cx.listener(|t, _, w, cx| t.save_document(w, cx)))
+                .into_any_element(),
         ],
         cx,
     );
