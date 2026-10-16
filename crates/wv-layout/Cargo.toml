@@ -6,3 +6,5 @@ publish = false
 
 [dependencies]
 wv-core = { path = "../wv-core" }
+unicode-linebreak = "0.1"
+unicode-segmentation = "1"

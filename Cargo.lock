@@ -7962,6 +7962,8 @@ dependencies = [
 name = "wv-layout"
 version = "0.1.0"
 dependencies = [
+ "unicode-linebreak",
+ "unicode-segmentation",
  "wv-core",
 ]
 

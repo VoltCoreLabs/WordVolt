@@ -1,0 +1,153 @@
+use wv_core::{Document, Position};
+
+use crate::Measurer;
+use crate::page::{Page, PageSetup, Slice, paginate};
+use crate::paragraph::{Options, ParagraphLayout, layout_paragraph};
+
+/// Caret position in page coordinates (origin = top-left corner of the page, margins included).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CaretRect {
+    pub page: usize,
+    pub x: f32,
+    pub y: f32,
+    pub height: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SelectionRect {
+    pub page: usize,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+/// Whole-document layout: every paragraph laid out and flowed onto pages.
+pub struct DocLayout {
+    pub setup: PageSetup,
+    pub paragraphs: Vec<ParagraphLayout>,
+    pub pages: Vec<Page>,
+}
+
+/// Width of the mark drawn for a selected paragraph break on an empty line.
+const BREAK_MARK: f32 = 6.0;
+
+impl DocLayout {
+    pub fn new(doc: &Document, setup: PageSetup, m: &dyn Measurer) -> Self {
+        let options = Options {
+            width: setup.content_width(),
+            line_spacing: setup.line_spacing,
+        };
+        let paragraphs: Vec<_> = doc
+            .paragraphs
+            .iter()
+            .map(|p| layout_paragraph(p, &options, m))
+            .collect();
+        let pages = paginate(&paragraphs, &setup);
+        Self {
+            setup,
+            paragraphs,
+            pages,
+        }
+    }
+
+    /// Page index, slice and top of line `line` of paragraph `para` (page coordinates).
+    fn locate(&self, para: usize, line: usize) -> Option<(usize, &Slice, f32)> {
+        let layout = self.paragraphs.get(para)?;
+        self.pages.iter().enumerate().find_map(|(page, p)| {
+            p.slices
+                .iter()
+                .find(|s| s.para == para && s.lines.contains(&line))
+                .map(|s| {
+                    let top = self.setup.margin_top + s.y + layout.lines[line].y
+                        - layout.lines[s.lines.start].y;
+                    (page, s, top)
+                })
+        })
+    }
+
+    pub fn caret(&self, pos: Position, m: &dyn Measurer) -> Option<CaretRect> {
+        let para = self.paragraphs.get(pos.para)?;
+        let line_ix = para.line_of(pos.offset.min(para.text.len()));
+        let line = &para.lines[line_ix];
+        let (page, _, y) = self.locate(pos.para, line_ix)?;
+        Some(CaretRect {
+            page,
+            x: self.setup.margin_left + line.x_at(&para.text, pos.offset, m),
+            y,
+            height: line.height,
+        })
+    }
+
+    /// Document position nearest to a point on `page` (page coordinates).
+    pub fn position_at(&self, page: usize, x: f32, y: f32, m: &dyn Measurer) -> Position {
+        let page = &self.pages[page.min(self.pages.len() - 1)];
+        let (x, y) = (x - self.setup.margin_left, y - self.setup.margin_top);
+        let slice = page
+            .slices
+            .iter()
+            .find(|s| y < s.y + s.height)
+            .or(page.slices.last());
+        let Some(slice) = slice else {
+            return Position::default();
+        };
+        let para = &self.paragraphs[slice.para];
+        let first_y = para.lines[slice.lines.start].y;
+        let line_ix = slice
+            .lines
+            .clone()
+            .find(|i| y < slice.y + para.lines[*i].y - first_y + para.lines[*i].height)
+            .unwrap_or(slice.lines.end - 1);
+        Position::new(slice.para, para.lines[line_ix].index_at(&para.text, x, m))
+    }
+
+    /// Rectangles to highlight for the selection `start..end` (document order).
+    pub fn selection_rects(
+        &self,
+        start: Position,
+        end: Position,
+        m: &dyn Measurer,
+    ) -> Vec<SelectionRect> {
+        let mut rects = Vec::new();
+        for para_ix in start.para..=end.para.min(self.paragraphs.len() - 1) {
+            let para = &self.paragraphs[para_ix];
+            let from = if para_ix == start.para {
+                start.offset
+            } else {
+                0
+            };
+            let to = if para_ix == end.para {
+                end.offset
+            } else {
+                para.text.len()
+            };
+            for (line_ix, line) in para.lines.iter().enumerate() {
+                let (a, b) = (from.max(line.range.start), to.min(line.range.end));
+                let break_selected = line.range.is_empty() && para_ix < end.para;
+                if a >= b && !break_selected {
+                    continue;
+                }
+                let Some((page, _, y)) = self.locate(para_ix, line_ix) else {
+                    continue;
+                };
+                let x1 = self.setup.margin_left + line.x_at(&para.text, a, m);
+                let width = if a < b {
+                    line.x_at(&para.text, b, m) - line.x_at(&para.text, a, m)
+                } else {
+                    BREAK_MARK
+                };
+                rects.push(SelectionRect {
+                    page,
+                    x: x1,
+                    y,
+                    width,
+                    height: line.height,
+                });
+            }
+        }
+        rects
+    }
+}
+
+#[cfg(test)]
+mod tests;
