@@ -1,5 +1,7 @@
 mod main_window;
 mod ribbon;
+mod side_panel;
+mod state;
 mod status_bar;
 
 pub use main_window::MainWindow;

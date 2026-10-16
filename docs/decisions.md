@@ -37,3 +37,6 @@ Cargo workspace: `crates/{wv-core,wv-layout,wv-io,wv-i18n,wv-ui}` + `app/`. Фа
 
 ## D-011 — 2026-10-17 — Dev-команда
 `cargo dev` (алиас в `.cargo/config.toml` → `cargo watch -x run` по `crates/` и `app/`). `just`/`bacon` не нужны, `cargo-watch` уже установлен. Уточняет D-009.
+
+## D-012 — 2026-10-17 — Шрифт по умолчанию: SF Pro Text
+Шрифт UI по умолчанию — **SF Pro Text**, запасные: Inter (OFL, лежит в репозитории) → Segoe UI. Файлы SF Pro лежат локально в `assets/fonts/SFProText-*.ttf` и **в git не попадают** (`.gitignore`): лицензия Apple запрещает распространять шрифт, а репозиторий публичный. Следствие: у других разработчиков и в релизных сборках SF Pro не будет, пока не решён вопрос с лицензией — там сработает Inter. Решение «ставить ли SF Pro в релиз» — открытый вопрос.
