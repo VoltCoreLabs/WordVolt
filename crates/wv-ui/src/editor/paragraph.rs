@@ -77,8 +77,7 @@ pub fn paragraph_el(
         .on_mouse_down(
             MouseButton::Left,
             cx.listener(move |this, ev, window, cx| this.on_mouse_down(ix, ev, window, cx)),
-        )
-        .on_mouse_move(cx.listener(move |this, ev, _, cx| this.on_mouse_drag(ix, ev, cx)));
+        );
     let aligned = match align {
         Align::Left | Align::Justify => base,
         Align::Center => base.text_center(),

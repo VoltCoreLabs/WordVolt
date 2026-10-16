@@ -114,6 +114,9 @@ impl Render for EditorView {
             .relative()
             .size_full()
             .overflow_hidden()
+            .on_mouse_move(
+                cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.on_drag_move(ev, cx)),
+            )
             .on_scroll_wheel(cx.listener(|this, ev: &ScrollWheelEvent, _, cx| {
                 this.scroll
                     .scroll_by(-f32::from(ev.delta.pixel_delta(px(48.)).y));

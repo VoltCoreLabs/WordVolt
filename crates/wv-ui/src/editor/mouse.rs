@@ -36,10 +36,19 @@ impl EditorView {
         cx.stop_propagation();
     }
 
-    pub(super) fn on_mouse_drag(&mut self, ix: usize, ev: &MouseMoveEvent, cx: &mut Context<Self>) {
+    /// Drag-selection: handled once for the whole viewport, so the head follows the pointer even over
+    /// gaps, margins and other paragraphs. The paragraph under the pointer is found by its position.
+    pub(super) fn on_drag_move(&mut self, ev: &MouseMoveEvent, cx: &mut Context<Self>) {
         if !self.selecting || ev.pressed_button != Some(MouseButton::Left) {
             return;
         }
+        let ix = {
+            let layouts = self.layouts.borrow();
+            layouts
+                .iter()
+                .position(|l| ev.position.y <= l.bounds().bottom())
+                .unwrap_or(layouts.len().saturating_sub(1))
+        };
         let at = Position::new(ix, self.offset_at(ix, ev.position));
         self.apply(cx, |core| core.set_head(at, true));
     }
