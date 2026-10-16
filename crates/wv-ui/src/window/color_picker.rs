@@ -6,7 +6,7 @@ use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
 use crate::ui_kit::color_math::{hex, hsv_to_rgb, mix, parse_hex, rgb_to_hsv};
-use crate::ui_kit::{Icon, LineEdit, Outcome, RecentColors, Tip, icon_button};
+use crate::ui_kit::{Icon, LineEdit, Outcome, RecentColors, Tip, icon_button, pop_in};
 
 pub enum ColorEvent {
     /// `None` = no colour (automatic text colour / no highlight).
@@ -32,6 +32,8 @@ pub struct ColorPicker {
     /// Colour shown in the bar under the icon.
     current: Option<u32>,
     open: bool,
+    /// Counts openings so the pop-in animation restarts each time.
+    epoch: u64,
     hsv: (f32, f32, f32),
     hex: LineEdit,
     focus: FocusHandle,
@@ -84,6 +86,7 @@ impl ColorPicker {
             lang,
             current: None,
             open: false,
+            epoch: 0,
             hsv: (210.0, 0.8, 0.9),
             hex: LineEdit::default(),
             focus: cx.focus_handle(),
@@ -101,6 +104,7 @@ impl ColorPicker {
     fn toggle(&mut self, cx: &mut Context<Self>) {
         self.open = !self.open;
         if self.open {
+            self.epoch += 1;
             let start = self.current.unwrap_or(0x2563EB);
             self.hsv = rgb_to_hsv(start);
             self.hex.set(&hex(start), false);
@@ -462,12 +466,13 @@ impl Render for ColorPicker {
                 .border_1()
                 .border_color(border),
         );
+        let pop_key = format!("{}-pop-{}", self.id, self.epoch);
         let menu = self.open.then(|| {
             deferred(
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .offset(point(px(0.), px(36.)))
-                    .child(self.panel(window, cx)),
+                    .child(pop_in(self.panel(window, cx), pop_key)),
             )
             .with_priority(10)
         });

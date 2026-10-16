@@ -2,7 +2,7 @@ use gpui_kit::*;
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
-use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button};
+use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button, pop_in};
 
 pub enum LinkEvent {
     /// `None` removes the link.
@@ -14,6 +14,8 @@ pub struct LinkEditor {
     lang: Lang,
     current: Option<String>,
     open: bool,
+    /// Counts openings so the pop-in animation restarts each time.
+    epoch: u64,
     edit: LineEdit,
     focus: FocusHandle,
 }
@@ -26,6 +28,7 @@ impl LinkEditor {
             lang,
             current: None,
             open: false,
+            epoch: 0,
             edit: LineEdit::default(),
             focus: cx.focus_handle(),
         }
@@ -39,6 +42,7 @@ impl LinkEditor {
     /// Opens the address popover (button or Ctrl+K), pre-filled with the current link.
     pub fn open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open = true;
+        self.epoch += 1;
         self.edit
             .set(self.current.as_deref().unwrap_or("https://"), true);
         window.focus(&self.focus, cx);
@@ -149,7 +153,7 @@ impl Render for LinkEditor {
                 anchored()
                     .anchor(Anchor::TopLeft)
                     .offset(point(px(0.), px(36.)))
-                    .child(body),
+                    .child(pop_in(body, format!("link-pop-{}", self.epoch))),
             )
             .with_priority(10)
         });
