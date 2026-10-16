@@ -7,9 +7,11 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
+use super::menu_button::{MenuButton, MenuEvent};
 use crate::editor::EditorView;
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::Icon;
+use wv_core::CaseKind;
 
 /// Ribbon tabs.
 #[derive(Clone, Copy, PartialEq)]
@@ -41,6 +43,7 @@ pub struct MainWindow {
     pub text_color: Entity<ColorPicker>,
     pub highlight: Entity<ColorPicker>,
     pub link_editor: Entity<LinkEditor>,
+    pub case_menu: Entity<MenuButton>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -118,7 +121,8 @@ impl MainWindow {
             },
         )
         .detach();
-        let text_color = cx.new(|cx| ColorPicker::new("text-color", Icon::TextColor, lang, cx));
+        let text_color = cx
+            .new(|cx| ColorPicker::new("text-color", Icon::TextColor, Key::TipTextColor, lang, cx));
         cx.subscribe(
             &text_color,
             |this, _, ColorEvent::Picked(color): &ColorEvent, cx| {
@@ -128,7 +132,9 @@ impl MainWindow {
             },
         )
         .detach();
-        let highlight = cx.new(|cx| ColorPicker::new("highlight", Icon::Highlighter, lang, cx));
+        let highlight = cx.new(|cx| {
+            ColorPicker::new("highlight", Icon::Highlighter, Key::TipHighlight, lang, cx)
+        });
         cx.subscribe(
             &highlight,
             |this, _, ColorEvent::Picked(color): &ColorEvent, cx| {
@@ -148,8 +154,34 @@ impl MainWindow {
             },
         )
         .detach();
+        let case_menu = cx.new(|cx| {
+            let items = vec![
+                Key::CaseUpper,
+                Key::CaseLower,
+                Key::CaseTitle,
+                Key::CaseSentence,
+                Key::CaseDisplay,
+            ];
+            MenuButton::new("case", Icon::TextAa, Key::TipCase, items, lang, cx)
+        });
+        cx.subscribe(
+            &case_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                let index = *index;
+                this.edit(cx, move |c| match index {
+                    0 => c.change_case(CaseKind::Upper),
+                    1 => c.change_case(CaseKind::Lower),
+                    2 => c.change_case(CaseKind::Title),
+                    3 => c.change_case(CaseKind::Sentence),
+                    _ => c.toggle_caps(),
+                });
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         Self {
             editor,
+            case_menu,
             font_combo,
             size_combo,
             text_color,

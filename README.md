@@ -26,6 +26,7 @@ scrolls smoothly, and does not carry decades of legacy UI. No Electron, no web v
 | --- | --- |
 | **Editing** | Typing (Latin, Cyrillic), Enter, Backspace/Delete by whole grapheme, multi-paragraph selection, clipboard (cut/copy/paste) |
 | **Navigation** | Arrow keys (also line up/down with column memory), Home/End, Ctrl+Home/End, click, drag, double-click (word), triple-click (paragraph), Shift-select |
+| **Polish** | Animated tooltips on every ribbon button (with shortcuts; gpui-kit's tooltip system: appear with a slide and fade, glide between neighbouring buttons), recent colours saved between sessions, *Change case* menu (UPPER / lower / Title / Sentence, real text changes), a ribbon that wraps its groups on narrow windows |
 | **Telegram-style text** | Bold, italic, underline, ~~strikethrough~~, `inline code`, **spoiler** (hidden until the caret enters it), block quote, hyperlinks (Ctrl+click opens), superscript / subscript, ALL CAPS, text colour and highlight with a full colour picker (standard palette, recent colours, free picker, hex) |
 | **Formatting** | Bold, italic, underline, font family (type a name or pick from the installed fonts), font size (A− / A+), paragraph alignment (left / center / right / justify) — from the ribbon or with <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | **Files** | New / Open / Save / Save as (<kbd>Ctrl</kbd>+<kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> / <kbd>Shift</kbd>+<kbd>S</kbd>); the Save dialog lets you pick the format: native `.wvd`, Word `.docx`, plain `.txt`, Markdown `.md`; asks before discarding unsaved changes |
@@ -72,6 +73,7 @@ The first build compiles GPUI and takes a few minutes; later builds are incremen
 | Undo / Redo | <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) |
 | Bold / Italic / Underline | <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | Strikethrough / Code / Spoiler | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> / <kbd>M</kbd> / <kbd>P</kbd> |
+| Insert / edit a link | <kbd>Ctrl</kbd>+<kbd>K</kbd> |
 | Clear formatting | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> |
 | Open a link | <kbd>Ctrl</kbd>+click |
 | Start / end of line | <kbd>Home</kbd> / <kbd>End</kbd> |

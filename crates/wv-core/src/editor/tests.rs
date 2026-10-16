@@ -354,3 +354,41 @@ fn clear_formatting_resets_everything() {
     assert_eq!(e.current_style(), crate::CharStyle::default());
     assert_eq!(e.doc.paragraphs[0].runs.len(), 1);
 }
+
+#[test]
+fn change_case_variants_keep_styles() {
+    use crate::CaseKind;
+    let mut e = typed("hello wORLD. second sentence");
+    e.sel.anchor = Position::new(0, 0);
+    e.sel.head = Position::new(0, 5);
+    e.toggle_bold();
+    e.select_all();
+    e.change_case(CaseKind::Upper);
+    assert_eq!(e.doc.text(), "HELLO WORLD. SECOND SENTENCE");
+    assert!(
+        e.doc.paragraphs[0].runs[0].style.bold,
+        "bold survives the change"
+    );
+    e.change_case(CaseKind::Lower);
+    assert_eq!(e.doc.text(), "hello world. second sentence");
+    e.change_case(CaseKind::Title);
+    assert_eq!(e.doc.text(), "Hello World. Second Sentence");
+    e.change_case(CaseKind::Sentence);
+    assert_eq!(e.doc.text(), "Hello world. Second sentence");
+    assert_eq!(e.selected_text(), "Hello world. Second sentence");
+    assert!(e.undo());
+    assert_eq!(e.doc.text(), "Hello World. Second Sentence");
+}
+
+#[test]
+fn change_case_with_a_caret_affects_the_word_and_handles_cyrillic() {
+    use crate::CaseKind;
+    let mut e = typed("привет мир. новый день");
+    // Byte offsets: Cyrillic letters take two bytes, so 23 is inside "новый".
+    e.sel = crate::Selection::caret(Position::new(0, 23));
+    e.change_case(CaseKind::Upper);
+    assert_eq!(e.doc.text(), "привет мир. НОВЫЙ день");
+    e.select_all();
+    e.change_case(CaseKind::Sentence);
+    assert_eq!(e.doc.text(), "Привет мир. Новый день");
+}

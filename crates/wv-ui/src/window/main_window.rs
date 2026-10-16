@@ -5,9 +5,9 @@ use super::side_panel::side_panel;
 pub use super::state::MainWindow;
 use super::status_bar::status_bar;
 use super::titlebar::titlebar;
-use crate::actions::{NewDocument, OpenDocument, SaveDocument, SaveDocumentAs};
+use crate::actions::{InsertLink, NewDocument, OpenDocument, SaveDocument, SaveDocumentAs};
 use crate::theme::{Theme, space, ui_font};
-use crate::ui_kit::block;
+use crate::ui_kit::{block, tooltip_layer};
 
 impl Render for MainWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -37,6 +37,10 @@ impl Render for MainWindow {
             .on_action(
                 cx.listener(|this, _: &NewDocument, window, cx| this.new_document(window, cx)),
             )
+            .on_action(cx.listener(|this, _: &InsertLink, window, cx| {
+                this.link_editor
+                    .update(cx, |editor, cx| editor.open(window, cx));
+            }))
             .on_action(
                 cx.listener(|this, _: &OpenDocument, window, cx| this.open_document(window, cx)),
             )
@@ -68,5 +72,6 @@ impl Render for MainWindow {
                     .child(workspace)
                     .child(status_bar(self.lang, pages, words, cx)),
             )
+            .child(tooltip_layer(cx))
     }
 }

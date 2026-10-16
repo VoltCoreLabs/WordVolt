@@ -1,7 +1,9 @@
 use gpui_kit::*;
 
 use crate::theme::space;
-use crate::ui_kit::{Icon, icon_button, tab};
+use wv_i18n::{Key, t};
+
+use crate::ui_kit::{Icon, Tip, icon_button, tab};
 use crate::window::state::{MainWindow, Tab};
 
 /// Tabs on the left; collapse-ribbon and side-panel toggles on the right.
@@ -30,20 +32,20 @@ pub fn tab_bar(this: &MainWindow, cx: &mut Context<MainWindow>) -> Div {
                 .gap(space::sm())
                 .pb(space::xs())
                 .child(
-                    icon_button("toggle-panel", Icon::PaintBucket, this.panel_open, cx).on_click(
-                        cx.listener(|this, _, _, cx| {
+                    icon_button("toggle-panel", Icon::PaintBucket, this.panel_open, cx)
+                        .tip(t(this.lang, Key::TipPanel))
+                        .on_click(cx.listener(|this, _, _, cx| {
                             this.panel_open = !this.panel_open;
                             cx.notify();
-                        }),
-                    ),
+                        })),
                 )
                 .child(
-                    icon_button("collapse-ribbon", collapse, false, cx).on_click(cx.listener(
-                        |this, _, _, cx| {
+                    icon_button("collapse-ribbon", collapse, false, cx)
+                        .tip(t(this.lang, Key::TipRibbon))
+                        .on_click(cx.listener(|this, _, _, cx| {
                             this.ribbon_open = !this.ribbon_open;
                             cx.notify();
-                        },
-                    )),
+                        })),
                 ),
         )
 }

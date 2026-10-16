@@ -4,6 +4,7 @@ mod actions;
 mod app;
 mod assets;
 mod editor;
+mod settings;
 mod theme;
 mod ui_kit;
 mod window;

@@ -3,6 +3,7 @@ mod combo;
 mod file_ops;
 mod link_editor;
 mod main_window;
+mod menu_button;
 mod ribbon;
 mod side_panel;
 mod state;
