@@ -30,6 +30,11 @@ pub enum Key {
     DontSave,
     Cancel,
     ErrorTitle,
+    FormatWvd,
+    FormatDocx,
+    FormatTxt,
+    FormatMd,
+    AllSupported,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -60,6 +65,11 @@ fn ru(key: Key) -> &'static str {
         Key::DontSave => "Не сохранять",
         Key::Cancel => "Отмена",
         Key::ErrorTitle => "Не удалось выполнить операцию",
+        Key::FormatWvd => "Документ WordVolt (.wvd)",
+        Key::FormatDocx => "Документ Word (.docx)",
+        Key::FormatTxt => "Текст (.txt)",
+        Key::FormatMd => "Markdown (.md)",
+        Key::AllSupported => "Все поддерживаемые документы",
     }
 }
 
@@ -84,6 +94,11 @@ fn en(key: Key) -> &'static str {
         Key::DontSave => "Don't save",
         Key::Cancel => "Cancel",
         Key::ErrorTitle => "The operation failed",
+        Key::FormatWvd => "WordVolt document (.wvd)",
+        Key::FormatDocx => "Word document (.docx)",
+        Key::FormatTxt => "Plain text (.txt)",
+        Key::FormatMd => "Markdown (.md)",
+        Key::AllSupported => "All supported documents",
     }
 }
 

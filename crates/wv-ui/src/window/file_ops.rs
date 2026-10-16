@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use gpui_kit::*;
 use wv_core::Document;
-use wv_i18n::{Key, t, unsaved_detail};
+use wv_i18n::{Key, Lang, t, unsaved_detail};
+use wv_io::Format;
 
 use super::state::MainWindow;
 
@@ -91,22 +92,32 @@ impl MainWindow {
         }
     }
 
+    /// "Save as": the dialog offers our formats; the chosen filter decides the extension.
     fn save_as_then(&mut self, window: &mut Window, cx: &mut Context<Self>, next: Option<Next>) {
-        let dir = self
+        let lang = self.lang;
+        let current = self
             .file_path
             .as_deref()
-            .and_then(Path::parent)
-            .map(Path::to_path_buf)
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_default();
-        let suggested = format!("{}.wvd", self.file_label());
-        let picked = cx.prompt_for_new_path(&dir, Some(&suggested));
+            .and_then(Format::from_path)
+            .unwrap_or(Format::Wvd);
+        let mut dialog = rfd::AsyncFileDialog::new()
+            .set_parent(&*window)
+            .set_file_name(format!("{}.{}", self.file_stem(), current.extension()));
+        if let Some(dir) = self.file_path.as_deref().and_then(Path::parent) {
+            dialog = dialog.set_directory(dir);
+        }
+        // Current format first = preselected.
+        let order =
+            std::iter::once(current).chain(Format::ALL.into_iter().filter(|f| *f != current));
+        for format in order {
+            dialog = dialog.add_filter(format_label(lang, format), format.extensions());
+        }
+        let picked = dialog.save_file();
         cx.spawn_in(window, async move |this, cx| {
-            let Ok(Ok(Some(mut path))) = picked.await else {
-                return;
-            };
-            if path.extension().is_none() {
-                path.set_extension("wvd");
+            let Some(handle) = picked.await else { return };
+            let mut path = handle.path().to_path_buf();
+            if Format::from_path(&path).is_none() {
+                path.set_extension(Format::Wvd.extension());
             }
             this.update_in(cx, |this, window, cx| {
                 if this.write_to(&path, window, cx)
@@ -141,19 +152,21 @@ impl MainWindow {
     }
 
     fn pick_and_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let picked = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: false,
-            prompt: None,
-        });
+        let lang = self.lang;
+        let all: Vec<&str> = Format::ALL
+            .iter()
+            .flat_map(|f| f.extensions().iter().copied())
+            .collect();
+        let mut dialog = rfd::AsyncFileDialog::new()
+            .set_parent(&*window)
+            .add_filter(t(lang, Key::AllSupported), &all);
+        for format in Format::ALL {
+            dialog = dialog.add_filter(format_label(lang, format), format.extensions());
+        }
+        let picked = dialog.pick_file();
         cx.spawn_in(window, async move |this, cx| {
-            let Ok(Ok(Some(paths))) = picked.await else {
-                return;
-            };
-            let Some(path) = paths.into_iter().next() else {
-                return;
-            };
+            let Some(handle) = picked.await else { return };
+            let path = handle.path().to_path_buf();
             let to_read = path.clone();
             let loaded = cx
                 .background_executor()
@@ -179,4 +192,16 @@ impl MainWindow {
         let title = t(self.lang, Key::ErrorTitle);
         drop(window.prompt(PromptLevel::Critical, title, Some(message), &["OK"], cx));
     }
+}
+
+fn format_label(lang: Lang, format: Format) -> &'static str {
+    t(
+        lang,
+        match format {
+            Format::Wvd => Key::FormatWvd,
+            Format::Docx => Key::FormatDocx,
+            Format::Txt => Key::FormatTxt,
+            Format::Md => Key::FormatMd,
+        },
+    )
 }

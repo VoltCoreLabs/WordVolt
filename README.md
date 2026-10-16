@@ -27,7 +27,7 @@ scrolls smoothly, and does not carry decades of legacy UI. No Electron, no web v
 | **Editing** | Typing (Latin, Cyrillic), Enter, Backspace/Delete by whole grapheme, multi-paragraph selection, clipboard (cut/copy/paste) |
 | **Navigation** | Arrow keys (also line up/down with column memory), Home/End, Ctrl+Home/End, click, drag, double-click (word), triple-click (paragraph), Shift-select |
 | **Formatting** | Bold, italic, underline, paragraph alignment (left / center / right) — from the ribbon or with <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
-| **Files** | New / Open / Save / Save as (<kbd>Ctrl</kbd>+<kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> / <kbd>Shift</kbd>+<kbd>S</kbd>) for native `.wvd`, plain `.txt` and Markdown `.md`; asks before discarding unsaved changes |
+| **Files** | New / Open / Save / Save as (<kbd>Ctrl</kbd>+<kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> / <kbd>Shift</kbd>+<kbd>S</kbd>); the Save dialog lets you pick the format: native `.wvd`, Word `.docx`, plain `.txt`, Markdown `.md`; asks before discarding unsaved changes |
 | **History** | Unlimited undo / redo (<kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd>) |
 | **Interface** | Custom title bar with window controls, ribbon with tabs, collapsible ribbon and side panel, status bar with live word count |
 | **Feel** | Smooth eased scrolling, animated caret (fade-in + soft blink), animated tabs and panels |
@@ -96,7 +96,7 @@ app/                 binary entry point (a few lines)
 crates/
 ├─ wv-core/          document model, selection, editing commands, undo/redo   (no UI)
 ├─ wv-layout/        text layout and pagination                               (planned)
-├─ wv-io/            file formats: wvd, txt, md today; docx, rtf, html, odt, pdf planned
+├─ wv-io/            file formats: wvd, docx, txt, md today; rtf, html, odt, pdf planned
 ├─ wv-i18n/          UI strings (en, ru)
 └─ wv-ui/            GPUI interface: theme tokens, ui_kit components, editor, ribbon
 ```
@@ -114,8 +114,8 @@ See [`docs/structure.md`](docs/structure.md) for the full file tree and [`docs/d
 - [x] Live editor: typing, caret, selection, clipboard, formatting
 - [x] Custom title bar, ribbon, animations, smooth scrolling
 - [ ] Pagination and page layout (`wv-layout`), font sizes, justified text
-- [x] Open / save: native `.wvd`, `.txt`, `.md`
-- [ ] More formats: `.docx`, `.rtf`, `.html`, `.odt`
+- [x] Open / save: native `.wvd`, Word `.docx` (basic), `.txt`, `.md`
+- [ ] Full `.docx` (lists, tables, images, headers) and `.rtf`, `.html`, `.odt`
 - [ ] IME input, lists, styles (Heading 1–3), find & replace, spell check
 - [ ] Tables, images, headers & footers, page numbers
 - [ ] PDF export and printing
