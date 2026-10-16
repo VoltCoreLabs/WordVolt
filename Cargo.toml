@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+gpui-kit = "0.7.3"
+
+# Dev: faster rebuilds. Dependencies get light optimisation, own code stays quick to compile.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 1

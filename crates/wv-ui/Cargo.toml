@@ -1,0 +1,10 @@
+[package]
+name = "wv-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+wv-core = { path = "../wv-core" }
+wv-layout = { path = "../wv-layout" }
