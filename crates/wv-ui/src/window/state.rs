@@ -75,6 +75,15 @@ impl MainWindow {
             .unwrap_or_else(|| t(self.lang, Key::UntitledDocument).to_string())
     }
 
+    /// File name without extension (suggested name in "Save as").
+    pub fn file_stem(&self) -> String {
+        self.file_path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| t(self.lang, Key::UntitledDocument).to_string())
+    }
+
     /// Title shown in the title bar; `•` marks unsaved changes.
     pub fn document_title(&self) -> String {
         let name = self.file_label();

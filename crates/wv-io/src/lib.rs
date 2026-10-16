@@ -1,5 +1,6 @@
-//! File formats: wvd, txt, md (docx, rtf, html, odt, pdf planned). See README.md.
+//! File formats: wvd, docx, txt, md (rtf, html, odt, pdf planned). See README.md.
 
+mod docx;
 mod error;
 mod format;
 mod md;
@@ -19,6 +20,7 @@ pub fn load_file(path: &Path) -> Result<Document, IoError> {
     let bytes = fs::read(path)?;
     match format {
         Format::Wvd => wvd::decode(&bytes),
+        Format::Docx => docx::decode(&bytes),
         Format::Txt => Ok(txt::decode(&bytes)),
         Format::Md => Ok(md::decode(&txt::decode_text(&bytes))),
     }
@@ -29,6 +31,7 @@ pub fn save_file(path: &Path, doc: &Document) -> Result<(), IoError> {
     let format = Format::from_path(path).ok_or_else(|| IoError::Unsupported(extension(path)))?;
     let bytes = match format {
         Format::Wvd => wvd::encode(doc)?,
+        Format::Docx => docx::encode(doc)?,
         Format::Txt => txt::encode(doc),
         Format::Md => md::encode(doc).into_bytes(),
     };
@@ -59,7 +62,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("wv-io-test-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let doc = Document::from_text("Привет, мир\nsecond");
-        for name in ["a.wvd", "a.txt", "a.md"] {
+        for name in ["a.wvd", "a.docx", "a.txt", "a.md"] {
             let path = dir.join(name);
             save_file(&path, &doc).unwrap();
             assert_eq!(load_file(&path).unwrap().text(), doc.text(), "{name}");
