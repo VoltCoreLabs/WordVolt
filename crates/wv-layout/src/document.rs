@@ -101,6 +101,20 @@ impl DocLayout {
         Position::new(slice.para, para.lines[line_ix].index_at(&para.text, x, m))
     }
 
+    /// Byte range of the visual line holding `pos` (for Home/End): trailing spaces of wrapped lines are excluded.
+    pub fn line_range(&self, pos: Position) -> (usize, usize) {
+        let para = &self.paragraphs[pos.para.min(self.paragraphs.len() - 1)];
+        let line = &para.lines[para.line_of(pos.offset.min(para.text.len()))];
+        (
+            line.range.start,
+            if line.is_last {
+                line.range.end
+            } else {
+                line.visible_end
+            },
+        )
+    }
+
     /// Rectangles to highlight for the selection `start..end` (document order).
     pub fn selection_rects(
         &self,

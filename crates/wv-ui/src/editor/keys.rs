@@ -6,7 +6,7 @@ impl EditorView {
     pub(super) fn on_key_down(
         &mut self,
         ev: &KeyDownEvent,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let k = &ev.keystroke;
@@ -22,10 +22,10 @@ impl EditorView {
             ("right", _) => self.apply(cx, |c| c.move_right(shift)),
             ("home", true) => self.apply(cx, |c| c.move_doc_start(shift)),
             ("end", true) => self.apply(cx, |c| c.move_doc_end(shift)),
-            ("home", _) => self.apply(cx, |c| c.move_line_start(shift)),
-            ("end", _) => self.apply(cx, |c| c.move_line_end(shift)),
-            ("up", _) => self.move_vertical(-1, shift, cx),
-            ("down", _) => self.move_vertical(1, shift, cx),
+            ("home", _) => self.move_line_edge(false, shift, cx),
+            ("end", _) => self.move_line_edge(true, shift, cx),
+            ("up", _) => self.move_vertical(-1, shift, window, cx),
+            ("down", _) => self.move_vertical(1, shift, window, cx),
             ("a", true) => self.apply(cx, |c| c.select_all()),
             ("z", true) if shift => self.apply(cx, |c| _ = c.redo()),
             ("z", true) => self.apply(cx, |c| _ = c.undo()),

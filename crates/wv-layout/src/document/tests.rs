@@ -107,3 +107,10 @@ fn selected_empty_paragraph_shows_a_break_mark() {
     let rects = l.selection_rects(Position::new(0, 0), Position::new(2, 1), &Fixed);
     assert!(rects.iter().any(|r| r.width == BREAK_MARK));
 }
+
+#[test]
+fn line_range_for_home_and_end() {
+    let l = layout("hello world foo"); // "hello " / "world foo"
+    assert_eq!(l.line_range(Position::new(0, 2)), (0, 5));
+    assert_eq!(l.line_range(Position::new(0, 8)), (6, 15));
+}

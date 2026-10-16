@@ -17,6 +17,7 @@ impl Render for MainWindow {
             self.applied_title = title;
         }
         let words = self.editor.read(cx).core.doc.word_count();
+        let pages = self.editor.update(cx, |view, _| view.page_info(window));
         let t = cx.global::<Theme>();
         let (bg, text) = (t.bg, t.text);
         let workspace = div()
@@ -65,7 +66,7 @@ impl Render for MainWindow {
                     .child(tab_bar(self, cx))
                     .child(ribbon(self, cx))
                     .child(workspace)
-                    .child(status_bar(self.lang, words, cx)),
+                    .child(status_bar(self.lang, pages, words, cx)),
             )
     }
 }

@@ -1,12 +1,12 @@
-//! Document editing surface: renders paragraphs, caret, selection; handles keyboard, mouse, scrolling.
+//! Document editing surface: paged view drawn from the wv-layout engine; keyboard, mouse, scrolling.
 
-mod align;
 mod caret;
 mod keys;
+mod measure;
 mod mouse;
-mod paragraph;
+mod nav;
+mod page_paint;
 mod scroll;
-mod vertical;
 mod view;
 
 pub use view::EditorView;
