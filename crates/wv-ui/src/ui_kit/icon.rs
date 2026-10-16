@@ -39,6 +39,9 @@ pub enum Icon {
     EyeSlash,
     Quotes,
     TextColor,
+    Indent,
+    Outdent,
+    LineSpacing,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -87,6 +90,9 @@ impl Icon {
             Icon::EyeSlash => "eye-slash",
             Icon::Quotes => "quotes",
             Icon::TextColor => "text-a-underline",
+            Icon::Indent => "text-indent",
+            Icon::Outdent => "text-outdent",
+            Icon::LineSpacing => "arrows-vertical",
         }
     }
 }

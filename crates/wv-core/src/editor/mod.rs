@@ -3,6 +3,7 @@
 mod case_ops;
 mod core;
 mod movement;
+mod para_ops;
 mod style_ops;
 #[cfg(test)]
 mod tests;

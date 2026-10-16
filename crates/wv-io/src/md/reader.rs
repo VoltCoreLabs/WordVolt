@@ -1,4 +1,4 @@
-use wv_core::{CharStyle, Document, Paragraph, Run};
+use wv_core::{CharStyle, Document, ListKind, Paragraph, Run};
 
 /// Blocks are separated by blank lines; lines inside a block are joined with a space.
 pub fn decode(text: &str) -> Document {
@@ -7,7 +7,7 @@ pub fn decode(text: &str) -> Document {
     for line in text.lines().chain(std::iter::once("")) {
         if line.trim().is_empty() {
             if !block.is_empty() {
-                paragraphs.push(paragraph(&block.join(" ")));
+                flush_block(&block, &mut paragraphs);
                 block.clear();
             }
         } else {
@@ -233,4 +233,65 @@ fn flush(
         };
         runs.push(Run::new(std::mem::take(buf), style));
     }
+}
+
+/// A line that starts a list item: (nesting level, kind, text after the marker).
+fn list_marker(line: &str) -> Option<(u8, ListKind, &str)> {
+    let trimmed = line.trim_start();
+    let lead: usize = line[..line.len() - trimmed.len()]
+        .chars()
+        .map(|c| if c == '\t' { 2 } else { 1 })
+        .sum();
+    let level = (lead / 2).min(8) as u8;
+    for bullet in ["- ", "* ", "+ "] {
+        if let Some(rest) = trimmed.strip_prefix(bullet) {
+            return Some((level, ListKind::Bullet, rest));
+        }
+    }
+    let digits = trimmed.chars().take_while(char::is_ascii_digit).count();
+    if (1..=9).contains(&digits) {
+        let after = &trimmed[digits..];
+        for sep in [". ", ") "] {
+            if let Some(rest) = after.strip_prefix(sep) {
+                return Some((level, ListKind::Number, rest));
+            }
+        }
+    }
+    None
+}
+
+/// One blank-line separated block: text before the first list marker is a paragraph, then every
+/// marker line starts an item (other lines continue the previous item).
+fn flush_block(block: &[&str], out: &mut Vec<Paragraph>) {
+    let split = block
+        .iter()
+        .position(|l| list_marker(l).is_some())
+        .unwrap_or(block.len());
+    if split > 0 {
+        out.push(paragraph(&block[..split].join(" ")));
+    }
+    let mut current: Option<(u8, ListKind, String)> = None;
+    let finish = |item: Option<(u8, ListKind, String)>, out: &mut Vec<Paragraph>| {
+        if let Some((level, kind, text)) = item {
+            let mut p = paragraph(&text);
+            p.style.list = Some(kind);
+            p.style.indent = level;
+            out.push(p);
+        }
+    };
+    for line in &block[split..] {
+        match list_marker(line) {
+            Some((level, kind, rest)) => {
+                finish(current.take(), out);
+                current = Some((level, kind, rest.to_string()));
+            }
+            None => {
+                if let Some((_, _, text)) = &mut current {
+                    text.push(' ');
+                    text.push_str(line.trim());
+                }
+            }
+        }
+    }
+    finish(current, out);
 }

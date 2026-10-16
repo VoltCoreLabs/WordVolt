@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn reads_headings_lists_and_soft_wrapped_lines() {
         let doc = decode("# Title\n\nline one\nline two\n\n- item");
-        assert_eq!(doc.text(), "Title\nline one line two\n- item");
+        assert_eq!(doc.text(), "Title\nline one line two\nitem");
         assert!(doc.paragraphs[0].runs[0].style.bold);
     }
 
@@ -110,5 +110,36 @@ mod tests {
     #[test]
     fn stray_asterisks_are_literal() {
         assert_eq!(decode("a * b ** c").text(), "a * b ** c");
+    }
+
+    #[test]
+    fn lists_round_trip_with_nesting_and_numbering() {
+        use wv_core::ListKind;
+        let mut doc = Document::from_text("intro\nfirst\nnested\nsecond\nbullet\nafter");
+        for (i, kind, indent) in [
+            (1, ListKind::Number, 0),
+            (2, ListKind::Number, 1),
+            (3, ListKind::Number, 0),
+            (4, ListKind::Bullet, 0),
+        ] {
+            doc.paragraphs[i].style.list = Some(kind);
+            doc.paragraphs[i].style.indent = indent;
+        }
+        let text = encode(&doc);
+        assert!(
+            text.contains("1. first\n  1. nested\n2. second\n- bullet"),
+            "{text}"
+        );
+        assert_eq!(decode(&text), doc);
+    }
+
+    #[test]
+    fn reads_foreign_lists_and_continuation_lines() {
+        use wv_core::ListKind;
+        let doc = decode("Shopping:\n* milk\n* bread\n  and butter\n3) tea\n\nlast");
+        assert_eq!(doc.text(), "Shopping:\nmilk\nbread and butter\ntea\nlast");
+        assert_eq!(doc.paragraphs[1].style.list, Some(ListKind::Bullet));
+        assert_eq!(doc.paragraphs[3].style.list, Some(ListKind::Number));
+        assert_eq!(doc.paragraphs[4].style.list, None);
     }
 }

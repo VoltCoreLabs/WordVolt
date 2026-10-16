@@ -56,6 +56,16 @@ impl Editor {
     }
 
     pub fn enter(&mut self) {
+        let at = self.sel.head;
+        let p = &self.doc.paragraphs[at.para];
+        // Enter on an empty list item ends the list instead of adding another item.
+        if self.sel.is_collapsed() && p.is_empty() && p.style.list.is_some() {
+            self.edit_para_styles(at.para, at.para, |s| {
+                s.list = None;
+                s.indent = 0;
+            });
+            return;
+        }
         self.insert_text("\n");
     }
 
@@ -73,6 +83,11 @@ impl Editor {
             return;
         }
         let at = self.sel.head;
+        // Backspace at the start of a list item first removes the bullet/number.
+        if at.offset == 0 && self.doc.paragraphs[at.para].style.list.is_some() {
+            self.edit_para_styles(at.para, at.para, |s| s.list = None);
+            return;
+        }
         if let Some(prev) = self.prev_position(at) {
             self.replace_range(prev, at, "");
         }

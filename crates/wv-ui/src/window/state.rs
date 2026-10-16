@@ -7,7 +7,7 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
-use super::menu_button::{MenuButton, MenuEvent};
+use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use crate::editor::EditorView;
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::Icon;
@@ -35,6 +35,16 @@ impl Tab {
     }
 }
 
+/// Line spacing choices: label and multiplier.
+const SPACINGS: [(&str, f32); 6] = [
+    ("1.0", 1.0),
+    ("1.15", 1.15),
+    ("1.5", 1.5),
+    ("2.0", 2.0),
+    ("2.5", 2.5),
+    ("3.0", 3.0),
+];
+
 /// UI state of the main window. The document itself lives in `editor` (wv-core inside).
 pub struct MainWindow {
     pub editor: Entity<EditorView>,
@@ -44,6 +54,7 @@ pub struct MainWindow {
     pub highlight: Entity<ColorPicker>,
     pub link_editor: Entity<LinkEditor>,
     pub case_menu: Entity<MenuButton>,
+    pub spacing_menu: Entity<MenuButton>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -156,11 +167,11 @@ impl MainWindow {
         .detach();
         let case_menu = cx.new(|cx| {
             let items = vec![
-                Key::CaseUpper,
-                Key::CaseLower,
-                Key::CaseTitle,
-                Key::CaseSentence,
-                Key::CaseDisplay,
+                MenuItem::Tr(Key::CaseUpper),
+                MenuItem::Tr(Key::CaseLower),
+                MenuItem::Tr(Key::CaseTitle),
+                MenuItem::Tr(Key::CaseSentence),
+                MenuItem::Tr(Key::CaseDisplay),
             ];
             MenuButton::new("case", Icon::TextAa, Key::TipCase, items, lang, cx)
         });
@@ -179,9 +190,35 @@ impl MainWindow {
             },
         )
         .detach();
+        let spacing_menu = cx.new(|cx| {
+            let items = SPACINGS
+                .iter()
+                .map(|(label, _)| MenuItem::Text(label))
+                .collect();
+            MenuButton::new(
+                "spacing",
+                Icon::LineSpacing,
+                Key::TipLineSpacing,
+                items,
+                lang,
+                cx,
+            )
+        });
+        cx.subscribe(
+            &spacing_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                if let Some((_, value)) = SPACINGS.get(*index) {
+                    let value = *value;
+                    this.edit(cx, move |c| c.set_line_spacing(Some(value)));
+                }
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         Self {
             editor,
             case_menu,
+            spacing_menu,
             font_combo,
             size_combo,
             text_color,

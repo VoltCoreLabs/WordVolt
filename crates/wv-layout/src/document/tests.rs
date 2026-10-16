@@ -114,3 +114,36 @@ fn line_range_for_home_and_end() {
     assert_eq!(l.line_range(Position::new(0, 2)), (0, 5));
     assert_eq!(l.line_range(Position::new(0, 8)), (6, 15));
 }
+
+#[test]
+fn list_items_are_indented_numbered_and_tight() {
+    use wv_core::{Align, ListKind};
+    let mut doc = Document::from_text("first\nsecond\nplain");
+    doc.paragraphs[0].style.list = Some(ListKind::Number);
+    doc.paragraphs[1].style.list = Some(ListKind::Number);
+    doc.paragraphs[1].style.indent = 1;
+    doc.paragraphs[2].style.align = Align::Left;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.paragraphs[0].marker.as_deref(), Some("1."));
+    assert_eq!(l.paragraphs[1].marker.as_deref(), Some("a."));
+    assert_eq!(l.paragraphs[2].marker, None);
+    assert_eq!(l.paragraphs[0].indent, crate::LIST_HANGING);
+    assert_eq!(
+        l.paragraphs[1].indent,
+        crate::INDENT_STEP + crate::LIST_HANGING
+    );
+    assert_eq!(l.paragraphs[0].lines[0].x, crate::LIST_HANGING);
+    assert_eq!(l.paragraphs[0].space_after, Some(2.0));
+    assert_eq!(l.paragraphs[2].space_after, None);
+}
+
+#[test]
+fn indent_shrinks_the_text_width_and_line_spacing_scales_height() {
+    // 80 px content: 10 chars; an indent of 48 px leaves 32 px = 4 chars.
+    let mut doc = Document::from_text("aaaa bbbb");
+    doc.paragraphs[0].style.indent = 1;
+    doc.paragraphs[0].style.line_spacing = Some(2.0);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.paragraphs[0].lines.len(), 2);
+    assert_eq!(l.paragraphs[0].lines[0].height, 32.0);
+}

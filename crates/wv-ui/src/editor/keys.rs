@@ -44,7 +44,7 @@ impl EditorView {
                 self.apply(cx, |c| _ = c.delete_selection());
             }
             ("v", true) => self.paste(cx),
-            ("tab", _) => self.apply(cx, |c| c.insert_text("\t")),
+            ("tab", _) => self.apply(cx, |c| c.tab_key(shift)),
             (_, false) => {
                 if let Some(text) = k
                     .key_char

@@ -392,3 +392,75 @@ fn change_case_with_a_caret_affects_the_word_and_handles_cyrillic() {
     e.change_case(CaseKind::Sentence);
     assert_eq!(e.doc.text(), "Привет мир. Новый день");
 }
+
+#[test]
+fn lists_indent_enter_backspace_and_tab() {
+    use crate::ListKind;
+    let mut e = typed("one\ntwo");
+    e.select_all();
+    e.toggle_list(ListKind::Bullet);
+    assert!(
+        e.doc
+            .paragraphs
+            .iter()
+            .all(|p| p.style.list == Some(ListKind::Bullet))
+    );
+    e.toggle_list(ListKind::Number);
+    assert!(
+        e.doc
+            .paragraphs
+            .iter()
+            .all(|p| p.style.list == Some(ListKind::Number)),
+        "switches kind"
+    );
+    e.toggle_list(ListKind::Number);
+    assert!(
+        e.doc.paragraphs.iter().all(|p| p.style.list.is_none()),
+        "toggles off"
+    );
+
+    e.toggle_list(ListKind::Bullet);
+    e.move_doc_end(false);
+    e.tab_key(false);
+    assert_eq!(e.doc.paragraphs[1].style.indent, 1, "Tab nests a list item");
+    e.tab_key(true);
+    assert_eq!(e.doc.paragraphs[1].style.indent, 0);
+    e.enter();
+    assert_eq!(e.doc.paragraphs.len(), 3);
+    assert_eq!(
+        e.doc.paragraphs[2].style.list,
+        Some(ListKind::Bullet),
+        "new item inherits the list"
+    );
+    e.enter();
+    assert_eq!(
+        e.doc.paragraphs.len(),
+        3,
+        "Enter on an empty item ends the list"
+    );
+    assert_eq!(e.doc.paragraphs[2].style.list, None);
+    e.sel = crate::Selection::caret(Position::new(0, 0));
+    e.backspace();
+    assert_eq!(
+        e.doc.paragraphs[0].style.list, None,
+        "Backspace at the start removes the bullet"
+    );
+    assert_eq!(e.doc.text(), "one\ntwo\n");
+}
+
+#[test]
+fn indent_clamps_and_line_spacing_round_trips() {
+    let mut e = typed("x");
+    for _ in 0..12 {
+        e.change_indent(1);
+    }
+    assert_eq!(e.doc.paragraphs[0].style.indent, 8);
+    for _ in 0..12 {
+        e.change_indent(-1);
+    }
+    assert_eq!(e.doc.paragraphs[0].style.indent, 0);
+    e.set_line_spacing(Some(1.5));
+    assert_eq!(e.line_spacing(), Some(1.5));
+    e.undo();
+    assert_eq!(e.line_spacing(), None);
+}

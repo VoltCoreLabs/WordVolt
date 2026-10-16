@@ -4,6 +4,13 @@ use wv_i18n::{Key, Lang, t as tr};
 use crate::theme::{Theme, radius};
 use crate::ui_kit::{Icon, Tip, icon_button};
 
+/// A menu entry: a translated label or plain text (numbers).
+#[derive(Clone, Copy)]
+pub enum MenuItem {
+    Tr(Key),
+    Text(&'static str),
+}
+
 pub enum MenuEvent {
     /// Index of the chosen entry.
     Picked(usize),
@@ -14,7 +21,7 @@ pub struct MenuButton {
     id: &'static str,
     glyph: Icon,
     tip: Key,
-    items: Vec<Key>,
+    items: Vec<MenuItem>,
     lang: Lang,
     active: bool,
     open: bool,
@@ -27,7 +34,7 @@ impl MenuButton {
         id: &'static str,
         glyph: Icon,
         tip: Key,
-        items: Vec<Key>,
+        items: Vec<MenuItem>,
         lang: Lang,
         _: &mut Context<Self>,
     ) -> Self {
@@ -69,7 +76,7 @@ impl Render for MenuButton {
                 .items
                 .iter()
                 .enumerate()
-                .map(|(index, key)| {
+                .map(|(index, item)| {
                     div()
                         .id((SharedString::from(format!("{id}-item")), index))
                         .h(px(30.))
@@ -88,7 +95,10 @@ impl Render for MenuButton {
                                 cx.notify();
                             }),
                         )
-                        .child(tr(lang, *key))
+                        .child(match item {
+                            MenuItem::Tr(key) => tr(lang, *key).to_string(),
+                            MenuItem::Text(text) => (*text).to_string(),
+                        })
                 })
                 .collect();
             let panel = div()

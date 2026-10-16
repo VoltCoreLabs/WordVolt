@@ -11,6 +11,15 @@ const EPS: f32 = 0.01;
 /// Left indent of a block quote (px).
 pub const QUOTE_INDENT: f32 = 24.0;
 
+/// One indent step: 0.5 inch.
+pub const INDENT_STEP: f32 = 48.0;
+
+/// Room for the bullet/number in front of a list item's text (px).
+pub const LIST_HANGING: f32 = 24.0;
+
+/// Gap after a list item (list items sit closer together than ordinary paragraphs).
+const LIST_SPACE_AFTER: f32 = 2.0;
+
 #[derive(Clone, Copy)]
 pub struct Options {
     /// Width available for text (page width minus margins).
@@ -25,6 +34,12 @@ pub struct ParagraphLayout {
     pub text: String,
     /// Block quote: drawn with a bar and indented by [`QUOTE_INDENT`].
     pub quote: bool,
+    /// Left edge of the text (indent steps, list hanging and quote indent).
+    pub indent: f32,
+    /// Bullet or number drawn in front of the first line (set by `DocLayout`, which counts the items).
+    pub marker: Option<String>,
+    /// Gap after the paragraph; `None` = the page setup's default.
+    pub space_after: Option<f32>,
     pub lines: Vec<Line>,
     pub height: f32,
 }
@@ -48,10 +63,16 @@ struct Piece {
 
 /// Lays out one paragraph for the given width.
 pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> ParagraphLayout {
-    let indent = if p.style.quote { QUOTE_INDENT } else { 0.0 };
+    let quote = if p.style.quote { QUOTE_INDENT } else { 0.0 };
+    let list_gap = if p.style.list.is_some() {
+        LIST_HANGING
+    } else {
+        0.0
+    };
+    let indent = f32::from(p.style.indent) * INDENT_STEP + list_gap + quote;
     let opts = &Options {
         width: opts.width - indent,
-        ..*opts
+        line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
     };
     let text = p.text();
     let spans = run_spans(p);
@@ -88,6 +109,8 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
     lines.push(current);
     let mut layout = build(p, text, lines, opts, m);
     layout.quote = p.style.quote;
+    layout.indent = indent;
+    layout.space_after = p.style.list.map(|_| LIST_SPACE_AFTER);
     layout.lines.iter_mut().for_each(|line| line.x += indent);
     layout
 }
@@ -178,6 +201,9 @@ fn build(
     ParagraphLayout {
         text,
         quote: false,
+        indent: 0.0,
+        marker: None,
+        space_after: None,
         lines,
         height: y,
     }

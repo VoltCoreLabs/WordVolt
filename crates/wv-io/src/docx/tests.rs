@@ -32,6 +32,9 @@ fn round_trip_keeps_text_styles_alignment_size_and_colour() {
     e.doc.paragraphs[1].runs[0].style.caps = true;
     e.doc.paragraphs[1].runs[0].style.link = Some("https://example.com/?a=1&b=<2>".into());
     e.doc.paragraphs[1].style.quote = true;
+    e.doc.paragraphs[1].style.line_spacing = Some(1.5);
+    e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
+    e.doc.paragraphs[0].style.indent = 2;
     e.doc.paragraphs[1].runs[0].style.highlight = Some(0x00FF00);
     e.doc.paragraphs[1].runs[0].style.script = wv_core::Script::Super;
     e.doc.paragraphs[1].runs[0].style.font = Some("Georgia \"Serif\" & Co".into());
@@ -94,4 +97,61 @@ fn reads_word_highlight_names_strike_and_vert_align() {
     assert!(style.strike);
     assert_eq!(style.highlight, Some(0xFFFF00));
     assert_eq!(style.script, wv_core::Script::Sub);
+}
+
+#[test]
+fn lists_indents_and_spacing_round_trip_with_separate_numbered_lists() {
+    use wv_core::ListKind;
+    let mut doc = Document::from_text("a\nb\nplain\nindented\nc\nd");
+    let styles = [
+        (Some(ListKind::Number), 0),
+        (Some(ListKind::Number), 1),
+        (None, 0),
+        (None, 3),
+        (Some(ListKind::Number), 0),
+        (Some(ListKind::Bullet), 2),
+    ];
+    for (p, (list, indent)) in doc.paragraphs.iter_mut().zip(styles) {
+        p.style.list = list;
+        p.style.indent = indent;
+    }
+    doc.paragraphs[3].style.line_spacing = Some(2.0);
+    let bytes = encode(&doc).unwrap();
+    assert_eq!(decode(&bytes).unwrap(), doc);
+}
+
+#[test]
+fn reads_word_numbering_and_indents() {
+    let numbering = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:abstractNum w:abstractNumId="7"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/></w:lvl></w:abstractNum>
+<w:abstractNum w:abstractNumId="8"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>
+<w:num w:numId="3"><w:abstractNumId w:val="7"/></w:num><w:num w:numId="4"><w:abstractNumId w:val="8"/></w:num></w:numbering>"#;
+    let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="3"/></w:numPr></w:pPr><w:r><w:t>one</w:t></w:r></w:p>
+<w:p><w:pPr><w:numPr><w:ilvl w:val="1"/><w:numId w:val="4"/></w:numPr></w:pPr><w:r><w:t>two</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:ind w:left="1440"/></w:pPr><w:r><w:t>three</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr><w:r><w:t>four</w:t></w:r></w:p></w:body></w:document>"#;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("word/document.xml", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(document.as_bytes()).unwrap();
+    zip.start_file("word/numbering.xml", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(numbering.as_bytes()).unwrap();
+    let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
+    assert_eq!(
+        doc.paragraphs[0].style.list,
+        Some(wv_core::ListKind::Number)
+    );
+    assert_eq!(
+        doc.paragraphs[1].style.list,
+        Some(wv_core::ListKind::Bullet)
+    );
+    assert_eq!(doc.paragraphs[1].style.indent, 1);
+    assert_eq!(doc.paragraphs[2].style.indent, 2);
+    assert_eq!(doc.paragraphs[2].style.line_spacing, Some(1.5));
+    assert_eq!(
+        doc.paragraphs[3].style.line_spacing, None,
+        "exact line heights are not a multiplier"
+    );
 }

@@ -1,6 +1,7 @@
 use wv_core::{Document, Position};
 
 use crate::Measurer;
+use crate::numbering::Counters;
 use crate::page::{Page, PageSetup, Slice, paginate};
 use crate::paragraph::{Options, ParagraphLayout, layout_paragraph};
 
@@ -38,11 +39,15 @@ impl DocLayout {
             width: setup.content_width(),
             line_spacing: setup.line_spacing,
         };
-        let paragraphs: Vec<_> = doc
+        let mut paragraphs: Vec<_> = doc
             .paragraphs
             .iter()
             .map(|p| layout_paragraph(p, &options, m))
             .collect();
+        let mut counters = Counters::default();
+        for (layout, p) in paragraphs.iter_mut().zip(&doc.paragraphs) {
+            layout.marker = counters.marker(&p.style);
+        }
         let pages = paginate(&paragraphs, &setup);
         Self {
             setup,
