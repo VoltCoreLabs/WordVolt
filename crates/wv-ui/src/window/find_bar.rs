@@ -78,6 +78,32 @@ impl FindBar {
         cx.notify();
     }
 
+    /// The text being searched for.
+    pub fn query(&self) -> &str {
+        self.find.text()
+    }
+
+    /// All matches of the search (start, end).
+    pub fn results(&self) -> &[(Position, Position)] {
+        &self.matches
+    }
+
+    /// Index of the current match.
+    pub fn current(&self) -> Option<usize> {
+        self.current
+    }
+
+    /// Makes match `index` the current one and selects it in the document.
+    pub fn go_to(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index < self.matches.len() {
+            self.current = Some(index);
+            self.message = None;
+            self.select_current(cx);
+            self.publish(cx);
+            cx.notify();
+        }
+    }
+
     pub fn is_open(&self) -> bool {
         self.open
     }
