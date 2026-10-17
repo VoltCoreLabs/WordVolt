@@ -9,6 +9,7 @@ use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
 use super::find_bar::FindBar;
 use super::header_footer::{HeaderFooterEditor, HeaderFooterEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
+use super::menu_bar::{CommandChosen, MenuBar};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::style_names::{style_from_label, style_label};
 use super::table_picker::{TablePicker, TablePickerEvent};
@@ -81,6 +82,7 @@ pub struct MainWindow {
     pub table_edit_menu: Entity<MenuButton>,
     pub paper_menu: Entity<MenuButton>,
     pub margins_menu: Entity<MenuButton>,
+    pub menu_bar: Entity<MenuBar>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -93,7 +95,7 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let editor = cx.new(EditorView::new);
         cx.observe(&editor, |this, editor, cx| {
             this.dirty = editor.read(cx).core.is_modified();
@@ -341,6 +343,15 @@ impl MainWindow {
             },
         )
         .detach();
+        let menu_bar = cx.new(|_| MenuBar::new(lang));
+        cx.subscribe_in(
+            &menu_bar,
+            window,
+            |this, _, CommandChosen(c): &CommandChosen, window, cx| {
+                this.run_command(*c, window, cx)
+            },
+        )
+        .detach();
         let table_edit_menu = cx.new(|cx| {
             let items = [
                 Key::TblRowAbove,
@@ -383,6 +394,7 @@ impl MainWindow {
             table_edit_menu,
             paper_menu,
             margins_menu,
+            menu_bar,
             font_combo,
             size_combo,
             text_color,
