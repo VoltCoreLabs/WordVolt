@@ -153,3 +153,41 @@ fn reads_word_numbering_and_indents() {
         "exact line heights are not a multiplier"
     );
 }
+
+#[test]
+fn table_round_trips_and_merged_cells_become_empty_cells() {
+    let mut e = Editor::default();
+    e.insert_text("before");
+    e.insert_table(2, 3);
+    e.insert_text("a1");
+    e.next_cell(true);
+    e.insert_text("b1");
+    let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+    assert_eq!(doc, e.doc);
+
+    let xml = "<w:document xmlns:w=\"x\"><w:body><w:tbl><w:tr>\
+        <w:tc><w:tcPr><w:gridSpan w:val=\"2\"/></w:tcPr><w:p><w:r><w:t>wide</w:t></w:r></w:p></w:tc>\
+        <w:tc><w:p><w:r><w:t>c</w:t></w:r></w:p></w:tc></w:tr>\
+        <w:tr><w:tc><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>";
+    let doc = decode(&docx_with(xml)).unwrap();
+    let cells: Vec<_> = doc
+        .paragraphs
+        .iter()
+        .map(|p| {
+            let c = p.style.cell.unwrap();
+            (c.row, c.col, p.text())
+        })
+        .collect();
+    let s = |t: &str| t.to_string();
+    assert_eq!(
+        cells,
+        [
+            (0, 0, s("wide")),
+            (0, 1, s("")),
+            (0, 2, s("c")),
+            (1, 0, s("1")),
+            (1, 1, s("")),
+            (1, 2, s("")),
+        ]
+    );
+}

@@ -1,7 +1,9 @@
 //! Markdown subset: paragraphs, `**bold**`, `*italic*`, `<u>underline</u>`, `# headings` (read as bold).
+//! Tables are GFM pipe tables (first row = header; several paragraphs in a cell joined by `<br>`).
 //! Paragraph alignment and font size/colour are not representable and are dropped.
 
 mod reader;
+mod table;
 mod writer;
 
 pub use reader::decode;
@@ -141,5 +143,42 @@ mod tests {
         assert_eq!(doc.paragraphs[1].style.list, Some(ListKind::Bullet));
         assert_eq!(doc.paragraphs[3].style.list, Some(ListKind::Number));
         assert_eq!(doc.paragraphs[4].style.list, None);
+    }
+
+    #[test]
+    fn tables_round_trip_and_foreign_tables_are_read() {
+        use wv_core::Editor;
+        let mut e = Editor::default();
+        e.insert_text("before");
+        e.insert_table(2, 2);
+        e.insert_text("a | b");
+        e.next_cell(true);
+        e.next_cell(true);
+        e.insert_text("c");
+        let text = encode(&e.doc);
+        assert!(
+            text.contains("| a \\| b |  |\n| --- | --- |\n| c |  |"),
+            "{text}"
+        );
+        assert_eq!(decode(&text), e.doc);
+
+        let doc = decode("x\n\nName | Qty\n:-- | --:\nTea | 2\n\ny");
+        let cells: Vec<_> = doc
+            .paragraphs
+            .iter()
+            .map(|p| p.style.cell.map(|c| (c.row, c.col)))
+            .collect();
+        assert_eq!(doc.text(), "x\nName\nQty\nTea\n2\ny");
+        assert_eq!(
+            cells,
+            [
+                None,
+                Some((0, 0)),
+                Some((0, 1)),
+                Some((1, 0)),
+                Some((1, 1)),
+                None
+            ]
+        );
     }
 }

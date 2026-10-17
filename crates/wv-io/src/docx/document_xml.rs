@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, CharStyle, Document, ListKind, NamedStyle, Paragraph, Script};
+use wv_core::{Align, Cell, CharStyle, Document, ListKind, NamedStyle, Paragraph, Script};
 
 use crate::IoError;
 
@@ -58,6 +58,19 @@ struct State {
     in_paragraph_props: bool,
     in_run_props: bool,
     in_text: bool,
+    table: TableState,
+}
+
+/// Position inside the outermost table being read (nested tables are flattened into their cell).
+#[derive(Default)]
+struct TableState {
+    depth: u32,
+    next_id: u32,
+    start: usize,
+    row: Option<u16>,
+    col: u16,
+    span: u16,
+    cell: Option<Cell>,
 }
 
 fn attr(e: &BytesStart, name: &[u8]) -> Option<String> {
@@ -106,6 +119,31 @@ impl State {
                 if empty {
                     self.end_paragraph();
                 }
+            }
+            b"tbl" if !empty => {
+                self.table.depth += 1;
+                if self.table.depth == 1 {
+                    self.end_paragraph();
+                    self.table.start = self.paragraphs.len();
+                    self.table.row = None;
+                }
+            }
+            b"tr" if self.table.depth == 1 => {
+                self.table.row = Some(self.table.row.map_or(0, |r| r + 1));
+                self.table.col = 0;
+            }
+            b"tc" if self.table.depth == 1 && !empty => {
+                self.table.span = 1;
+                self.table.cell = Some(Cell {
+                    table: self.table.next_id,
+                    row: self.table.row.unwrap_or(0),
+                    col: self.table.col,
+                });
+            }
+            b"gridSpan" if self.table.depth == 1 && self.table.cell.is_some() => {
+                self.table.span = attr(e, b"val")
+                    .and_then(|v| v.parse::<u16>().ok())
+                    .map_or(1, |n| n.clamp(1, 63));
             }
             b"pPr" => self.in_paragraph_props = true,
             b"ilvl" if self.in_paragraph_props => {
@@ -194,6 +232,17 @@ impl State {
     fn end(&mut self, name: &[u8]) {
         match name {
             b"p" => self.end_paragraph(),
+            b"tc" if self.table.depth == 1 => self.end_cell(),
+            b"tbl" if self.table.depth > 0 => {
+                self.table.depth -= 1;
+                if self.table.depth == 0 {
+                    let rows = self.paragraphs.split_off(self.table.start);
+                    let rows = super::table_read::normalize(rows, self.table.next_id);
+                    self.paragraphs.extend(rows);
+                    self.table.next_id += 1;
+                    self.table.cell = None;
+                }
+            }
             b"pPr" => self.in_paragraph_props = false,
             b"hyperlink" => self.link = None,
             b"rPr" => self.in_run_props = false,
@@ -221,7 +270,24 @@ impl State {
             p.style.list = self.list;
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
+            p.style.cell = self.table.cell;
             self.paragraphs.push(p);
+        }
+    }
+
+    /// Closes a cell; a column span leaves empty cells for the columns it covered.
+    fn end_cell(&mut self) {
+        self.end_paragraph();
+        if let Some(cell) = self.table.cell.take() {
+            for extra in 1..self.table.span {
+                let mut p = Paragraph::default();
+                p.style.cell = Some(Cell {
+                    col: cell.col + extra,
+                    ..cell
+                });
+                self.paragraphs.push(p);
+            }
+            self.table.col += self.table.span.max(1);
         }
     }
 

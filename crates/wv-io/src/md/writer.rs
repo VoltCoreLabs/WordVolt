@@ -6,7 +6,25 @@ pub fn encode(doc: &Document) -> String {
     let mut out = String::new();
     let mut counters = [0u32; 9];
     let mut previous_was_item = false;
+    let mut skip_until = 0;
     for (i, p) in doc.paragraphs.iter().enumerate() {
+        if i < skip_until {
+            continue;
+        }
+        if let Some(first) = p.style.cell {
+            let end = doc.paragraphs[i..]
+                .iter()
+                .position(|q| q.style.cell.is_none_or(|c| c.table != first.table))
+                .map_or(doc.paragraphs.len(), |n| i + n);
+            if i > 0 {
+                out.push_str("\n\n");
+            }
+            out.push_str(&super::table::encode(&doc.paragraphs[i..end]));
+            skip_until = end;
+            previous_was_item = false;
+            counters = [0; 9];
+            continue;
+        }
         let text: String = if p.is_empty() {
             "&nbsp;".to_string()
         } else {
@@ -48,7 +66,7 @@ pub fn encode(doc: &Document) -> String {
     out
 }
 
-fn run(run: &Run) -> String {
+pub(super) fn run(run: &Run) -> String {
     let text = &run.text;
     let core = text.trim();
     if core.is_empty() {

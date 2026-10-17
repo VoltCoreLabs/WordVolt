@@ -12,8 +12,24 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     );
     let mut links: Vec<String> = Vec::new();
     let mut lists = Lists::default();
-    for paragraph in &doc.paragraphs {
-        write_paragraph(&mut xml, paragraph, &mut links, &mut lists);
+    let paras = &doc.paragraphs;
+    let mut i = 0;
+    while i < paras.len() {
+        let Some(first) = paras[i].style.cell else {
+            write_paragraph(&mut xml, &paras[i], &mut links, &mut lists);
+            i += 1;
+            continue;
+        };
+        let end = paras[i..]
+            .iter()
+            .position(|p| p.style.cell.is_none_or(|c| c.table != first.table))
+            .map_or(paras.len(), |n| i + n);
+        super::table_xml::write(&mut xml, &paras[i..end], &mut links, &mut lists);
+        // Word merges adjacent tables and wants a paragraph before the section properties.
+        if end == paras.len() || paras[end].style.cell.is_some() {
+            xml.push_str("<w:p/>");
+        }
+        i = end;
     }
     xml.push_str(
         "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
@@ -24,7 +40,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
 /// Which `w:num` a list paragraph belongs to: bullets share num 1, every run of numbered paragraphs
 /// gets its own num (2, 3, ...) so it restarts at 1.
 #[derive(Default)]
-struct Lists {
+pub struct Lists {
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -46,7 +62,12 @@ impl Lists {
     }
 }
 
-fn write_paragraph(xml: &mut String, p: &Paragraph, links: &mut Vec<String>, lists: &mut Lists) {
+pub fn write_paragraph(
+    xml: &mut String,
+    p: &Paragraph,
+    links: &mut Vec<String>,
+    lists: &mut Lists,
+) {
     xml.push_str("<w:p>");
     let jc = match p.style.align {
         Align::Left => None,
