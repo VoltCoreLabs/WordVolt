@@ -55,6 +55,23 @@ impl Editor {
         Some((first, last))
     }
 
+    /// The heading a contents entry (paragraph `para`) points to: the one at the same place in
+    /// the list, else the first heading with the same text. `None` for other paragraphs.
+    pub fn toc_target(&self, para: usize) -> Option<usize> {
+        let (first, last) = self.toc_range()?;
+        if para <= first || para > last {
+            return None;
+        }
+        let text = self.doc.paragraphs[para].text();
+        let label = text.split('\t').next()?;
+        let headings = self.headings();
+        headings
+            .get(para - first - 1)
+            .filter(|h| h.text == label)
+            .or_else(|| headings.iter().find(|h| h.text == label))
+            .map(|h| h.para)
+    }
+
     /// Inserts the table of contents after the caret's paragraph, or replaces the existing one
     /// (one undo step). Entries are indented by level and end with a tab and the page number (the layout right-aligns it with dot leaders).
     pub fn set_toc(&mut self, title: &str, entries: &[TocEntry]) {

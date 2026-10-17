@@ -734,3 +734,30 @@ fn a_picture_never_gets_wider_than_the_text() {
     e.set_image_width(5000.0);
     assert_eq!(e.image_at_caret().unwrap().width, text);
 }
+
+#[test]
+fn a_contents_entry_points_to_its_heading() {
+    let mut e = Editor::new(Document::from_text("One\nbody\nTwo\nbody\nTwo"));
+    for para in [0, 2, 4] {
+        e.sel = crate::Selection::caret(Position::new(para, 0));
+        e.set_named_style(crate::NamedStyle::Heading1);
+    }
+    e.sel = crate::Selection::caret(Position::new(1, 0));
+    let entries: Vec<_> = e
+        .headings()
+        .iter()
+        .map(|h| crate::TocEntry {
+            level: h.level,
+            text: h.text.clone(),
+            page: 1,
+        })
+        .collect();
+    e.set_toc("Contents", &entries);
+    let (first, _) = e.toc_range().unwrap();
+    assert_eq!(e.toc_target(first), None, "the title is not an entry");
+    // Headings shifted down by the 4 contents paragraphs; the second "Two" has its own entry.
+    assert_eq!(e.toc_target(first + 1), Some(0));
+    assert_eq!(e.toc_target(first + 2), Some(first + 4));
+    assert_eq!(e.toc_target(first + 3), Some(first + 6));
+    assert_eq!(e.toc_target(0), None);
+}
