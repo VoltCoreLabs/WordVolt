@@ -6,8 +6,8 @@ pub use super::state::MainWindow;
 use super::status_bar::status_bar;
 use super::titlebar::titlebar;
 use crate::actions::{
-    FindInDocument, FindNext, FindPrevious, InsertLink, NewDocument, OpenDocument,
-    ReplaceInDocument, SaveDocument, SaveDocumentAs,
+    CloseTab, FindInDocument, FindNext, FindPrevious, InsertLink, NewDocument, NewTab, NextTab,
+    OpenDocument, PrevTab, ReplaceInDocument, SaveDocument, SaveDocumentAs,
 };
 use crate::theme::{Theme, space, ui_font};
 use crate::ui_kit::{block, tooltip_layer};
@@ -69,6 +69,18 @@ impl Render for MainWindow {
                         bar.open(false, window, cx)
                     }
                 });
+            }))
+            .on_action(cx.listener(|this, _: &NewTab, _, cx| this.new_tab(cx)))
+            .on_action(
+                cx.listener(|this, _: &CloseTab, window, cx| {
+                    this.close_tab(this.active, window, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &NextTab, _, cx| {
+                this.switch_to((this.active + 1) % this.docs.len(), cx)
+            }))
+            .on_action(cx.listener(|this, _: &PrevTab, _, cx| {
+                this.switch_to((this.active + this.docs.len() - 1) % this.docs.len(), cx)
             }))
             .on_drop(cx.listener(|this, files: &ExternalPaths, window, cx| {
                 this.drop_files(files.paths(), window, cx)
