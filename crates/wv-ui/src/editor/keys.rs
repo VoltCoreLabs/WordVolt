@@ -38,12 +38,9 @@ impl EditorView {
             ("b", true) => self.apply(cx, |c| c.toggle_bold()),
             ("i", true) => self.apply(cx, |c| c.toggle_italic()),
             ("u", true) => self.apply(cx, |c| c.toggle_underline()),
-            ("c", true) => self.copy(cx),
-            ("x", true) => {
-                self.copy(cx);
-                self.apply(cx, |c| _ = c.delete_selection());
-            }
-            ("v", true) => self.paste(cx),
+            ("c", true) => self.copy_selection(cx),
+            ("x", true) => self.cut_selection(cx),
+            ("v", true) => self.paste_clipboard(cx),
             (_, false) => {
                 if let Some(text) = k
                     .key_char
@@ -57,14 +54,19 @@ impl EditorView {
         }
     }
 
-    fn copy(&mut self, cx: &mut Context<Self>) {
+    pub fn cut_selection(&mut self, cx: &mut Context<Self>) {
+        self.copy_selection(cx);
+        self.apply(cx, |c| _ = c.delete_selection());
+    }
+
+    pub fn copy_selection(&mut self, cx: &mut Context<Self>) {
         let text = self.core.selected_text();
         if !text.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
         }
     }
 
-    fn paste(&mut self, cx: &mut Context<Self>) {
+    pub fn paste_clipboard(&mut self, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
             let text = text.replace("\r\n", "\n").replace('\r', "\n");
             self.apply(cx, |c| c.insert_text(&text));

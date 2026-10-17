@@ -24,7 +24,7 @@ pub struct CommandChosen(pub Command);
 /// (label, shortcut, command)
 type Entry = (Key, &'static str, Command);
 
-const MOD: &str = if cfg!(target_os = "macos") {
+pub(super) const MOD: &str = if cfg!(target_os = "macos") {
     "⌘"
 } else {
     "Ctrl+"

@@ -92,6 +92,8 @@ pub struct MainWindow {
     /// All open documents; `active` is the one shown (its state is in the fields above).
     pub docs: Vec<DocSlot>,
     pub active: usize,
+    /// Where the right-click menu is open (window coordinates).
+    pub context_menu: Option<Point<Pixels>>,
     /// Horizontal scroll of the tab strip.
     pub tab_scroll: ScrollHandle,
     pub lang: Lang,
@@ -423,6 +425,7 @@ impl MainWindow {
                 dirty: false,
             }],
             active: 0,
+            context_menu: None,
             tab_scroll: ScrollHandle::new(),
             lang,
             applied_title: String::new(),

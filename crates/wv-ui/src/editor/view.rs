@@ -29,6 +29,8 @@ pub struct EditorView {
     pub core: Editor,
     pub(super) focus: FocusHandle,
     pub(super) selecting: bool,
+    /// Set by a right click: the window asks for its context menu at this point.
+    pub context_request: Option<Point<Pixels>>,
     pub(super) resizing: Option<super::resize::Resize>,
     /// Time of the last edit/caret move; drives the caret fade/blink animation.
     pub(super) caret_epoch: Rc<Cell<Instant>>,
@@ -61,6 +63,7 @@ impl EditorView {
             core: Editor::new(Document::default()),
             focus: cx.focus_handle(),
             selecting: false,
+            context_request: None,
             resizing: None,
             caret_epoch: Rc::new(Cell::new(Instant::now())),
             scroll: Rc::default(),
@@ -272,6 +275,7 @@ impl Render for EditorView {
                 }),
             )
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
+            .on_mouse_down(MouseButton::Right, cx.listener(Self::on_right_down))
             .on_mouse_move(cx.listener(Self::on_drag_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
