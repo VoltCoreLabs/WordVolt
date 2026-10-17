@@ -195,7 +195,7 @@ fn table_round_trips_and_merged_cells_become_empty_cells() {
 #[test]
 fn header_and_footer_round_trip_with_page_fields() {
     let mut doc = Document::from_text("body");
-    doc.header = wv_core::Band::new("Отчёт <A&B>");
+    doc.header = wv_core::Band::new("Отчёт <A&B>").aligned(Align::Right);
     doc.footer = wv_core::Band::new("Стр. {page} из {pages}");
     let back = decode(&encode(&doc).unwrap()).unwrap();
     assert_eq!(back.header, doc.header);

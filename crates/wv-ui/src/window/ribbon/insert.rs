@@ -24,8 +24,8 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     let (header, footer, numbered) = {
         let doc = &this.editor.read(cx).core.doc;
         (
-            doc.header.text.clone(),
-            doc.footer.text.clone(),
+            doc.header.clone(),
+            doc.footer.clone(),
             doc.footer.has_page_number(),
         )
     };

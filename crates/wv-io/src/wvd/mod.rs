@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn header_and_footer_round_trip() {
         let mut doc = Document::from_text("x");
-        doc.header = wv_core::Band::new("Шапка");
+        doc.header = wv_core::Band::new("Шапка").aligned(Align::Left);
         doc.footer = wv_core::Band::new("{page}");
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }

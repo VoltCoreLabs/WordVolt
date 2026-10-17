@@ -1,4 +1,5 @@
 use gpui_kit::*;
+use wv_core::{Align, Band};
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
@@ -7,8 +8,7 @@ use crate::ui_kit::{
 };
 
 pub enum HeaderFooterEvent {
-    /// Header text, footer text.
-    Set(String, String),
+    Set(Band, Band),
 }
 
 const FIELD_WIDTH: f32 = 280.0;
@@ -20,7 +20,9 @@ pub struct HeaderFooterEditor {
     /// Bounds of the open panel (see `track_bounds`).
     panel_bounds: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
     epoch: u64,
-    current: (String, String),
+    current: (Band, Band),
+    /// Alignment chosen in the open popover.
+    aligns: (Align, Align),
     header: LineEdit,
     footer: LineEdit,
     header_focus: FocusHandle,
@@ -37,6 +39,7 @@ impl HeaderFooterEditor {
             panel_bounds: Default::default(),
             epoch: 0,
             current: Default::default(),
+            aligns: (Align::Center, Align::Center),
             header: LineEdit::default(),
             footer: LineEdit::default(),
             header_focus: cx.focus_handle(),
@@ -45,9 +48,9 @@ impl HeaderFooterEditor {
     }
 
     /// Texts of the document (pre-fill when the popover opens; ignored while it is open).
-    pub fn set_current(&mut self, header: &str, footer: &str) {
+    pub fn set_current(&mut self, header: &Band, footer: &Band) {
         if !self.open {
-            self.current = (header.to_string(), footer.to_string());
+            self.current = (header.clone(), footer.clone());
         }
     }
 
@@ -55,8 +58,9 @@ impl HeaderFooterEditor {
         self.open = !self.open;
         if self.open {
             self.epoch += 1;
-            self.header.set(&self.current.0, false);
-            self.footer.set(&self.current.1, false);
+            self.header.set(&self.current.0.text, false);
+            self.footer.set(&self.current.1.text, false);
+            self.aligns = (self.current.0.align, self.current.1.align);
             window.focus(&self.header_focus, cx);
         }
         cx.notify();
@@ -64,10 +68,8 @@ impl HeaderFooterEditor {
 
     fn apply(&mut self, cx: &mut Context<Self>) {
         self.open = false;
-        let (header, footer) = (
-            self.header.text().to_string(),
-            self.footer.text().to_string(),
-        );
+        let header = Band::new(self.header.text()).aligned(self.aligns.0);
+        let footer = Band::new(self.footer.text()).aligned(self.aligns.1);
         self.current = (header.clone(), footer.clone());
         cx.emit(HeaderFooterEvent::Set(header, footer));
         cx.notify();
@@ -150,7 +152,37 @@ impl HeaderFooterEditor {
                     .cursor_text()
                     .child(edit.view(FIELD_WIDTH - 24.0, window, cx))
             };
-        let label = |key: Key| div().text_xs().text_color(muted).child(tr(lang, key));
+        let aligns = self.aligns;
+        let label = |key: Key, in_header: bool, cx: &mut Context<Self>| {
+            let current = if in_header { aligns.0 } else { aligns.1 };
+            let buttons = [
+                ("l", Icon::AlignLeft, Align::Left),
+                ("c", Icon::AlignCenter, Align::Center),
+                ("r", Icon::AlignRight, Align::Right),
+            ]
+            .map(|(id, icon, align)| {
+                icon_button(
+                    ElementId::from(SharedString::from(format!("band-align-{in_header}-{id}"))),
+                    icon,
+                    current == align,
+                    cx,
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    if in_header {
+                        this.aligns.0 = align;
+                    } else {
+                        this.aligns.1 = align;
+                    }
+                    cx.notify();
+                }))
+            });
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(div().text_xs().text_color(muted).child(tr(lang, key)))
+                .child(div().flex().gap(space::xs()).children(buttons))
+        };
         let header = field(
             "band-header",
             &self.header,
@@ -181,11 +213,16 @@ impl HeaderFooterEditor {
             .rounded(radius::md())
             .shadow_lg()
             .child(track_bounds(self.panel_bounds.clone()))
-            .child(label(Key::HeaderLabel))
+            .child(label(Key::HeaderLabel, true, cx))
             .child(header)
-            .child(label(Key::FooterLabel))
+            .child(label(Key::FooterLabel, false, cx))
             .child(footer)
-            .child(label(Key::BandHint))
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(muted)
+                    .child(tr(lang, Key::BandHint)),
+            )
             .child(
                 button("band-apply", tr(lang, Key::Apply), ButtonKind::Primary, cx)
                     .on_click(cx.listener(|this, _, _, cx| this.apply(cx))),

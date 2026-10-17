@@ -55,26 +55,25 @@ impl Editor {
     }
 
     /// Sets the header and footer text (not part of undo history; the document counts as changed).
-    pub fn set_header_footer(&mut self, header: &str, footer: &str) {
-        if self.doc.header.text != header || self.doc.footer.text != footer {
-            self.doc.header = Band::new(header);
-            self.doc.footer = Band::new(footer);
+    pub fn set_header_footer(&mut self, header: Band, footer: Band) {
+        if self.doc.header != header || self.doc.footer != footer {
+            self.doc.header = header;
+            self.doc.footer = footer;
             self.revision += 1;
         }
     }
 
     /// Adds `{page}` to the footer, or removes it when it is already there.
     pub fn toggle_page_number(&mut self) {
-        let footer = &self.doc.footer;
-        let text = if footer.has_page_number() {
+        let mut footer = self.doc.footer.clone();
+        footer.text = if footer.has_page_number() {
             footer.text.replace("{page}", "").trim().to_string()
         } else if footer.is_empty() {
             "{page}".to_string()
         } else {
             format!("{} {{page}}", footer.text)
         };
-        let header = self.doc.header.text.clone();
-        self.set_header_footer(&header, &text);
+        self.set_header_footer(self.doc.header.clone(), footer);
     }
 
     pub fn undo(&mut self) -> bool {

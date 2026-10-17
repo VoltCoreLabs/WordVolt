@@ -615,10 +615,14 @@ fn page_number_toggles_in_footer() {
     let mut e = Editor::default();
     e.toggle_page_number();
     assert_eq!(e.doc.footer.text, "{page}");
-    e.set_header_footer("Head", "Стр. {page}");
+    e.set_header_footer(
+        crate::Band::new("Head").aligned(crate::Align::Left),
+        crate::Band::new("Стр. {page}"),
+    );
     e.toggle_page_number();
     assert_eq!(e.doc.footer.text, "Стр.");
     assert_eq!(e.doc.header.text, "Head");
+    assert_eq!(e.doc.header.align, crate::Align::Left);
     assert!(e.is_modified());
 }
 

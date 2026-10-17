@@ -1,13 +1,31 @@
+use crate::style::Align;
+
 /// Header or footer text, repeated on every page. `{page}` and `{pages}` stand for the page number
 /// and the page count.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Band {
     pub text: String,
+    /// Left, Center (default) or Right; Justify counts as Left.
+    pub align: Align,
+}
+
+impl Default for Band {
+    fn default() -> Self {
+        Self::new("")
+    }
 }
 
 impl Band {
     pub fn new(text: impl Into<String>) -> Self {
-        Self { text: text.into() }
+        Self {
+            text: text.into(),
+            align: Align::Center,
+        }
+    }
+
+    pub fn aligned(mut self, align: Align) -> Self {
+        self.align = align;
+        self
     }
 
     pub fn is_empty(&self) -> bool {
