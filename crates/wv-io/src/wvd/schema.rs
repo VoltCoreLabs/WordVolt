@@ -3,7 +3,7 @@ use base64::engine::general_purpose::STANDARD as B64;
 use serde::{Deserialize, Serialize};
 use wv_core::{
     Align, Band, Cell, CharStyle, Document, ImageData, ImageFormat, ImageRef, ListKind, NamedStyle,
-    ParaStyle, Paragraph, Run, Script,
+    PageSpec, ParaStyle, Paragraph, Run, Script,
 };
 
 use crate::IoError;
@@ -27,6 +27,19 @@ pub struct File {
     footer_align: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     images: Vec<ImageDto>,
+    /// Page size and margins in px; absent = A4 with 2.54 cm margins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    page: Option<PageDto>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+struct PageDto {
+    width: f32,
+    height: f32,
+    top: f32,
+    right: f32,
+    bottom: f32,
+    left: f32,
 }
 
 /// Embedded picture: format name and base64 data.
@@ -181,6 +194,14 @@ impl File {
             footer: doc.footer.text.clone(),
             header_align: band_align_name(doc.header.align),
             footer_align: band_align_name(doc.footer.align),
+            page: (doc.page != PageSpec::default()).then_some(PageDto {
+                width: doc.page.width,
+                height: doc.page.height,
+                top: doc.page.margin_top,
+                right: doc.page.margin_right,
+                bottom: doc.page.margin_bottom,
+                left: doc.page.margin_left,
+            }),
             images: doc
                 .images
                 .iter()
@@ -277,6 +298,16 @@ impl File {
             if p.style.image.is_some_and(|i| i.id >= count) {
                 p.style.image = None;
             }
+        }
+        if let Some(p) = self.page.filter(|p| p.width >= 100.0 && p.height >= 100.0) {
+            doc.page = PageSpec {
+                width: p.width,
+                height: p.height,
+                margin_top: p.top.max(0.0),
+                margin_right: p.right.max(0.0),
+                margin_bottom: p.bottom.max(0.0),
+                margin_left: p.left.max(0.0),
+            };
         }
         doc.header = Band::new(self.header).aligned(band_align_from(&self.header_align));
         doc.footer = Band::new(self.footer).aligned(band_align_from(&self.footer_align));

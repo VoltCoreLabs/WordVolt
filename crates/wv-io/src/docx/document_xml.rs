@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use wv_core::{
-    Align, Cell, CharStyle, Document, ImageRef, ListKind, NamedStyle, Paragraph, Script,
+    Align, Cell, CharStyle, Document, ImageRef, ListKind, NamedStyle, PageSpec, Paragraph, Script,
 };
 
 use super::read_util::{attr, flag, named_from_docx, named_highlight};
@@ -64,6 +64,7 @@ struct State {
     in_text: bool,
     table: TableState,
     pictures: PictureState,
+    page: PageSpec,
     /// Picture of the paragraph being read (index into `pictures.rels`).
     image: Option<ImageRef>,
 }
@@ -136,6 +137,27 @@ impl State {
                 self.pictures.size = (px(b"cx"), px(b"cy"));
             }
             b"blip" if self.pictures.in_drawing => self.pictures.embed = attr(e, b"embed"),
+            b"pgSz" => {
+                let px = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
+                if let (Some(w), Some(h)) = (px(b"w"), px(b"h"))
+                    && w >= 1500.0
+                    && h >= 1500.0
+                {
+                    (self.page.width, self.page.height) = (w / 15.0, h / 15.0);
+                }
+            }
+            b"pgMar" => {
+                let px = |name: &[u8], old: f32| {
+                    attr(e, name)
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .map_or(old, |v| (v / 15.0).max(0.0))
+                };
+                let p = &mut self.page;
+                p.margin_top = px(b"top", p.margin_top);
+                p.margin_right = px(b"right", p.margin_right);
+                p.margin_bottom = px(b"bottom", p.margin_bottom);
+                p.margin_left = px(b"left", p.margin_left);
+            }
             b"pPr" => self.in_paragraph_props = true,
             b"ilvl" if self.in_paragraph_props => {
                 self.indent = attr(e, b"val")
@@ -336,13 +358,15 @@ impl State {
 
     fn finish(mut self) -> Document {
         self.end_paragraph();
-        if self.paragraphs.is_empty() {
+        let mut doc = if self.paragraphs.is_empty() {
             Document::default()
         } else {
             Document {
                 paragraphs: self.paragraphs,
                 ..Document::default()
             }
-        }
+        };
+        doc.page = self.page.snapped();
+        doc
     }
 }

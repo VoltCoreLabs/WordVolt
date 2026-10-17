@@ -119,6 +119,14 @@ pub enum Key {
     ImageBad,
     GroupPicture,
     PicFit,
+    TipPaperSize,
+    TipMargins,
+    MarginNormal,
+    MarginNarrow,
+    MarginModerate,
+    MarginWide,
+    TipPortrait,
+    TipLandscape,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -237,6 +245,14 @@ fn ru(key: Key) -> &'static str {
         Key::ImageFiles => "Изображения",
         Key::GroupPicture => "Рисунок",
         Key::PicFit => "По ширине",
+        Key::TipPaperSize => "Размер страницы",
+        Key::TipMargins => "Поля",
+        Key::MarginNormal => "Обычные",
+        Key::MarginNarrow => "Узкие",
+        Key::MarginModerate => "Умеренные",
+        Key::MarginWide => "Широкие",
+        Key::TipPortrait => "Книжная ориентация",
+        Key::TipLandscape => "Альбомная ориентация",
         Key::ImageBad => "не удалось прочитать изображение (нужен PNG, JPEG, GIF или WebP)",
     }
 }
@@ -350,6 +366,14 @@ fn en(key: Key) -> &'static str {
         Key::ImageFiles => "Images",
         Key::GroupPicture => "Picture",
         Key::PicFit => "Fit width",
+        Key::TipPaperSize => "Page size",
+        Key::TipMargins => "Margins",
+        Key::MarginNormal => "Normal",
+        Key::MarginNarrow => "Narrow",
+        Key::MarginModerate => "Moderate",
+        Key::MarginWide => "Wide",
+        Key::TipPortrait => "Portrait",
+        Key::TipLandscape => "Landscape",
         Key::ImageBad => "cannot read the image (PNG, JPEG, GIF or WebP expected)",
     }
 }

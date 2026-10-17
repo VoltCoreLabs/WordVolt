@@ -93,4 +93,13 @@ mod tests {
         let image: ImageRef = doc.paragraphs[0].style.image.unwrap();
         assert_eq!((image.width, image.height), (100.0, 50.0));
     }
+
+    #[test]
+    fn page_setup_round_trips() {
+        let mut doc = Document::from_text("x");
+        doc.page = wv_core::PageSpec::a4()
+            .with_paper(1)
+            .with_margins(wv_core::Margins::Narrow);
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
 }

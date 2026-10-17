@@ -39,9 +39,19 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     if !doc.footer.is_empty() {
         refs.push_str("<w:footerReference w:type=\"default\" r:id=\"rIdF1\"/>");
     }
+    let twips = |px: f32| (px * 15.0).round() as i64;
+    let page = doc.page;
     xml.push_str(&format!(
-        "<w:sectPr>{refs}<w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
+        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
+        twips(page.width),
+        twips(page.height),
+        if page.is_landscape() { " w:orient=\"landscape\"" } else { "" },
+        twips(page.margin_top),
+        twips(page.margin_right),
+        twips(page.margin_bottom),
+        twips(page.margin_left),
     ));
+
     (xml, links, lists.number_lists)
 }
 

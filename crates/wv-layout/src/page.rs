@@ -35,6 +35,19 @@ impl PageSetup {
         }
     }
 
+    /// The document's page size and margins with the default text spacing.
+    pub fn from_spec(spec: &wv_core::PageSpec) -> Self {
+        Self {
+            width: spec.width,
+            height: spec.height,
+            margin_top: spec.margin_top,
+            margin_right: spec.margin_right,
+            margin_bottom: spec.margin_bottom,
+            margin_left: spec.margin_left,
+            ..Self::a4()
+        }
+    }
+
     pub fn content_width(&self) -> f32 {
         self.width - self.margin_left - self.margin_right
     }
