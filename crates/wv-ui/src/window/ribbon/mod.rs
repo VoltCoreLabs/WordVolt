@@ -3,7 +3,6 @@
 mod home;
 mod insert;
 mod layout;
-mod placeholder;
 mod tabs;
 mod view;
 
