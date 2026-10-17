@@ -78,6 +78,8 @@ struct Para {
     cell: Option<CellDto>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     image: Option<ImageRefDto>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    toc: bool,
     #[serde(default, skip_serializing_if = "is_zero")]
     indent: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -146,6 +148,7 @@ impl File {
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
+                toc: p.style.toc,
                 image: p.style.image.map(|i| ImageRefDto {
                     id: i.id,
                     width: i.width,
@@ -233,6 +236,7 @@ impl File {
                 style: ParaStyle {
                     align: align_from(&p.align),
                     quote: p.quote,
+                    toc: p.toc,
                     image: p.image.map(|i| ImageRef {
                         id: i.id,
                         width: i.width,

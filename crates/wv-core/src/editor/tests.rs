@@ -680,3 +680,30 @@ fn header_footer_and_page_setup_are_undoable() {
     e.set_page(e.doc.page);
     assert_eq!(depth, e.can_undo());
 }
+
+#[test]
+fn table_of_contents_is_inserted_and_replaced_in_one_step() {
+    use crate::{NamedStyle, TocEntry};
+    let mut e = Editor::default();
+    e.insert_text("Intro\nBody");
+    e.sel = crate::Selection::caret(Position::new(0, 0));
+    e.set_named_style(NamedStyle::Heading1);
+    assert_eq!(e.headings().len(), 1);
+    let entry = |page| TocEntry {
+        level: 1,
+        text: "Intro".into(),
+        page,
+    };
+    e.sel = crate::Selection::caret(Position::new(1, 0));
+    e.set_toc("Contents", &[entry(1)]);
+    let (first, last) = e.toc_range().unwrap();
+    assert_eq!((first, last), (2, 3));
+    assert!(e.doc.paragraphs[3].text().ends_with("1"));
+    e.set_toc("Contents", &[entry(2)]);
+    assert_eq!(e.toc_range(), Some((2, 3)));
+    assert!(e.doc.paragraphs[3].text().ends_with("2"));
+    // The contents never count as headings, and undo takes the last update back.
+    assert_eq!(e.headings().len(), 1);
+    assert!(e.undo());
+    assert!(e.doc.paragraphs[3].text().ends_with("1"));
+}
