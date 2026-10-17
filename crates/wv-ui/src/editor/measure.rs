@@ -91,6 +91,17 @@ impl GpuiMeasurer {
     }
 
     pub fn shape(&self, text: &str, style: &CharStyle, color: Hsla) -> ShapedLine {
+        self.shape_zoomed(text, style, color, 1.0)
+    }
+
+    /// Like `shape`, with the font size multiplied by `zoom` (painting at a display scale).
+    pub fn shape_zoomed(
+        &self,
+        text: &str,
+        style: &CharStyle,
+        color: Hsla,
+        zoom: f32,
+    ) -> ShapedLine {
         let shown = if style.caps {
             text.to_uppercase()
         } else {
@@ -99,7 +110,7 @@ impl GpuiMeasurer {
         let len = shown.len();
         self.system.shape_line(
             shown.into(),
-            px(font_px(style)),
+            px(font_px(style) * zoom),
             &[text_run(len, style, color)],
             None,
         )

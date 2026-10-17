@@ -4,7 +4,13 @@ use wv_i18n::{Lang, page_of, words};
 use crate::theme::{Theme, space};
 use crate::ui_kit::block;
 
-pub fn status_bar(lang: Lang, (page, pages): (usize, usize), word_count: usize, cx: &App) -> Div {
+pub fn status_bar(
+    lang: Lang,
+    (page, pages): (usize, usize),
+    word_count: usize,
+    zoom: f32,
+    cx: &App,
+) -> Div {
     let muted = cx.global::<Theme>().text_muted;
     block(cx)
         .px(space::lg())
@@ -19,5 +25,5 @@ pub fn status_bar(lang: Lang, (page, pages): (usize, usize), word_count: usize, 
             page_of(lang, page, pages),
             words(lang, word_count)
         ))
-        .child("100%")
+        .child(format!("{}%", (zoom * 100.0).round() as u32))
 }

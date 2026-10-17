@@ -5,6 +5,7 @@ mod insert;
 mod layout;
 mod placeholder;
 mod tabs;
+mod view;
 
 use std::time::Duration;
 
@@ -25,7 +26,7 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
         Tab::Home => home::groups(this, cx),
         Tab::Insert => insert::groups(this, cx),
         Tab::Layout => layout::groups(this, cx),
-        Tab::View => placeholder::groups(tab, this.lang, cx),
+        Tab::View => view::groups(this, cx),
     };
     let row = div()
         .flex()

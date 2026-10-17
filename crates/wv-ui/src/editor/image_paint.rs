@@ -61,7 +61,10 @@ pub fn paint_images(
             continue;
         };
         let x = setup.margin_left + slice.x + para.lines[0].x;
-        let bounds = Bounds::new(at(x, top), size(px(image.width), px(image.height)));
+        let bounds = Bounds::new(
+            at(x, top),
+            size(px(image.width * v.zoom), px(image.height * v.zoom)),
+        );
         if let Some(data) = source.clone().use_render_image(window, cx) {
             let _ = window.paint_image(bounds, bounds, Corners::default(), data, 0, false);
         }
