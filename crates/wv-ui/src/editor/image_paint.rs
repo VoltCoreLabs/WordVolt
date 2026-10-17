@@ -100,12 +100,13 @@ fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
             point(px(x) - half, px(y) - half),
             size(px(HANDLE), px(HANDLE)),
         );
-        let hit = window.insert_hitbox(outer.dilate(px(3.0)), HitboxBehavior::Normal);
         let cursor = match corner {
             Corner::TopLeft | Corner::BottomRight => CursorStyle::ResizeUpLeftDownRight,
             Corner::TopRight | Corner::BottomLeft => CursorStyle::ResizeUpRightDownLeft,
         };
-        window.set_cursor_style(cursor, &hit);
+        if outer.dilate(px(3.0)).contains(&window.mouse_position()) {
+            window.set_window_cursor_style(cursor);
+        }
         window.paint_quad(fill(outer, accent));
         window.paint_quad(fill(outer.dilate(px(-2.0)), rgb(0xffffff)));
     }
