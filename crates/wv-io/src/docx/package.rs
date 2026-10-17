@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
 
-use wv_core::{Band, ImageData, ListKind};
+use wv_core::{ImageData, ListKind};
 
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
+use super::band_parts::BandPart;
 use crate::IoError;
 
 /// Refuse to inflate more than this (zip-bomb guard).
@@ -24,6 +25,9 @@ const DOCUMENT_RELS_HEAD: &str = r#"<?xml version="1.0" encoding="UTF-8" standal
 const STYLES: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="ru-RU"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:sz w:val="56"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:color w:val="6B7280"/><w:sz w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="280" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="9CA3AF"/></w:pBdr><w:ind w:left="480"/></w:pPr></w:style><w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style></w:styles>"#;
 
+/// word/settings.xml: only the even/odd header switch.
+const SETTINGS: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:settings xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:evenAndOddHeaders/></w:settings>";
+
 fn zip_error(err: zip::result::ZipError) -> IoError {
     IoError::Parse(format!("not a valid .docx archive: {err}"))
 }
@@ -39,7 +43,12 @@ pub fn read_document_xml(bytes: &[u8]) -> Result<Vec<u8>, IoError> {
 }
 
 /// Relationships of word/document.xml: styles plus one external relationship per hyperlink.
-fn document_rels(links: &[String], bands: (bool, bool), images: &[ImageData]) -> String {
+fn document_rels(
+    links: &[String],
+    bands: &[BandPart],
+    odd_even: bool,
+    images: &[ImageData],
+) -> String {
     let mut xml = String::from(DOCUMENT_RELS_HEAD);
     for (i, image) in images.iter().enumerate() {
         xml.push_str(&format!(
@@ -49,15 +58,19 @@ fn document_rels(links: &[String], bands: (bool, bool), images: &[ImageData]) ->
             image.format.extension()
         ));
     }
-    for (present, kind, target, id) in [
-        (bands.0, super::bands::HEADER_TYPE, "header1.xml", "rIdH1"),
-        (bands.1, super::bands::FOOTER_TYPE, "footer1.xml", "rIdF1"),
-    ] {
-        if present {
-            xml.push_str(&format!(
-                "<Relationship Id=\"{id}\" Type=\"{kind}\" Target=\"{target}\"/>"
-            ));
-        }
+    for part in bands {
+        let kind = if part.kind == "header" {
+            super::bands::HEADER_TYPE
+        } else {
+            super::bands::FOOTER_TYPE
+        };
+        xml.push_str(&format!(
+            "<Relationship Id=\"{}\" Type=\"{kind}\" Target=\"{}\"/>",
+            part.rid, part.name
+        ));
+    }
+    if odd_even {
+        xml.push_str("<Relationship Id=\"rIdS1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings\" Target=\"settings.xml\"/>");
     }
     for (i, url) in links.iter().enumerate() {
         let target = url
@@ -220,29 +233,32 @@ pub fn write(
     document_xml: &str,
     links: &[String],
     number_lists: usize,
-    (header, footer): (&Band, &Band),
+    bands: &[BandPart],
+    odd_even: bool,
     images: &[ImageData],
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-    let rels = document_rels(links, (!header.is_empty(), !footer.is_empty()), images);
+    let rels = document_rels(links, bands, odd_even, images);
     let numbering = numbering_xml(number_lists);
     let mut content_types = CONTENT_TYPES.replace(
         "</Types>",
         "<Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpeg\" ContentType=\"image/jpeg\"/><Default Extension=\"gif\" ContentType=\"image/gif\"/><Default Extension=\"webp\" ContentType=\"image/webp\"/></Types>",
     );
-    let mut extra: Vec<(&str, String)> = Vec::new();
-    for (band, root, name, kind) in [
-        (header, "hdr", "header1.xml", "header"),
-        (footer, "ftr", "footer1.xml", "footer"),
-    ] {
-        if !band.is_empty() {
-            content_types = content_types.replace(
-                "</Types>",
-                &format!("<Override PartName=\"/word/{name}\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.{kind}+xml\"/></Types>"),
-            );
-            extra.push((name, super::bands::part_xml(root, band)));
-        }
+    let mut extra: Vec<(String, String)> = Vec::new();
+    for part in bands {
+        content_types = content_types.replace(
+            "</Types>",
+            &format!("<Override PartName=\"/word/{}\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.{}+xml\"/></Types>", part.name, part.kind),
+        );
+        extra.push((part.name.clone(), part.xml()));
+    }
+    if odd_even {
+        content_types = content_types.replace(
+            "</Types>",
+            "<Override PartName=\"/word/settings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml\"/></Types>",
+        );
+        extra.push(("settings.xml".into(), SETTINGS.into()));
     }
     let parts = [
         ("[Content_Types].xml", content_types.as_str()),

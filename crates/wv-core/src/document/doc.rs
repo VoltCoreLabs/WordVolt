@@ -1,4 +1,4 @@
-use super::{Band, ImageData, PageSpec, Paragraph};
+use super::{Band, BandVariants, ImageData, PageSpec, Paragraph};
 use crate::position::Position;
 use crate::style::CharStyle;
 
@@ -8,6 +8,8 @@ pub struct Document {
     pub paragraphs: Vec<Paragraph>,
     pub header: Band,
     pub footer: Band,
+    /// Headers and footers of the first and even pages.
+    pub variants: BandVariants,
     /// Pictures used by paragraphs (`ParaStyle::image`).
     pub images: Vec<ImageData>,
     pub page: PageSpec,
@@ -19,6 +21,7 @@ impl Default for Document {
             paragraphs: vec![Paragraph::default()],
             header: Band::default(),
             footer: Band::default(),
+            variants: BandVariants::default(),
             images: Vec::new(),
             page: PageSpec::default(),
         }
@@ -30,6 +33,7 @@ impl Default for Document {
 pub struct DocSettings {
     pub header: Band,
     pub footer: Band,
+    pub variants: BandVariants,
     pub page: PageSpec,
 }
 
@@ -38,6 +42,7 @@ impl Document {
         DocSettings {
             header: self.header.clone(),
             footer: self.footer.clone(),
+            variants: self.variants.clone(),
             page: self.page,
         }
     }
@@ -45,7 +50,13 @@ impl Document {
     pub fn set_settings(&mut self, settings: &DocSettings) {
         self.header = settings.header.clone();
         self.footer = settings.footer.clone();
+        self.variants = settings.variants.clone();
         self.page = settings.page;
+    }
+
+    /// The (header, footer) shown on page `page` (0-based).
+    pub fn bands_for(&self, page: usize) -> (&Band, &Band) {
+        self.variants.pick(page, &self.header, &self.footer)
     }
 
     pub fn from_text(text: &str) -> Self {

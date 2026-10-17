@@ -1,4 +1,4 @@
-use crate::document::{Band, DocSettings, Document, PageSpec, Paragraph};
+use crate::document::{Band, BandVariants, DocSettings, Document, PageSpec, Paragraph};
 use crate::history::{Edit, History};
 use crate::position::{Position, Selection};
 use crate::style::CharStyle;
@@ -58,6 +58,13 @@ impl Editor {
     pub fn set_header_footer(&mut self, header: Band, footer: Band) {
         let mut settings = self.doc.settings();
         (settings.header, settings.footer) = (header, footer);
+        self.change_settings(settings);
+    }
+
+    /// Sets the main header and footer together with the first/even-page variants (one undo step).
+    pub fn set_bands(&mut self, header: Band, footer: Band, variants: BandVariants) {
+        let mut settings = self.doc.settings();
+        (settings.header, settings.footer, settings.variants) = (header, footer, variants);
         self.change_settings(settings);
     }
 

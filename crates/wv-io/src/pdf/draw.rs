@@ -162,7 +162,7 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
     draw_tables(&mut c, layout, page);
     draw_bands(
         &mut c,
-        (&doc.header, &doc.footer),
+        doc.bands_for(page),
         page,
         layout.pages.len(),
         layout,

@@ -275,3 +275,32 @@ fn gutter_and_band_distances_round_trip() {
     let back = decode(&encode(&doc).unwrap()).unwrap();
     assert_eq!(back.page, doc.page);
 }
+
+#[test]
+fn first_page_and_even_page_bands_round_trip() {
+    let mut doc = Document::from_text("x");
+    doc.header = wv_core::Band::new("Main head");
+    doc.footer = wv_core::Band::new("Стр. {page}");
+    doc.variants = wv_core::BandVariants {
+        different_first: true,
+        odd_even: true,
+        first: (wv_core::Band::new("Title page"), wv_core::Band::default()),
+        even: (
+            wv_core::Band::new("Even head").aligned(wv_core::Align::Right),
+            wv_core::Band::new("{page}"),
+        ),
+    };
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert_eq!(back.header, doc.header);
+    assert_eq!(back.footer, doc.footer);
+    assert_eq!(back.variants, doc.variants);
+}
+
+#[test]
+fn switches_off_means_variants_are_not_written() {
+    let mut doc = Document::from_text("x");
+    doc.variants.first = (wv_core::Band::new("hidden"), wv_core::Band::default());
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert!(!back.variants.different_first);
+    assert!(back.variants.first.0.is_empty());
+}

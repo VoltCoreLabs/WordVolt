@@ -180,7 +180,8 @@ impl Render for EditorView {
             .resize(layout.pages.len(), Bounds::default());
 
         let images = self.picture_sources();
-        let bands = Rc::new((self.core.doc.header.clone(), self.core.doc.footer.clone()));
+        let doc = &self.core.doc;
+        let bands = Rc::new((doc.header.clone(), doc.footer.clone(), doc.variants.clone()));
         let pages: Vec<_> = (0..layout.pages.len())
             .map(|ix| {
                 let view = PageView {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, Band};
+use wv_core::{Align, Band, BandVariants};
 
 use super::package::{read_document_xml, read_part};
 
@@ -65,22 +65,21 @@ fn attr(e: &BytesStart, name: &[u8]) -> Option<String> {
         .and_then(|a| a.unescape_value().ok().map(|v| v.into_owned()))
 }
 
-/// Header and footer of the document: the default header/footer of the last section that has one.
-pub fn read(bytes: &[u8]) -> (Band, Band) {
+/// Header and footer of the document (the default ones of the last section that has them), plus
+/// the first-page and even-page variants.
+pub fn read(bytes: &[u8]) -> (Band, Band, BandVariants) {
     let rels = relationships(bytes);
-    let (header_id, footer_id) = references(bytes);
-    let load = |id: Option<String>, kind: &str| -> Band {
+    let refs = references(bytes);
+    let load = |id: &Option<String>, kind: &str| -> Band {
         let target = id
+            .as_ref()
             .and_then(|id| {
-                rels.get(&id)
+                rels.get(id)
                     .filter(|(t, _)| t == kind)
                     .map(|(_, v)| v.clone())
             })
-            .or_else(|| {
-                rels.values()
-                    .find(|(t, _)| t == kind)
-                    .map(|(_, target)| target.clone())
-            });
+            // Only the default slot falls back to any part of this kind.
+            .or(None);
         target
             .and_then(|t| read_part(bytes, &format!("word/{}", t.trim_start_matches('/'))))
             .map(|xml| {
@@ -89,7 +88,52 @@ pub fn read(bytes: &[u8]) -> (Band, Band) {
             })
             .unwrap_or_default()
     };
-    (load(header_id, HEADER_TYPE), load(footer_id, FOOTER_TYPE))
+    let any = |kind: &str| {
+        rels.iter()
+            .find(|(_, (t, _))| t == kind)
+            .map(|(id, _)| id.clone())
+    };
+    let default_header = refs.header[0].clone().or_else(|| any(HEADER_TYPE));
+    let default_footer = refs.footer[0].clone().or_else(|| any(FOOTER_TYPE));
+    let variants = BandVariants {
+        different_first: refs.title_page,
+        odd_even: even_and_odd(bytes),
+        first: (
+            load(&refs.header[1], HEADER_TYPE),
+            load(&refs.footer[1], FOOTER_TYPE),
+        ),
+        even: (
+            load(&refs.header[2], HEADER_TYPE),
+            load(&refs.footer[2], FOOTER_TYPE),
+        ),
+    };
+    (
+        load(&default_header, HEADER_TYPE),
+        load(&default_footer, FOOTER_TYPE),
+        variants,
+    )
+}
+
+/// `<w:evenAndOddHeaders/>` in word/settings.xml.
+fn even_and_odd(bytes: &[u8]) -> bool {
+    let Some(xml) = read_part(bytes, "word/settings.xml") else {
+        return false;
+    };
+    let mut reader = Reader::from_reader(xml.as_slice());
+    let mut buf = Vec::new();
+    while let Ok(event) = reader.read_event_into(&mut buf) {
+        match event {
+            Event::Eof => break,
+            Event::Start(e) | Event::Empty(e)
+                if e.local_name().as_ref() == b"evenAndOddHeaders" =>
+            {
+                return !matches!(attr(&e, b"val").as_deref(), Some("0" | "false" | "off"));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+    false
 }
 
 /// Relationship id -> (type, target) of word/_rels/document.xml.rels.
@@ -117,22 +161,39 @@ fn relationships(bytes: &[u8]) -> HashMap<String, (String, String)> {
     map
 }
 
-/// Ids of the default `headerReference` / `footerReference` in word/document.xml.
-fn references(bytes: &[u8]) -> (Option<String>, Option<String>) {
+/// Relationship ids of the header/footer references of word/document.xml, by slot
+/// (0 = default, 1 = first page, 2 = even pages), and whether the first page is special.
+#[derive(Default)]
+struct Refs {
+    header: [Option<String>; 3],
+    footer: [Option<String>; 3],
+    title_page: bool,
+}
+
+fn references(bytes: &[u8]) -> Refs {
     let Ok(xml) = read_document_xml(bytes) else {
-        return (None, None);
+        return Refs::default();
     };
     let mut reader = Reader::from_reader(xml.as_slice());
     let mut buf = Vec::new();
-    let (mut header, mut footer) = (None, None);
+    let mut refs = Refs::default();
     while let Ok(event) = reader.read_event_into(&mut buf) {
         match event {
             Event::Eof => break,
             Event::Start(e) | Event::Empty(e) => {
-                let default = attr(&e, b"type").is_none_or(|t| t == "default");
-                match e.local_name().as_ref() {
-                    b"headerReference" if default => header = attr(&e, b"id"),
-                    b"footerReference" if default => footer = attr(&e, b"id"),
+                let slot = match attr(&e, b"type").as_deref() {
+                    None | Some("default") => Some(0),
+                    Some("first") => Some(1),
+                    Some("even") => Some(2),
+                    _ => None,
+                };
+                match (e.local_name().as_ref(), slot) {
+                    (b"headerReference", Some(i)) => refs.header[i] = attr(&e, b"id"),
+                    (b"footerReference", Some(i)) => refs.footer[i] = attr(&e, b"id"),
+                    (b"titlePg", _) => {
+                        refs.title_page =
+                            !matches!(attr(&e, b"val").as_deref(), Some("0" | "false" | "off"));
+                    }
                     _ => {}
                 }
             }
@@ -140,7 +201,7 @@ fn references(bytes: &[u8]) -> (Option<String>, Option<String>) {
         }
         buf.clear();
     }
-    (header, footer)
+    refs
 }
 
 /// Text of a header/footer part; PAGE and NUMPAGES fields become `{page}` / `{pages}` and the

@@ -761,3 +761,22 @@ fn a_contents_entry_points_to_its_heading() {
     assert_eq!(e.toc_target(first + 3), Some(first + 6));
     assert_eq!(e.toc_target(0), None);
 }
+
+#[test]
+fn band_variants_are_one_undo_step() {
+    let mut e = Editor::new(Document::from_text("x"));
+    let variants = crate::BandVariants {
+        different_first: true,
+        first: (crate::Band::new("Title page"), crate::Band::default()),
+        ..Default::default()
+    };
+    e.set_bands(
+        crate::Band::new("Main"),
+        crate::Band::new("{page}"),
+        variants,
+    );
+    assert_eq!(e.doc.bands_for(0).0.text, "Title page");
+    assert_eq!(e.doc.bands_for(1).0.text, "Main");
+    assert!(e.undo());
+    assert!(e.doc.header.is_empty() && !e.doc.variants.different_first);
+}

@@ -1,3 +1,4 @@
+mod band_controls;
 mod color_picker;
 mod combo;
 mod commands;
@@ -6,6 +7,7 @@ mod export_pdf;
 mod file_ops;
 mod find_bar;
 mod header_footer;
+mod header_footer_panel;
 mod image_ops;
 mod link_editor;
 mod main_window;
