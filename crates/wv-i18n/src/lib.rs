@@ -114,6 +114,11 @@ pub enum Key {
     FooterLabel,
     BandHint,
     Apply,
+    TipImage,
+    ImageFiles,
+    ImageBad,
+    GroupPicture,
+    PicFit,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -228,6 +233,11 @@ fn ru(key: Key) -> &'static str {
         Key::FooterLabel => "Нижний колонтитул",
         Key::BandHint => "{page} — номер страницы, {pages} — число страниц",
         Key::Apply => "Применить",
+        Key::TipImage => "Вставить рисунок",
+        Key::ImageFiles => "Изображения",
+        Key::GroupPicture => "Рисунок",
+        Key::PicFit => "По ширине",
+        Key::ImageBad => "не удалось прочитать изображение (нужен PNG, JPEG, GIF или WebP)",
     }
 }
 
@@ -336,6 +346,11 @@ fn en(key: Key) -> &'static str {
         Key::FooterLabel => "Footer",
         Key::BandHint => "{page} = page number, {pages} = page count",
         Key::Apply => "Apply",
+        Key::TipImage => "Insert picture",
+        Key::ImageFiles => "Images",
+        Key::GroupPicture => "Picture",
+        Key::PicFit => "Fit width",
+        Key::ImageBad => "cannot read the image (PNG, JPEG, GIF or WebP expected)",
     }
 }
 

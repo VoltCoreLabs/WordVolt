@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
 
-use wv_core::{Band, ListKind};
+use wv_core::{Band, ImageData, ListKind};
 
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
@@ -39,8 +39,16 @@ pub fn read_document_xml(bytes: &[u8]) -> Result<Vec<u8>, IoError> {
 }
 
 /// Relationships of word/document.xml: styles plus one external relationship per hyperlink.
-fn document_rels(links: &[String], bands: (bool, bool)) -> String {
+fn document_rels(links: &[String], bands: (bool, bool), images: &[ImageData]) -> String {
     let mut xml = String::from(DOCUMENT_RELS_HEAD);
+    for (i, image) in images.iter().enumerate() {
+        xml.push_str(&format!(
+            "<Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/image{}.{}\"/>",
+            super::picture::rel_id(i as u32),
+            i + 1,
+            image.format.extension()
+        ));
+    }
     for (present, kind, target, id) in [
         (bands.0, super::bands::HEADER_TYPE, "header1.xml", "rIdH1"),
         (bands.1, super::bands::FOOTER_TYPE, "footer1.xml", "rIdF1"),
@@ -213,12 +221,16 @@ pub fn write(
     links: &[String],
     number_lists: usize,
     (header, footer): (&Band, &Band),
+    images: &[ImageData],
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-    let rels = document_rels(links, (!header.is_empty(), !footer.is_empty()));
+    let rels = document_rels(links, (!header.is_empty(), !footer.is_empty()), images);
     let numbering = numbering_xml(number_lists);
-    let mut content_types = CONTENT_TYPES.to_string();
+    let mut content_types = CONTENT_TYPES.replace(
+        "</Types>",
+        "<Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpeg\" ContentType=\"image/jpeg\"/><Default Extension=\"gif\" ContentType=\"image/gif\"/><Default Extension=\"webp\" ContentType=\"image/webp\"/></Types>",
+    );
     let mut extra: Vec<(&str, String)> = Vec::new();
     for (band, root, name, kind) in [
         (header, "hdr", "header1.xml", "header"),
@@ -243,6 +255,14 @@ pub fn write(
     for (name, content) in parts {
         zip.start_file(name, options).map_err(zip_error)?;
         zip.write_all(content.as_bytes())?;
+    }
+    for (i, image) in images.iter().enumerate() {
+        zip.start_file(
+            format!("word/media/image{}.{}", i + 1, image.format.extension()),
+            options,
+        )
+        .map_err(zip_error)?;
+        zip.write_all(&image.bytes)?;
     }
     for (name, content) in extra {
         zip.start_file(format!("word/{name}"), options)

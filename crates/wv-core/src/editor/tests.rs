@@ -621,3 +621,35 @@ fn page_number_toggles_in_footer() {
     assert_eq!(e.doc.header.text, "Head");
     assert!(e.is_modified());
 }
+
+#[test]
+fn pictures_are_block_paragraphs() {
+    use crate::ImageFormat;
+    let mut e = Editor::default();
+    e.insert_text("intro");
+    e.insert_image(ImageFormat::Png, vec![1, 2, 3], 1200.0, 600.0);
+    // Inserted after "intro", scaled to the maximum width, caret on the paragraph after it.
+    assert_eq!(e.doc.paragraphs.len(), 3);
+    let image = e.doc.paragraphs[1].style.image.unwrap();
+    assert_eq!((image.width, image.height), (600.0, 300.0));
+    assert_eq!(e.sel.head.para, 2);
+    // Same bytes are stored once.
+    e.insert_image(ImageFormat::Png, vec![1, 2, 3], 10.0, 10.0);
+    assert_eq!(e.doc.images.len(), 1);
+    // No typing into a picture paragraph; Enter adds a paragraph after it.
+    e.sel = crate::Selection::caret(Position::new(1, 0));
+    e.insert_text("x");
+    assert_eq!(e.doc.paragraphs[1].text(), "");
+    let before = e.doc.paragraphs.len();
+    e.enter();
+    assert_eq!(e.doc.paragraphs.len(), before + 1);
+    assert_eq!(e.sel.head, Position::new(2, 0));
+    // Backspace on the picture removes it; resizing keeps proportions.
+    e.sel = crate::Selection::caret(Position::new(1, 0));
+    e.set_image_width(300.0);
+    assert_eq!(e.doc.paragraphs[1].style.image.unwrap().height, 150.0);
+    e.backspace();
+    assert!(e.doc.paragraphs[1].style.image.is_none());
+    assert!(e.undo());
+    assert!(e.doc.paragraphs[1].style.image.is_some());
+}

@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
@@ -16,6 +17,9 @@ const PAGE_GAP: f32 = 24.0;
 
 /// The paged editing surface inside a smooth-scrolling viewport. Owns the document (`core`);
 /// the page layout is recomputed whenever the document changes.
+/// Stored picture bytes (cache keys) and the GPUI images built from them.
+pub(super) type PictureCache = (Vec<Arc<Vec<u8>>>, Rc<Vec<Arc<Image>>>);
+
 pub struct EditorView {
     pub core: Editor,
     pub(super) focus: FocusHandle,
@@ -37,6 +41,8 @@ pub struct EditorView {
     /// Window bounds of every page, written while painting (used for mouse hit-testing).
     pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
     focused_once: bool,
+    /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
+    pub(super) picture_cache: PictureCache,
 }
 
 impl EditorView {
@@ -57,6 +63,7 @@ impl EditorView {
             measure_cache: Rc::default(),
             page_bounds: Rc::default(),
             focused_once: false,
+            picture_cache: Default::default(),
         }
     }
 
@@ -142,6 +149,7 @@ impl Render for EditorView {
             .borrow_mut()
             .resize(layout.pages.len(), Bounds::default());
 
+        let images = self.picture_sources();
         let bands = Rc::new((self.core.doc.header.clone(), self.core.doc.footer.clone()));
         let pages: Vec<_> = (0..layout.pages.len())
             .map(|ix| {
@@ -167,6 +175,7 @@ impl Render for EditorView {
                     find_current_color: theme.find_current,
                     table_color: theme.border_strong,
                     bands: bands.clone(),
+                    images: images.clone(),
                     band_color: theme.text_muted,
                 };
                 let bounds_store = self.page_bounds.clone();

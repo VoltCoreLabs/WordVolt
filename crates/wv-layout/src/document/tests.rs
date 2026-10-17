@@ -236,3 +236,22 @@ fn table_rows_move_to_the_next_page_instead_of_splitting() {
         "the table continues on page 2"
     );
 }
+
+#[test]
+fn picture_paragraph_takes_its_height_and_follows_alignment() {
+    use wv_core::{Align, ImageRef};
+    let mut doc = Document::from_text("a\n\nb");
+    doc.paragraphs[1].style.image = Some(ImageRef {
+        id: 0,
+        width: 40.0,
+        height: 50.0,
+    });
+    doc.paragraphs[1].style.align = Align::Center;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let image = l.paragraphs[1].image.unwrap();
+    assert_eq!((image.width, image.height), (40.0, 50.0));
+    assert_eq!(l.paragraphs[1].height, 50.0);
+    assert_eq!(l.paragraphs[1].lines[0].x, 20.0);
+    // 16 + 50 + 16 = 82 > 80: "b" moves to the next page.
+    assert_eq!(l.pages.len(), 2);
+}

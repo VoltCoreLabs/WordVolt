@@ -7,8 +7,9 @@ pub mod position;
 pub mod search;
 pub mod style;
 
-pub use document::{Band, Document, Paragraph, Run};
+pub use document::{Band, Document, ImageData, ImageFormat, Paragraph, Run};
+pub use editor::MAX_IMAGE_WIDTH;
 pub use editor::{CaseKind, Editor, TableInfo};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;
-pub use style::{Align, Cell, CharStyle, ListKind, NamedStyle, ParaStyle, Script};
+pub use style::{Align, Cell, CharStyle, ImageRef, ListKind, NamedStyle, ParaStyle, Script};

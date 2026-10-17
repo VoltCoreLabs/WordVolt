@@ -182,13 +182,18 @@ impl MainWindow {
     }
 
     /// Makes `doc` the current document.
-    fn install(&mut self, doc: Document, path: Option<PathBuf>, cx: &mut Context<Self>) {
+    pub(crate) fn install(&mut self, doc: Document, path: Option<PathBuf>, cx: &mut Context<Self>) {
         self.file_path = path;
         self.editor.update(cx, |view, cx| view.load(doc, cx));
         cx.notify();
     }
 
-    fn show_error(&mut self, window: &mut Window, cx: &mut Context<Self>, message: &str) {
+    pub(super) fn show_error(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        message: &str,
+    ) {
         let title = t(self.lang, Key::ErrorTitle);
         drop(window.prompt(PromptLevel::Critical, title, Some(message), &["OK"], cx));
     }

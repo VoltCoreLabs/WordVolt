@@ -3,6 +3,7 @@
 mod docx;
 mod error;
 mod format;
+mod image;
 mod md;
 mod txt;
 mod wvd;
@@ -12,6 +13,7 @@ use std::path::Path;
 
 pub use error::IoError;
 pub use format::Format;
+pub use image::probe_image;
 use wv_core::Document;
 
 /// Reads a document; the format is chosen by the file extension.

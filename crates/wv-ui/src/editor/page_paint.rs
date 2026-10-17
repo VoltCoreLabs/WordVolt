@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
@@ -36,6 +37,8 @@ pub struct PageView {
     pub table_color: Rgba,
     /// Header and footer text, and their colour.
     pub bands: Rc<(Band, Band)>,
+    /// Pictures of the document by `ImageRef::id`.
+    pub images: Rc<Vec<Arc<Image>>>,
     pub band_color: Rgba,
 }
 
@@ -118,6 +121,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     }
 
     super::band_paint::paint_bands(v, &m, &at, window, cx);
+    super::image_paint::paint_images(v, &at, &visible, window, cx);
 
     let setup = &v.layout.setup;
     for slice in &v.layout.pages[v.page].slices {

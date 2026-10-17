@@ -2,6 +2,7 @@
 
 mod case_ops;
 mod core;
+mod image_ops;
 mod movement;
 mod para_ops;
 mod search_ops;
@@ -13,4 +14,5 @@ mod text_ops;
 
 pub use case_ops::CaseKind;
 pub use core::Editor;
+pub use image_ops::MAX_IMAGE_WIDTH;
 pub use table_ops::TableInfo;

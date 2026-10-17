@@ -1,6 +1,9 @@
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as B64;
 use serde::{Deserialize, Serialize};
 use wv_core::{
-    Align, Band, Cell, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
+    Align, Band, Cell, CharStyle, Document, ImageData, ImageFormat, ImageRef, ListKind, NamedStyle,
+    ParaStyle, Paragraph, Run, Script,
 };
 
 use crate::IoError;
@@ -17,6 +20,22 @@ pub struct File {
     header: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     footer: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    images: Vec<ImageDto>,
+}
+
+/// Embedded picture: format name and base64 data.
+#[derive(Serialize, Deserialize)]
+struct ImageDto {
+    format: String,
+    data: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+struct ImageRefDto {
+    id: u32,
+    width: f32,
+    height: f32,
 }
 
 /// Table cell of a paragraph.
@@ -39,6 +58,8 @@ struct Para {
     list: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     cell: Option<CellDto>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    image: Option<ImageRefDto>,
     #[serde(default, skip_serializing_if = "is_zero")]
     indent: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,6 +128,11 @@ impl File {
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
+                image: p.style.image.map(|i| ImageRefDto {
+                    id: i.id,
+                    width: i.width,
+                    height: i.height,
+                }),
                 cell: p.style.cell.map(|c| CellDto {
                     table: c.table,
                     row: c.row,
@@ -148,6 +174,14 @@ impl File {
             paragraphs,
             header: doc.header.text.clone(),
             footer: doc.footer.text.clone(),
+            images: doc
+                .images
+                .iter()
+                .map(|i| ImageDto {
+                    format: i.format.extension().to_string(),
+                    data: B64.encode(i.bytes.as_slice()),
+                })
+                .collect(),
         }
     }
 
@@ -171,6 +205,11 @@ impl File {
                 style: ParaStyle {
                     align: align_from(&p.align),
                     quote: p.quote,
+                    image: p.image.map(|i| ImageRef {
+                        id: i.id,
+                        width: i.width,
+                        height: i.height,
+                    }),
                     cell: p.cell.map(|c| Cell {
                         table: c.table,
                         row: c.row,
@@ -213,6 +252,25 @@ impl File {
                 ..Document::default()
             }
         };
+        for image in self.images {
+            let format = ImageFormat::from_extension(&image.format).ok_or_else(|| {
+                IoError::Parse(format!("unknown image format \"{}\"", image.format))
+            })?;
+            let bytes = B64
+                .decode(image.data)
+                .map_err(|e| IoError::Parse(format!("image data: {e}")))?;
+            doc.images.push(ImageData {
+                format,
+                bytes: std::sync::Arc::new(bytes),
+            });
+        }
+        // Pictures that point past the stored images are dropped.
+        let count = doc.images.len() as u32;
+        for p in &mut doc.paragraphs {
+            if p.style.image.is_some_and(|i| i.id >= count) {
+                p.style.image = None;
+            }
+        }
         doc.header = Band::new(self.header);
         doc.footer = Band::new(self.footer);
         Ok(doc)
