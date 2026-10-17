@@ -29,6 +29,7 @@ pub struct EditorView {
     pub core: Editor,
     pub(super) focus: FocusHandle,
     pub(super) selecting: bool,
+    pub(super) resizing: Option<super::resize::Resize>,
     /// Time of the last edit/caret move; drives the caret fade/blink animation.
     pub(super) caret_epoch: Rc<Cell<Instant>>,
     pub(super) scroll: Rc<ScrollState>,
@@ -60,6 +61,7 @@ impl EditorView {
             core: Editor::new(Document::default()),
             focus: cx.focus_handle(),
             selecting: false,
+            resizing: None,
             caret_epoch: Rc::new(Cell::new(Instant::now())),
             scroll: Rc::default(),
             reveal_caret: Rc::default(),

@@ -143,6 +143,19 @@ impl Editor {
         self.history.push(edit);
     }
 
+    /// Replaces paragraph `at` in the document and in the latest undo step (which must be an edit
+    /// of exactly that paragraph), so a drag stays one step.
+    pub(super) fn amend_last_edit(&mut self, at: usize, para: Paragraph) {
+        if let Some(edit) = self.history.last_mut()
+            && edit.at == at
+            && edit.inserted.len() == 1
+        {
+            edit.inserted[0] = para.clone();
+            self.doc.paragraphs[at] = para;
+            self.revision += 1;
+        }
+    }
+
     /// Moves the caret; with `extend` the anchor stays (selecting).
     pub fn set_head(&mut self, head: Position, extend: bool) {
         self.sel.head = head;

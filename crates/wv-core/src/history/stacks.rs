@@ -14,6 +14,11 @@ impl History {
         self.redo.clear();
     }
 
+    /// The latest edit, to fold a continuing gesture (a drag) into one undo step.
+    pub fn last_mut(&mut self) -> Option<&mut Edit> {
+        self.undo.last_mut()
+    }
+
     pub fn pop_undo(&mut self) -> Option<Edit> {
         let edit = self.undo.pop()?;
         self.redo.push(edit.clone());
