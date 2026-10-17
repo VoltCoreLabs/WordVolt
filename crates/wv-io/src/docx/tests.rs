@@ -325,18 +325,27 @@ fn formatted_band_words_round_trip() {
 }
 
 #[test]
-fn table_widths_and_shading_round_trip() {
+fn table_look_and_shading_round_trip() {
     let mut e = wv_core::Editor::new(Document::from_text("x"));
     e.insert_table(2, 3);
     let table = e.table_info().unwrap().table;
-    e.set_table_widths(table, vec![0.2, 0.3, 0.5]);
+    // Narrower than the text, indented, with a tall first row.
+    e.set_table_look(
+        table,
+        wv_core::TableLook {
+            widths: vec![0.2, 0.2, 0.3],
+            indent: 0.1,
+            rows: vec![60.0, 0.0],
+        },
+    );
     e.set_cell_shade(Some(0x99CCFF));
     let doc = e.doc.clone();
     let back = decode(&encode(&doc).unwrap()).unwrap();
-    let widths = &back.table_widths[&0];
-    for (a, b) in widths.iter().zip([0.2, 0.3, 0.5]) {
-        assert!((a - b).abs() < 0.01, "{widths:?}");
+    let look = &back.table_looks[&0];
+    for (a, b) in look.widths.iter().zip([0.2, 0.2, 0.3]) {
+        assert!((a - b).abs() < 0.01, "{look:?}");
     }
+    assert!((look.indent - 0.1).abs() < 0.01 && (look.rows[0] - 60.0).abs() < 1.0);
     let shaded: Vec<_> = back
         .paragraphs
         .iter()

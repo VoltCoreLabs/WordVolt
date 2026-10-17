@@ -65,8 +65,8 @@ struct State {
     table: TableState,
     pictures: PictureState,
     page: PageSpec,
-    /// Column widths of the tables read so far, by table id.
-    table_widths: std::collections::BTreeMap<u32, Vec<f32>>,
+    /// What the file says about the size of the tables read so far, by table id.
+    table_raw: std::collections::BTreeMap<u32, super::table_read::RawTable>,
     /// Picture of the paragraph being read (index into `pictures.rels`).
     image: Option<ImageRef>,
 }
@@ -96,8 +96,8 @@ struct TableState {
     continues: bool,
     /// Where the cell's paragraphs start in `State::paragraphs`.
     cell_start: usize,
-    /// `w:gridCol` widths (twips) of the table being read.
-    grid: Vec<u32>,
+    /// `w:gridCol` widths, indent and row heights (twips) of the table being read.
+    raw: super::table_read::RawTable,
 }
 
 impl State {
@@ -116,9 +116,11 @@ impl State {
                     self.end_paragraph();
                     self.table.start = self.paragraphs.len();
                     self.table.row = None;
+                    self.table.raw = Default::default();
                 }
             }
             b"tr" if self.table.depth == 1 => {
+                self.table.raw.rows.push(0);
                 self.table.row = Some(self.table.row.map_or(0, |r| r + 1));
                 self.table.col = 0;
             }
@@ -132,10 +134,19 @@ impl State {
                     self.table.col,
                 ));
             }
-            b"tblGrid" if self.table.depth == 1 => self.table.grid.clear(),
+            b"tblGrid" if self.table.depth == 1 => self.table.raw.grid.clear(),
             b"gridCol" if self.table.depth == 1 => {
                 let width = attr(e, b"w").and_then(|v| v.parse().ok()).unwrap_or(0);
-                self.table.grid.push(width);
+                self.table.raw.grid.push(width);
+            }
+            b"tblInd" if self.table.depth == 1 => {
+                self.table.raw.indent = attr(e, b"w").and_then(|v| v.parse().ok()).unwrap_or(0);
+            }
+            b"trHeight" if self.table.depth == 1 => {
+                let height = attr(e, b"val").and_then(|v| v.parse().ok()).unwrap_or(0);
+                if let Some(last) = self.table.raw.rows.last_mut() {
+                    *last = height;
+                }
             }
             b"shd"
                 if self.table.depth == 1
@@ -287,15 +298,8 @@ impl State {
                 if self.table.depth == 0 {
                     let rows = self.paragraphs.split_off(self.table.start);
                     let rows = super::table_read::normalize(rows, self.table.next_id);
-                    let cols = rows
-                        .iter()
-                        .filter_map(|p| p.style.cell)
-                        .map(|c| usize::from(c.col_end()))
-                        .max()
-                        .unwrap_or(0);
-                    if let Some(f) = super::table_read::fractions(&self.table.grid, cols) {
-                        self.table_widths.insert(self.table.next_id, f);
-                    }
+                    self.table_raw
+                        .insert(self.table.next_id, std::mem::take(&mut self.table.raw));
                     self.paragraphs.extend(rows);
                     self.table.next_id += 1;
                     self.table.cell = None;
@@ -424,7 +428,25 @@ impl State {
             }
         };
         doc.page = self.page.snapped();
-        doc.table_widths = self.table_widths;
+        // Table sizes are fractions of the text width, known now that the page is.
+        let page = &doc.page;
+        let text_width = (page.width - page.margin_left - page.margin_right - page.gutter) * 15.0;
+        for (table, raw) in &self.table_raw {
+            let dims = doc
+                .paragraphs
+                .iter()
+                .filter_map(|p| p.style.cell)
+                .filter(|c| c.table == *table)
+                .fold((0, 0), |(r, c), cell| {
+                    (
+                        r.max(usize::from(cell.row_end())),
+                        c.max(usize::from(cell.col_end())),
+                    )
+                });
+            if let Some(look) = super::table_read::look_of(raw, text_width, dims.0, dims.1) {
+                doc.table_looks.insert(*table, look);
+            }
+        }
         doc
     }
 }

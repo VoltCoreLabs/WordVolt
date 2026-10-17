@@ -7,12 +7,10 @@ mod movement;
 mod para_ops;
 mod search_ops;
 mod style_ops;
+mod table_look;
 mod table_merge;
 mod table_ops;
 mod table_rowcol;
-mod table_widths;
-
-pub use table_widths::MIN_COLUMN;
 #[cfg(test)]
 mod tests;
 mod text_ops;

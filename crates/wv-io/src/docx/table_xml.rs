@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use wv_core::{Cell, Paragraph};
+use wv_core::{Cell, Paragraph, TableLook};
 
 use super::writer::{Lists, write_paragraph};
 
@@ -27,12 +27,12 @@ fn cell_props(width: usize, cell: &Cell, vertical: Option<bool>, shade: bool) ->
     xml
 }
 
-/// One `w:tbl` for the paragraphs of a single table. `widths` are the column fractions (equal when
-/// absent or not matching) of `text_width` twips.
+/// One `w:tbl` for the paragraphs of a single table. `look` is how it is sized (equal columns over
+/// the text width when absent); `text_width` is the text width in twips.
 pub fn write(
     xml: &mut String,
     paras: &[Paragraph],
-    widths: Option<&Vec<f32>>,
+    look: Option<&TableLook>,
     text_width: usize,
     links: &mut Vec<String>,
     lists: &mut Lists,
@@ -49,14 +49,13 @@ pub fn write(
         .collect();
     let rows = infos.iter().map(Cell::row_end).max().unwrap_or(0);
     let cols = infos.iter().map(Cell::col_end).max().unwrap_or(0);
-    let fractions = match widths {
-        Some(w) if w.len() == usize::from(cols) => w.clone(),
-        _ => vec![1.0 / f32::from(cols.max(1)); usize::from(cols)],
-    };
-    let widths: Vec<usize> = fractions
+    let look = TableLook::resolved(look, usize::from(rows), usize::from(cols));
+    let widths: Vec<usize> = look
+        .widths
         .iter()
         .map(|f| (f * text_width as f32).round() as usize)
         .collect();
+    let full = look.indent == 0.0 && (look.widths.iter().sum::<f32>() - 1.0).abs() < 0.001;
     let span_width = |from: u16, span: u8| -> usize {
         widths
             .iter()
@@ -64,7 +63,15 @@ pub fn write(
             .take(usize::from(span.max(1)))
             .sum()
     };
-    xml.push_str("<w:tbl><w:tblPr><w:tblW w:w=\"5000\" w:type=\"pct\"/>");
+    if full {
+        xml.push_str("<w:tbl><w:tblPr><w:tblW w:w=\"5000\" w:type=\"pct\"/>");
+    } else {
+        let total: usize = widths.iter().sum();
+        xml.push_str(&format!(
+            "<w:tbl><w:tblPr><w:tblW w:w=\"{total}\" w:type=\"dxa\"/><w:tblInd w:w=\"{}\" w:type=\"dxa\"/>",
+            (look.indent * text_width as f32).round() as usize
+        ));
+    }
     xml.push_str(BORDERS);
     xml.push_str("</w:tblPr><w:tblGrid>");
     for width in &widths {
@@ -73,6 +80,13 @@ pub fn write(
     xml.push_str("</w:tblGrid>");
     for r in 0..rows {
         xml.push_str("<w:tr>");
+        let least = look.rows.get(usize::from(r)).copied().unwrap_or(0.0);
+        if least > 0.0 {
+            xml.push_str(&format!(
+                "<w:trPr><w:trHeight w:val=\"{}\" w:hRule=\"atLeast\"/></w:trPr>",
+                (least * 15.0).round() as usize
+            ));
+        }
         let mut c = 0;
         while c < cols {
             if let Some(list) = cells.get(&(r, c)) {

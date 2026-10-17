@@ -39,9 +39,12 @@ pub struct File {
     /// First-page and even-page headers/footers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     band_variants: Option<VariantsDto>,
-    /// Column widths of tables: (table id, fractions of the text width).
+    /// Column widths of tables (older files): (table id, fractions of the text width).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     table_widths: Vec<(u32, Vec<f32>)>,
+    /// How tables are sized.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    table_looks: Vec<TableLookDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -62,6 +65,21 @@ struct PageDto {
 
 fn band_distance() -> f32 {
     wv_core::BAND_DISTANCE
+}
+
+/// Sizes of a table: column fractions, the indent (fraction) and least row heights (px).
+#[derive(Serialize, Deserialize)]
+struct TableLookDto {
+    table: u32,
+    widths: Vec<f32>,
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
+    indent: f32,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    rows: Vec<f32>,
+}
+
+fn is_zero_f32(v: &f32) -> bool {
+    *v == 0.0
 }
 
 /// Embedded picture: format name and base64 data.
@@ -221,10 +239,16 @@ impl File {
             header_runs: styled_runs(&doc.header),
             footer_runs: styled_runs(&doc.footer),
             band_variants: VariantsDto::of(&doc.variants),
-            table_widths: doc
-                .table_widths
+            table_widths: Vec::new(),
+            table_looks: doc
+                .table_looks
                 .iter()
-                .map(|(t, w)| (*t, w.clone()))
+                .map(|(table, look)| TableLookDto {
+                    table: *table,
+                    widths: look.widths.clone(),
+                    indent: look.indent,
+                    rows: look.rows.clone(),
+                })
                 .collect(),
             page: (doc.page != PageSpec::default()).then_some(PageDto {
                 width: doc.page.width,
@@ -330,7 +354,25 @@ impl File {
         }
         doc.header = band_of(self.header, self.header_runs, &self.header_align);
         doc.footer = band_of(self.footer, self.footer_runs, &self.footer_align);
-        doc.table_widths = self.table_widths.into_iter().collect();
+        for (table, widths) in self.table_widths {
+            doc.table_looks.insert(
+                table,
+                wv_core::TableLook {
+                    widths,
+                    ..Default::default()
+                },
+            );
+        }
+        for look in self.table_looks {
+            doc.table_looks.insert(
+                look.table,
+                wv_core::TableLook {
+                    widths: look.widths,
+                    indent: look.indent,
+                    rows: look.rows,
+                },
+            );
+        }
         doc.variants = self
             .band_variants
             .map(VariantsDto::variants)

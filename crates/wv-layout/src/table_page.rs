@@ -13,7 +13,7 @@ pub(crate) fn paginate_table(
 ) {
     let limit = setup.content_height();
     let content = setup.content_width();
-    let mut col_x = vec![0.0];
+    let mut col_x = vec![table.indent * content];
     for f in &table.fractions {
         col_x.push(col_x[col_x.len() - 1] + f * content);
     }
@@ -30,7 +30,11 @@ pub(crate) fn paginate_table(
     };
 
     // Row heights: single-row cells decide; a taller merged cell stretches its last row.
-    let mut heights = vec![MIN_ROW_TEXT + 2.0 * CELL_PADDING; table.rows];
+    let mut heights: Vec<f32> = (0..table.rows)
+        .map(|r| {
+            (MIN_ROW_TEXT + 2.0 * CELL_PADDING).max(table.row_min.get(r).copied().unwrap_or(0.0))
+        })
+        .collect();
     for cell in table.cells.iter().filter(|c| c.rowspan == 1) {
         heights[cell.row] = heights[cell.row].max(need(cell));
     }
@@ -63,6 +67,7 @@ pub(crate) fn paginate_table(
         let box_ix = *open_box.get_or_insert_with(|| {
             page.tables.push(TableBox {
                 table: table.table,
+                first_row: row,
                 cells: Vec::new(),
                 shades: Vec::new(),
                 col_x: col_x.clone(),

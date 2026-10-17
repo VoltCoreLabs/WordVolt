@@ -1,9 +1,7 @@
 use gpui_kit::*;
 
 use super::page_paint::PageView;
-
-/// Pointer distance (px) from a column border at which it can be grabbed.
-pub const GRAB: f32 = 4.0;
+use super::table_resize::{Grab, grab_at};
 
 /// Paints the tables on this page: cell backgrounds, then the borders. The pointer on a column
 /// border gets the resize cursor.
@@ -30,32 +28,33 @@ pub fn paint_tables(
                 rgb(shade.color),
             ));
         }
-        // Borders go around every cell, so merged cells show no line inside.
+        // Borders go around every cell, so merged cells show no line inside. They stay a pixel
+        // thick when zoomed out (a thinner line would vanish).
+        let line = (z).max(1.0);
         for c in &table.cells {
             let (x, y, w, h) = (left + c.x, top + c.y, c.width, c.height);
-            for (lx, ly, lw, lh) in [
-                (x, y - 0.5, w, 1.0),
-                (x, y + h - 0.5, w, 1.0),
-                (x - 0.5, y, 1.0, h),
-                (x + w - 0.5, y, 1.0, h),
-            ] {
+            let edges = [
+                (x, y - 0.5, w * z, line),
+                (x, y + h - 0.5, w * z, line),
+                (x - 0.5, y, line, h * z),
+                (x + w - 0.5, y, line, h * z),
+            ];
+            for (lx, ly, width, height) in edges {
                 window.paint_quad(fill(
-                    Bounds::new(at(lx, ly), size(px(lw * z), px(lh * z))),
+                    Bounds::new(at(lx, ly), size(px(width), px(height))),
                     v.table_color,
                 ));
             }
         }
-        for (i, x) in table.col_x.iter().enumerate() {
-            // Inner borders can be dragged.
-            let inner = i > 0 && i + 1 < table.col_x.len();
-            let (bx, top_y) = (at(left + x, top + first), at(left + x, top + last));
-            if inner
-                && (f32::from(mouse.x) - f32::from(bx.x)).abs() <= GRAB
-                && mouse.y >= bx.y
-                && mouse.y <= top_y.y
-            {
-                window.set_window_cursor_style(CursorStyle::ResizeLeftRight);
+        // A border under the pointer can be dragged.
+        let origin = (f32::from(at(0.0, 0.0).x), f32::from(at(0.0, 0.0).y));
+        let pointer = (f32::from(mouse.x), f32::from(mouse.y));
+        match grab_at(table, &v.layout.setup, origin, z, pointer) {
+            Some((Grab::Column(_), _)) => {
+                window.set_window_cursor_style(CursorStyle::ResizeLeftRight)
             }
+            Some((Grab::Row(_), _)) => window.set_window_cursor_style(CursorStyle::ResizeUpDown),
+            None => {}
         }
     }
 }

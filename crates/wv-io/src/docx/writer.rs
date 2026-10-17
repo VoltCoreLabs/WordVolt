@@ -32,7 +32,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         super::table_xml::write(
             &mut xml,
             &paras[i..end],
-            doc.table_widths.get(&table),
+            doc.table_looks.get(&table),
             text_width,
             &mut links,
             &mut lists,

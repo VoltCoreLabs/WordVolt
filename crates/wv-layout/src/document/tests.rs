@@ -261,7 +261,13 @@ fn column_widths_and_cell_shading_shape_the_table() {
         doc.paragraphs[i].style.cell = Some(wv_core::Cell::at(0, row, col));
     }
     doc.paragraphs[1].style.cell.as_mut().unwrap().shade = Some(0xFFEE99);
-    doc.table_widths.insert(0, vec![0.25, 0.75]);
+    doc.table_looks.insert(
+        0,
+        wv_core::TableLook {
+            widths: vec![0.25, 0.75],
+            ..Default::default()
+        },
+    );
     let layout = DocLayout::new(&doc, small(), &Fixed);
     let table = &layout.pages[0].tables[0];
     assert_eq!(table.table, 0);
@@ -357,4 +363,33 @@ fn selection_rects_per_page_add_up_to_the_whole_selection() {
         .sum();
     assert_eq!(all.len(), per_page);
     assert!(all.iter().any(|r| r.page == 1));
+}
+
+#[test]
+fn an_indented_table_with_a_tall_row() {
+    let mut doc = Document::from_text(
+        "a
+b",
+    );
+    for (i, col) in [0u16, 1].into_iter().enumerate() {
+        doc.paragraphs[i].style.cell = Some(wv_core::Cell::at(0, 0, col));
+    }
+    doc.table_looks.insert(
+        0,
+        wv_core::TableLook {
+            widths: vec![0.25, 0.25],
+            indent: 0.25,
+            rows: vec![50.0],
+        },
+    );
+    let layout = DocLayout::new(&doc, small(), &Fixed);
+    let table = &layout.pages[0].tables[0];
+    // 80 px text width: starts a quarter in, two columns of a quarter each (narrower table).
+    assert_eq!(table.col_x, vec![20.0, 40.0, 60.0]);
+    assert!(
+        (table.row_y[1] - table.row_y[0] - 50.0).abs() < 0.01,
+        "{:?}",
+        table.row_y
+    );
+    assert_eq!(table.first_row, 0);
 }

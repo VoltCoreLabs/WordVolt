@@ -8,28 +8,39 @@ impl Editor {
     /// New empty row above or below the caret's cell. Merged cells that cross the new row grow
     /// instead of getting a cell of their own.
     pub fn insert_row(&mut self, below: bool) {
-        self.rebuild_table(|paras, info| {
-            let at = if below {
-                info.row + info.rowspan
-            } else {
-                info.row
-            };
-            let mut covered: BTreeSet<u16> = BTreeSet::new();
-            for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                if c.row >= at {
-                    c.row += 1;
-                } else if c.row_end() > at {
-                    c.rowspan = c.rowspan.saturating_add(1);
-                    covered.extend(c.col..c.col_end());
+        self.rebuild_table_with(
+            |paras, info| {
+                let at = if below {
+                    info.row + info.rowspan
+                } else {
+                    info.row
+                };
+                let mut covered: BTreeSet<u16> = BTreeSet::new();
+                for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
+                    if c.row >= at {
+                        c.row += 1;
+                    } else if c.row_end() > at {
+                        c.rowspan = c.rowspan.saturating_add(1);
+                        covered.extend(c.col..c.col_end());
+                    }
                 }
-            }
-            let mut first_new = None;
-            for col in (0..info.cols).filter(|c| !covered.contains(c)) {
-                first_new.get_or_insert(col);
-                paras.push(cell_paragraph(Cell::at(info.table, at, col)));
-            }
-            (at, first_new.unwrap_or(info.col))
-        });
+                let mut first_new = None;
+                for col in (0..info.cols).filter(|c| !covered.contains(c)) {
+                    first_new.get_or_insert(col);
+                    paras.push(cell_paragraph(Cell::at(info.table, at, col)));
+                }
+                (at, first_new.unwrap_or(info.col))
+            },
+            |info, mut look| {
+                let at = usize::from(if below {
+                    info.row + info.rowspan
+                } else {
+                    info.row
+                });
+                look.rows.insert(at.min(look.rows.len()), 0.0);
+                Some(look)
+            },
+        );
     }
 
     /// New empty column left or right of the caret's cell (merged cells that cross it grow).
@@ -57,17 +68,17 @@ impl Editor {
                 }
                 (first_new.unwrap_or(info.row), at)
             },
-            |info, mut widths| {
-                // The new column takes an equal share; the others give way proportionally.
+            |info, mut look| {
+                // The new column is as wide as the others are on average; the table shrinks the
+                // columns together if it no longer fits.
                 let at = usize::from(if right {
                     info.col + info.colspan
                 } else {
                     info.col
                 });
-                let share = 1.0 / (widths.len() + 1) as f32;
-                widths.iter_mut().for_each(|w| *w *= 1.0 - share);
-                widths.insert(at.min(widths.len()), share);
-                Some(widths)
+                let average = look.widths.iter().sum::<f32>() / look.widths.len().max(1) as f32;
+                look.widths.insert(at.min(look.widths.len()), average);
+                Some(look)
             },
         );
     }
@@ -75,30 +86,39 @@ impl Editor {
     /// Removes the caret's row (the whole table if it was the last row). Merged cells that cross
     /// it get shorter; one that starts in it moves to the next row.
     pub fn delete_row(&mut self) {
-        self.rebuild_table(|paras, info| {
-            let row = info.row;
-            paras.retain_mut(|p| {
-                let Some(c) = p.style.cell.as_mut() else {
-                    return true;
-                };
-                if c.row == row {
-                    if c.rowspan > 1 {
-                        c.rowspan -= 1;
-                        true
+        self.rebuild_table_with(
+            |paras, info| {
+                let row = info.row;
+                paras.retain_mut(|p| {
+                    let Some(c) = p.style.cell.as_mut() else {
+                        return true;
+                    };
+                    if c.row == row {
+                        if c.rowspan > 1 {
+                            c.rowspan -= 1;
+                            true
+                        } else {
+                            false
+                        }
                     } else {
-                        false
+                        if c.row > row {
+                            c.row -= 1;
+                        } else if c.row_end() > row {
+                            c.rowspan -= 1;
+                        }
+                        true
                     }
-                } else {
-                    if c.row > row {
-                        c.row -= 1;
-                    } else if c.row_end() > row {
-                        c.rowspan -= 1;
-                    }
-                    true
+                });
+                (row.min(info.rows.saturating_sub(2)), info.col)
+            },
+            |info, mut look| {
+                let at = usize::from(info.row).min(look.rows.len().saturating_sub(1));
+                if !look.rows.is_empty() {
+                    look.rows.remove(at);
                 }
-            });
-            (row.min(info.rows.saturating_sub(2)), info.col)
-        });
+                Some(look)
+            },
+        );
     }
 
     /// Removes the caret's column (the whole table if it was the last column).
@@ -128,9 +148,12 @@ impl Editor {
                 });
                 (info.row, col.min(info.cols.saturating_sub(2)))
             },
-            |info, mut widths| {
-                widths.remove(usize::from(info.col).min(widths.len().saturating_sub(1)));
-                Some(super::table_widths::normalize(widths))
+            |info, mut look| {
+                let at = usize::from(info.col).min(look.widths.len().saturating_sub(1));
+                if !look.widths.is_empty() {
+                    look.widths.remove(at);
+                }
+                Some(look)
             },
         );
     }

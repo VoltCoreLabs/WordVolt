@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use wv_core::{Cell, Paragraph};
+use wv_core::{Cell, Paragraph, TableLook};
 
 /// Orders the paragraphs of one parsed table by cell and fills the positions the file left out
 /// (the ones a merged cell covers need no cell), so that every row has every column.
@@ -26,16 +26,40 @@ pub fn normalize(mut paras: Vec<Paragraph>, table: u32) -> Vec<Paragraph> {
     paras
 }
 
-/// Column widths as fractions of the text width from the `w:tblGrid` widths (twips); `None` when
-/// the grid does not match the table or the columns are equal anyway.
-pub fn fractions(grid: &[u32], cols: usize) -> Option<Vec<f32>> {
-    let sum: u32 = grid.iter().sum();
-    if grid.len() != cols || cols == 0 || sum == 0 {
+/// What the file says about the size of one table (twips).
+#[derive(Default)]
+pub struct RawTable {
+    pub grid: Vec<u32>,
+    pub indent: u32,
+    /// `w:trHeight` of every row (0 = none).
+    pub rows: Vec<u32>,
+}
+
+/// The look of a table from what the file says; `None` when it is the default one (equal
+/// columns over the text width, rows as tall as their text).
+pub fn look_of(raw: &RawTable, text_width: f32, rows: usize, cols: usize) -> Option<TableLook> {
+    if text_width <= 0.0 || cols == 0 {
         return None;
     }
-    let fractions: Vec<f32> = grid.iter().map(|w| *w as f32 / sum as f32).collect();
+    let widths: Vec<f32> = if raw.grid.len() == cols && raw.grid.iter().sum::<u32>() > 0 {
+        raw.grid.iter().map(|w| *w as f32 / text_width).collect()
+    } else {
+        vec![1.0 / cols as f32; cols]
+    };
+    let heights: Vec<f32> = (0..rows)
+        .map(|r| raw.rows.get(r).copied().unwrap_or(0) as f32 / 15.0)
+        .collect();
+    let look = TableLook {
+        widths,
+        indent: raw.indent as f32 / text_width,
+        rows: heights,
+    }
+    .normalized();
     let equal = 1.0 / cols as f32;
-    (fractions.iter().any(|f| (f - equal).abs() > 0.01)).then_some(fractions)
+    let default = look.indent < 0.001
+        && look.rows.iter().all(|h| *h == 0.0)
+        && look.widths.iter().all(|w| (w - equal).abs() < 0.01);
+    (!default).then_some(look)
 }
 
 /// `w:fill` of a `w:shd` ("auto" is no colour).

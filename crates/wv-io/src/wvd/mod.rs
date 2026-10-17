@@ -141,16 +141,21 @@ mod tests {
     }
 
     #[test]
-    fn table_widths_and_shading_round_trip() {
+    fn table_look_and_shading_round_trip() {
         let mut e = wv_core::Editor::new(Document::from_text("x"));
         e.insert_table(2, 2);
         let table = e.table_info().unwrap().table;
-        e.set_table_widths(table, vec![0.3, 0.7]);
+        let look = wv_core::TableLook {
+            widths: vec![0.3, 0.5],
+            indent: 0.1,
+            rows: vec![0.0, 40.0],
+        };
+        e.set_table_look(table, look.clone());
         e.set_cell_shade(Some(0xFFEE99));
         let doc = e.doc.clone();
         let back = decode(&encode(&doc).unwrap()).unwrap();
         assert_eq!(back, doc);
-        assert_eq!(back.table_widths[&table], vec![0.3, 0.7]);
+        assert_eq!(back.table_looks[&table], look);
     }
 
     #[test]

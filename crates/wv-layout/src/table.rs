@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use wv_core::Document;
+use wv_core::{Document, TableLook};
 
 /// Space between a cell's border and its text (px).
 pub const CELL_PADDING: f32 = 6.0;
@@ -25,8 +25,11 @@ pub struct CellBlock {
 /// A table of the document: its cells (merged ones once, at their top-left position).
 pub struct TableBlock {
     pub table: u32,
-    /// Column widths as fractions of the text width.
+    /// Column widths as fractions of the text width, and the space left of the table.
     pub fractions: Vec<f32>,
+    pub indent: f32,
+    /// Least height of every row (px).
+    pub row_min: Vec<f32>,
     pub rows: usize,
     pub cells: Vec<CellBlock>,
 }
@@ -37,26 +40,24 @@ pub enum Block {
     Table(TableBlock),
 }
 
-/// Number of columns of every table (by table id).
-pub fn column_counts(doc: &Document) -> HashMap<u32, usize> {
-    let mut counts: HashMap<u32, usize> = HashMap::new();
+/// (rows, columns) of every table (by table id).
+fn dims(doc: &Document) -> HashMap<u32, (usize, usize)> {
+    let mut dims: HashMap<u32, (usize, usize)> = HashMap::new();
     for cell in doc.paragraphs.iter().filter_map(|p| p.style.cell) {
-        let entry = counts.entry(cell.table).or_default();
-        *entry = (*entry).max(usize::from(cell.col_end()));
+        let entry = dims.entry(cell.table).or_default();
+        entry.0 = entry.0.max(usize::from(cell.row_end()));
+        entry.1 = entry.1.max(usize::from(cell.col_end()));
     }
-    counts
+    dims
 }
 
 /// Column widths of every table (by table id) as fractions of the text width.
 pub fn column_fractions(doc: &Document) -> HashMap<u32, Vec<f32>> {
-    column_counts(doc)
+    dims(doc)
         .into_iter()
-        .map(|(table, cols)| {
-            let fractions = match doc.table_widths.get(&table) {
-                Some(w) if w.len() == cols => w.clone(),
-                _ => vec![1.0 / cols.max(1) as f32; cols],
-            };
-            (table, fractions)
+        .map(|(table, (rows, cols))| {
+            let look = TableLook::resolved(doc.table_looks.get(&table), rows, cols);
+            (table, look.widths)
         })
         .collect()
 }
@@ -101,13 +102,12 @@ pub fn blocks(doc: &Document) -> Vec<Block> {
         }
         let rows = found.values().map(|c| c.row + c.rowspan).max().unwrap_or(0);
         let cols = found.values().map(|c| c.col + c.colspan).max().unwrap_or(0);
-        let fractions = match doc.table_widths.get(&first.table) {
-            Some(w) if w.len() == cols => w.clone(),
-            _ => vec![1.0 / cols.max(1) as f32; cols],
-        };
+        let look = TableLook::resolved(doc.table_looks.get(&first.table), rows, cols);
         out.push(Block::Table(TableBlock {
             table: first.table,
-            fractions,
+            fractions: look.widths,
+            indent: look.indent,
+            row_min: look.rows,
             rows,
             cells: found.into_values().collect(),
         }));
@@ -141,6 +141,8 @@ pub struct Shade {
 pub struct TableBox {
     /// Table id (`Cell::table`).
     pub table: u32,
+    /// Index of the table row the first row of this part is.
+    pub first_row: usize,
     /// Every cell of this part of the table (merged ones once); borders go around them.
     pub cells: Vec<CellRect>,
     /// Filled cells of this part of the table.
