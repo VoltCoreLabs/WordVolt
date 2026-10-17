@@ -2,11 +2,11 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as B64;
 use serde::{Deserialize, Serialize};
 use wv_core::{
-    Align, Band, Cell, CharStyle, Document, ImageData, ImageFormat, ImageRef, ListKind, NamedStyle,
+    Align, Cell, CharStyle, Document, ImageData, ImageFormat, ImageRef, ListKind, NamedStyle,
     PageSpec, ParaStyle, Paragraph, Run, Script,
 };
 
-use super::variants::{StyleDto, VariantsDto};
+use super::variants::{VariantsDto, band_of, styled_runs};
 use crate::IoError;
 
 const FORMAT: &str = "wvd";
@@ -26,10 +26,11 @@ pub struct File {
     header_align: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     footer_align: String,
-    #[serde(default, skip_serializing_if = "StyleDto::is_default")]
-    header_style: StyleDto,
-    #[serde(default, skip_serializing_if = "StyleDto::is_default")]
-    footer_style: StyleDto,
+    /// Formatted runs of the header / footer (only when it has formatting).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    header_runs: Vec<RunDto>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    footer_runs: Vec<RunDto>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     images: Vec<ImageDto>,
     /// Page size and margins in px; absent = A4 with 2.54 cm margins.
@@ -106,7 +107,7 @@ struct Para {
 }
 
 #[derive(Serialize, Deserialize)]
-struct RunDto {
+pub(super) struct RunDto {
     text: String,
     #[serde(default, skip_serializing_if = "is_false")]
     bold: bool,
@@ -185,38 +186,19 @@ impl File {
                 list: list_name(p.style.list).to_string(),
                 indent: p.style.indent,
                 line_spacing: p.style.line_spacing,
-                runs: p
-                    .runs
-                    .iter()
-                    .map(|r| RunDto {
-                        text: r.text.clone(),
-                        bold: r.style.bold,
-                        italic: r.style.italic,
-                        underline: r.style.underline,
-                        strike: r.style.strike,
-                        highlight: r.style.highlight,
-                        script: script_name(r.style.script).to_string(),
-                        caps: r.style.caps,
-                        mono: r.style.mono,
-                        spoiler: r.style.spoiler,
-                        link: r.style.link.clone(),
-                        size_pt: r.style.size_pt,
-                        color: r.style.color,
-                        font: r.style.font.clone(),
-                    })
-                    .collect(),
+                runs: p.runs.iter().map(run_dto).collect(),
             })
             .collect();
         Self {
             format: FORMAT.into(),
             version: VERSION,
             paragraphs,
-            header: doc.header.text.clone(),
-            footer: doc.footer.text.clone(),
+            header: doc.header.text(),
+            footer: doc.footer.text(),
             header_align: band_align_name(doc.header.align),
             footer_align: band_align_name(doc.footer.align),
-            header_style: StyleDto::of(&doc.header.style),
-            footer_style: StyleDto::of(&doc.footer.style),
+            header_runs: styled_runs(&doc.header),
+            footer_runs: styled_runs(&doc.footer),
             band_variants: VariantsDto::of(&doc.variants),
             page: (doc.page != PageSpec::default()).then_some(PageDto {
                 width: doc.page.width,
@@ -276,28 +258,7 @@ impl File {
                     indent: p.indent.min(8),
                     line_spacing: p.line_spacing,
                 },
-                runs: p
-                    .runs
-                    .into_iter()
-                    .map(|r| {
-                        let style = CharStyle {
-                            bold: r.bold,
-                            italic: r.italic,
-                            underline: r.underline,
-                            strike: r.strike,
-                            highlight: r.highlight,
-                            script: script_from(&r.script),
-                            caps: r.caps,
-                            mono: r.mono,
-                            spoiler: r.spoiler,
-                            link: r.link,
-                            size_pt: r.size_pt,
-                            color: r.color,
-                            font: r.font,
-                        };
-                        Run::new(r.text, style)
-                    })
-                    .collect(),
+                runs: p.runs.into_iter().map(run_of).collect(),
             })
             .collect();
         let mut doc = if paragraphs.is_empty() {
@@ -340,12 +301,8 @@ impl File {
                 footer_distance: p.footer_distance.max(0.0),
             };
         }
-        doc.header = Band::new(self.header)
-            .aligned(band_align_from(&self.header_align))
-            .styled(self.header_style.style());
-        doc.footer = Band::new(self.footer)
-            .aligned(band_align_from(&self.footer_align))
-            .styled(self.footer_style.style());
+        doc.header = band_of(self.header, self.header_runs, &self.header_align);
+        doc.footer = band_of(self.footer, self.footer_runs, &self.footer_align);
         doc.variants = self
             .band_variants
             .map(VariantsDto::variants)
@@ -403,4 +360,42 @@ fn list_from(name: &str) -> Option<ListKind> {
         "number" => Some(ListKind::Number),
         _ => None,
     }
+}
+
+pub(super) fn run_dto(r: &Run) -> RunDto {
+    RunDto {
+        text: r.text.clone(),
+        bold: r.style.bold,
+        italic: r.style.italic,
+        underline: r.style.underline,
+        strike: r.style.strike,
+        highlight: r.style.highlight,
+        script: script_name(r.style.script).to_string(),
+        caps: r.style.caps,
+        mono: r.style.mono,
+        spoiler: r.style.spoiler,
+        link: r.style.link.clone(),
+        size_pt: r.style.size_pt,
+        color: r.style.color,
+        font: r.style.font.clone(),
+    }
+}
+
+pub(super) fn run_of(r: RunDto) -> Run {
+    let style = CharStyle {
+        bold: r.bold,
+        italic: r.italic,
+        underline: r.underline,
+        strike: r.strike,
+        highlight: r.highlight,
+        script: script_from(&r.script),
+        caps: r.caps,
+        mono: r.mono,
+        spoiler: r.spoiler,
+        link: r.link,
+        size_pt: r.size_pt,
+        color: r.color,
+        font: r.font,
+    };
+    Run::new(r.text, style)
 }

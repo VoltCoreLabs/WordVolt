@@ -1,56 +1,36 @@
 use serde::{Deserialize, Serialize};
-use wv_core::{Band, BandStyle, BandVariants};
+use wv_core::{Band, BandVariants, CharStyle};
 
-use super::schema::{band_align_from, band_align_name};
+use super::schema::{RunDto, band_align_from, band_align_name, run_dto, run_of};
 
-/// Formatting of a header or footer.
-#[derive(Serialize, Deserialize, Default, PartialEq)]
-pub struct StyleDto {
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    bold: bool,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    italic: bool,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    underline: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    size_pt: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    color: Option<u32>,
-}
-
-impl StyleDto {
-    pub fn of(style: &BandStyle) -> Self {
-        Self {
-            bold: style.bold,
-            italic: style.italic,
-            underline: style.underline,
-            size_pt: style.size_pt,
-            color: style.color,
-        }
-    }
-
-    pub fn style(&self) -> BandStyle {
-        BandStyle {
-            bold: self.bold,
-            italic: self.italic,
-            underline: self.underline,
-            size_pt: self.size_pt.map(|p| p.clamp(6, 72)),
-            color: self.color,
-        }
-    }
-
-    pub fn is_default(&self) -> bool {
-        *self == Self::default()
+/// The runs of a band when it has any formatting; empty for plain text (the text field is enough).
+pub fn styled_runs(band: &Band) -> Vec<RunDto> {
+    let plain = band.runs().iter().all(|r| r.style == CharStyle::default());
+    if plain {
+        Vec::new()
+    } else {
+        band.runs().iter().map(run_dto).collect()
     }
 }
 
-/// One header or footer: text and alignment ("left" / "right"; empty = centred).
+/// A band from its stored text, formatted runs (preferred when present) and alignment name.
+pub fn band_of(text: String, runs: Vec<RunDto>, align: &str) -> Band {
+    let band = if runs.is_empty() {
+        Band::new(text)
+    } else {
+        Band::from_runs(runs.into_iter().map(run_of).collect())
+    };
+    band.aligned(band_align_from(align))
+}
+
+/// One header or footer: text, formatted runs (only when formatted) and alignment ("left" /
+/// "right"; empty = centred).
 #[derive(Serialize, Deserialize, Default)]
 struct BandDto {
-    #[serde(default, skip_serializing_if = "StyleDto::is_default")]
-    style: StyleDto,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     text: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    runs: Vec<RunDto>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     align: String,
 }
@@ -58,16 +38,14 @@ struct BandDto {
 impl BandDto {
     fn of(band: &Band) -> Self {
         Self {
-            text: band.text.clone(),
+            text: band.text(),
+            runs: styled_runs(band),
             align: band_align_name(band.align),
-            style: StyleDto::of(&band.style),
         }
     }
 
     fn band(self) -> Band {
-        Band::new(self.text)
-            .aligned(band_align_from(&self.align))
-            .styled(self.style.style())
+        band_of(self.text, self.runs, &self.align)
     }
 }
 

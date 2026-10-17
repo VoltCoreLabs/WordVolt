@@ -1,5 +1,6 @@
 //! Text layout and pagination. See README.md.
 
+mod band_line;
 mod document;
 mod leader;
 mod line;
@@ -9,6 +10,7 @@ mod page;
 mod paragraph;
 mod table;
 
+pub use band_line::{BandLine, BandPart, band_line};
 pub use document::{CaretRect, DocLayout, SelectionRect};
 pub use leader::leader;
 pub use line::{Fragment, Line};

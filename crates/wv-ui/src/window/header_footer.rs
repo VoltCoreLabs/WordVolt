@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Align, Band, BandStyle, BandVariants};
+use wv_core::{Band, BandVariants, CharStyle};
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button, pop_in};
@@ -22,10 +22,8 @@ pub struct HeaderFooterEditor {
     pub(super) flags: (bool, bool),
     /// Which of `sets` the fields show.
     pub(super) which: usize,
-    /// Alignment chosen in the open popover.
-    pub(super) aligns: (Align, Align),
-    /// Formatting chosen in the open popover (header, footer).
-    pub(super) styles: (BandStyle, BandStyle),
+    /// The (header, footer) of the shown set being edited.
+    pub(super) work: (Band, Band),
     pub(super) header: LineEdit,
     pub(super) footer: LineEdit,
     pub(super) header_focus: FocusHandle,
@@ -45,8 +43,7 @@ impl HeaderFooterEditor {
             sets: Default::default(),
             flags: (false, false),
             which: 0,
-            aligns: (Align::Center, Align::Center),
-            styles: Default::default(),
+            work: Default::default(),
             header: LineEdit::default(),
             footer: LineEdit::default(),
             header_focus: cx.focus_handle(),
@@ -61,41 +58,67 @@ impl HeaderFooterEditor {
         }
     }
 
-    /// Puts the text of the fields into the working copy.
+    /// Puts the working copy back into its set.
     fn store_fields(&mut self) {
-        self.sets[self.which] = (
-            Band::new(self.header.text())
-                .aligned(self.aligns.0)
-                .styled(self.styles.0),
-            Band::new(self.footer.text())
-                .aligned(self.aligns.1)
-                .styled(self.styles.1),
-        );
+        self.sets[self.which] = self.work.clone();
     }
 
     /// Shows set `which` in the fields.
     fn load_fields(&mut self) {
-        let (header, footer) = self.sets[self.which].clone();
-        self.header.set(&header.text, false);
-        self.footer.set(&footer.text, false);
-        self.aligns = (header.align, footer.align);
-        self.styles = (header.style, footer.style);
+        self.work = self.sets[self.which].clone();
+        self.header.set(&self.work.0.text(), false);
+        self.footer.set(&self.work.1.text(), false);
     }
 
-    /// Changes the formatting of the header (`in_header`) or the footer.
+    /// The band being edited, its field and the range formatting applies to: the selection, or
+    /// the whole text when nothing is selected.
+    fn target(&mut self, in_header: bool) -> (&mut Band, usize, usize) {
+        let (band, edit) = if in_header {
+            (&mut self.work.0, &self.header)
+        } else {
+            (&mut self.work.1, &self.footer)
+        };
+        let (start, end) = edit
+            .selection()
+            .map_or((0, band.para.len()), |r| (r.start, r.end));
+        (band, start, end)
+    }
+
+    /// Whether the formatting applies to everything that would change (the toggle's state).
+    pub(super) fn all_chars(&self, in_header: bool, pred: impl Fn(&CharStyle) -> bool) -> bool {
+        let (band, edit) = if in_header {
+            (&self.work.0, &self.header)
+        } else {
+            (&self.work.1, &self.footer)
+        };
+        let (start, end) = edit
+            .selection()
+            .map_or((0, band.para.len()), |r| (r.start, r.end));
+        band.all_chars(start, end, pred)
+    }
+
+    /// Changes the formatting of the selection (or of the whole text).
     pub(super) fn restyle(
         &mut self,
         in_header: bool,
-        f: impl Fn(BandStyle) -> BandStyle,
+        f: impl Fn(&mut CharStyle),
         cx: &mut Context<Self>,
     ) {
-        let slot = if in_header {
-            &mut self.styles.0
-        } else {
-            &mut self.styles.1
-        };
-        *slot = f(*slot);
+        let (band, start, end) = self.target(in_header);
+        band.restyle(start, end, f);
         cx.notify();
+    }
+
+    /// Switches a character attribute on, or off when it is already on everywhere.
+    pub(super) fn toggle_style(
+        &mut self,
+        in_header: bool,
+        get: fn(&CharStyle) -> bool,
+        set: fn(&mut CharStyle, bool),
+        cx: &mut Context<Self>,
+    ) {
+        let on = self.all_chars(in_header, get);
+        self.restyle(in_header, move |s| set(s, !on), cx);
     }
 
     pub(super) fn select(&mut self, which: usize, window: &mut Window, cx: &mut Context<Self>) {
@@ -168,10 +191,10 @@ impl HeaderFooterEditor {
     }
 
     pub(super) fn on_key(&mut self, in_header: bool, ev: &KeyDownEvent, cx: &mut Context<Self>) {
-        let field = if in_header {
-            &mut self.header
+        let (field, band) = if in_header {
+            (&mut self.header, &mut self.work.0)
         } else {
-            &mut self.footer
+            (&mut self.footer, &mut self.work.1)
         };
         match field.key(ev, cx) {
             Outcome::Submit => self.apply(cx),
@@ -179,7 +202,11 @@ impl HeaderFooterEditor {
                 self.open = false;
                 cx.notify();
             }
-            _ => cx.notify(),
+            Outcome::Changed => {
+                band.set_text(field.text());
+                cx.notify();
+            }
+            Outcome::Nothing => cx.notify(),
         }
         cx.stop_propagation();
     }

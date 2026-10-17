@@ -5,7 +5,7 @@ mod page;
 mod paragraph;
 mod run;
 
-pub use band::{BAND_SIZE_PT, Band, BandStyle, BandVariants};
+pub use band::{BAND_SIZE_PT, Band, BandVariants};
 pub use doc::{DocSettings, Document};
 pub use image::{ImageData, ImageFormat};
 pub use page::{BAND_DISTANCE, Margins, PageSpec};

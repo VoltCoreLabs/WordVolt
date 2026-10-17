@@ -614,14 +614,14 @@ fn tables_insert_navigate_grow_shrink_and_protect_cell_borders() {
 fn page_number_toggles_in_footer() {
     let mut e = Editor::default();
     e.toggle_page_number();
-    assert_eq!(e.doc.footer.text, "{page}");
+    assert_eq!(e.doc.footer.text(), "{page}");
     e.set_header_footer(
         crate::Band::new("Head").aligned(crate::Align::Left),
         crate::Band::new("Стр. {page}"),
     );
     e.toggle_page_number();
-    assert_eq!(e.doc.footer.text, "Стр.");
-    assert_eq!(e.doc.header.text, "Head");
+    assert_eq!(e.doc.footer.text(), "Стр.");
+    assert_eq!(e.doc.header.text(), "Head");
     assert_eq!(e.doc.header.align, crate::Align::Left);
     assert!(e.is_modified());
 }
@@ -665,16 +665,16 @@ fn header_footer_and_page_setup_are_undoable() {
     e.insert_text("x");
     e.set_header_footer(Band::new("Head"), Band::new("{page}"));
     e.set_page(PageSpec::a4().with_paper(2).with_margins(Margins::Wide));
-    assert_eq!(e.doc.header.text, "Head");
+    assert_eq!(e.doc.header.text(), "Head");
     assert!(e.undo());
     assert_eq!(e.doc.page, PageSpec::a4());
-    assert_eq!(e.doc.header.text, "Head");
+    assert_eq!(e.doc.header.text(), "Head");
     assert!(e.undo());
     assert!(e.doc.header.is_empty() && e.doc.footer.is_empty());
     assert_eq!(e.doc.text(), "x");
     assert!(e.redo() && e.redo());
     assert_eq!(e.doc.page.width, 816.0);
-    assert_eq!(e.doc.footer.text, "{page}");
+    assert_eq!(e.doc.footer.text(), "{page}");
     // No change = no history entry.
     let depth = e.can_undo();
     e.set_page(e.doc.page);
@@ -775,8 +775,8 @@ fn band_variants_are_one_undo_step() {
         crate::Band::new("{page}"),
         variants,
     );
-    assert_eq!(e.doc.bands_for(0).0.text, "Title page");
-    assert_eq!(e.doc.bands_for(1).0.text, "Main");
+    assert_eq!(e.doc.bands_for(0).0.text(), "Title page");
+    assert_eq!(e.doc.bands_for(1).0.text(), "Main");
     assert!(e.undo());
     assert!(e.doc.header.is_empty() && !e.doc.variants.different_first);
 }

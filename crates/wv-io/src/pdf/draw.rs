@@ -106,22 +106,29 @@ fn draw_bands(
 ) {
     let setup = &layout.setup;
     for (band, is_header) in [(bands.0, true), (bands.1, false)] {
-        let text = band.render(page + 1, pages);
-        let style = band.style.char_style();
-        let (ascent, descent) = (c.fonts.ascent(&style), c.fonts.descent(&style));
+        let Some(line) = wv_layout::band_line(band, page + 1, pages, c.fonts) else {
+            continue;
+        };
         let top = if is_header {
             setup.header_distance
         } else {
-            setup.height - setup.footer_distance - (ascent + descent)
+            setup.height - setup.footer_distance - line.height()
         };
-        let width = c.fonts.width(&text, &style);
         let x = match band.align {
-            Align::Right => setup.width - setup.margin_right - width,
-            Align::Center => (setup.width - width) / 2.0,
+            Align::Right => setup.width - setup.margin_right - line.width,
+            Align::Center => (setup.width - line.width) / 2.0,
             _ => setup.margin_left,
         };
-        let rgb = band.style.color.unwrap_or(BAND);
-        c.text(&text, &style, x.max(0.0), top + ascent, rgb);
+        for part in &line.parts {
+            let rgb = part.style.color.unwrap_or(BAND);
+            c.text(
+                &part.text,
+                &part.style,
+                x.max(0.0) + part.x,
+                top + line.ascent,
+                rgb,
+            );
+        }
     }
 }
 

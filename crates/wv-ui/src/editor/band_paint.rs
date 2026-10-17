@@ -18,32 +18,31 @@ pub fn paint_bands(
     let z = v.zoom;
     let (header, footer) = v.bands.2.pick(v.page, &v.bands.0, &v.bands.1);
     for (band, is_header) in [(header, true), (footer, false)] {
-        let text = band.render(v.page + 1, pages);
-        if text.is_empty() {
+        let Some(line) = wv_layout::band_line(band, v.page + 1, pages, m) else {
             continue;
-        }
-        let style = band.style.char_style();
-        let height = m.ascent(&style) + m.descent(&style);
+        };
         let top = if is_header {
             setup.header_distance
         } else {
-            setup.height - setup.footer_distance - height
+            setup.height - setup.footer_distance - line.height()
         };
-        let width = m.width(&text, &style);
         let x = match band.align {
-            Align::Right => setup.width - setup.margin_right - width,
-            Align::Center => (setup.width - width) / 2.0,
+            Align::Right => setup.width - setup.margin_right - line.width,
+            Align::Center => (setup.width - line.width) / 2.0,
             _ => setup.margin_left,
         };
-        let color = band.style.color.map_or(v.band_color, rgb);
-        let shaped = m.shape_zoomed(&text, &style, color.into(), z);
-        let _ = shaped.paint(
-            at(x.max(0.0), top),
-            px(height * z),
-            TextAlign::Left,
-            None,
-            window,
-            cx,
-        );
+        for part in &line.parts {
+            let color = part.style.color.map_or(v.band_color, rgb);
+            let shaped = m.shape_zoomed(&part.text, &part.style, color.into(), z);
+            let height = m.ascent(&part.style) + m.descent(&part.style);
+            let _ = shaped.paint(
+                at(x.max(0.0) + part.x, top + line.ascent - part.ascent),
+                px(height * z),
+                TextAlign::Left,
+                None,
+                window,
+                cx,
+            );
+        }
     }
 }
