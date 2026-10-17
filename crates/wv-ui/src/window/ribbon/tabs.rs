@@ -9,6 +9,8 @@ use crate::window::state::{MainWindow, Tab};
 /// Tabs on the left; collapse-ribbon and side-panel toggles on the right.
 pub fn tab_bar(this: &MainWindow, cx: &mut Context<MainWindow>) -> Div {
     let tabs = pill_tabs(
+        &this.tab_pills,
+        Tab::ALL.iter().position(|t| *t == this.tab).unwrap_or(0),
         Tab::ALL.map(|t| {
             tab(t.label(this.lang), this.tab == t, cx).on_click(cx.listener(
                 move |this, _, _, cx| {

@@ -86,6 +86,7 @@ pub struct MainWindow {
     pub applied_title: String,
     pub tab: Tab,
     pub ribbon_open: bool,
+    pub tab_pills: crate::ui_kit::PillState,
     pub panel_open: bool,
 }
 
@@ -343,6 +344,7 @@ impl MainWindow {
             applied_title: String::new(),
             tab: Tab::Home,
             ribbon_open: true,
+            tab_pills: crate::ui_kit::PillState::new(Tab::ALL.len()),
             panel_open: false,
         }
     }
