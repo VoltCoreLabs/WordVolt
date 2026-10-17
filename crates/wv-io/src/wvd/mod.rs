@@ -102,4 +102,12 @@ mod tests {
             .with_margins(wv_core::Margins::Narrow);
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }
+
+    #[test]
+    fn gutter_and_band_distances_round_trip() {
+        let mut doc = Document::from_text("x");
+        doc.page =
+            wv_core::PageSpec::custom(600.0, 900.0, [90.0, 60.0, 75.0, 45.0], [30.0, 20.0, 25.0]);
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
 }

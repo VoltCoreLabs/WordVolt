@@ -8,7 +8,8 @@ pub mod search;
 pub mod style;
 
 pub use document::{
-    Band, DocSettings, Document, ImageData, ImageFormat, Margins, PageSpec, Paragraph, Run,
+    BAND_DISTANCE, Band, DocSettings, Document, ImageData, ImageFormat, Margins, PageSpec,
+    Paragraph, Run,
 };
 pub use editor::MAX_IMAGE_WIDTH;
 pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};

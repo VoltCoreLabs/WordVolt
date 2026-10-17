@@ -42,7 +42,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     let twips = |px: f32| (px * 15.0).round() as i64;
     let page = doc.page;
     xml.push_str(&format!(
-        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
+        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/></w:sectPr></w:body></w:document>",
         twips(page.width),
         twips(page.height),
         if page.is_landscape() { " w:orient=\"landscape\"" } else { "" },
@@ -50,6 +50,9 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         twips(page.margin_right),
         twips(page.margin_bottom),
         twips(page.margin_left),
+        twips(page.header_distance),
+        twips(page.footer_distance),
+        twips(page.gutter),
     ));
 
     (xml, links, lists.number_lists)

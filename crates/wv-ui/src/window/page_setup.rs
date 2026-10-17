@@ -14,14 +14,18 @@ pub enum PageSetupEvent {
 const PX_PER_CM: f32 = 96.0 / 2.54;
 const FIELD_WIDTH: f32 = 110.0;
 
-/// Fields in tab order: width, height, top, bottom, left, right (cm).
-const LABELS: [Key; 6] = [
+/// Fields in tab order: width, height, top, bottom, left, right, gutter, header and footer
+/// distance (cm).
+const LABELS: [Key; 9] = [
     Key::PageWidth,
     Key::PageHeight,
     Key::MarginTop,
     Key::MarginBottom,
     Key::MarginLeft,
     Key::MarginRight,
+    Key::Gutter,
+    Key::HeaderDistance,
+    Key::FooterDistance,
 ];
 
 fn to_cm(px: f32) -> String {
@@ -41,8 +45,8 @@ pub struct PageSetupEditor {
     panel_bounds: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
     epoch: u64,
     current: PageSpec,
-    edits: [LineEdit; 6],
-    focus: [FocusHandle; 6],
+    edits: [LineEdit; 9],
+    focus: [FocusHandle; 9],
 }
 
 impl EventEmitter<PageSetupEvent> for PageSetupEditor {}
@@ -79,6 +83,9 @@ impl PageSetupEditor {
                 p.margin_bottom,
                 p.margin_left,
                 p.margin_right,
+                p.gutter,
+                p.header_distance,
+                p.footer_distance,
             ];
             for (edit, v) in self.edits.iter_mut().zip(values) {
                 edit.set(&to_cm(v), false);
@@ -99,13 +106,16 @@ impl PageSetupEditor {
             c.margin_bottom,
             c.margin_left,
             c.margin_right,
+            c.gutter,
+            c.header_distance,
+            c.footer_distance,
         ];
         let v: Vec<f32> = values
             .iter()
             .zip(old)
             .map(|(n, o)| n.unwrap_or(o))
             .collect();
-        let page = PageSpec::custom(v[0], v[1], [v[2], v[5], v[3], v[4]]);
+        let page = PageSpec::custom(v[0], v[1], [v[2], v[5], v[3], v[4]], [v[6], v[7], v[8]]);
         self.open = false;
         self.current = page;
         cx.emit(PageSetupEvent::Set(page));
@@ -206,6 +216,8 @@ impl PageSetupEditor {
             .child(row(0, 1, self, cx))
             .child(row(2, 3, self, cx))
             .child(row(4, 5, self, cx))
+            .child(row(6, 7, self, cx))
+            .child(div().flex().child(self.field(8, window, cx)))
             .child(
                 div()
                     .text_xs()

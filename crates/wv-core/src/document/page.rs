@@ -7,6 +7,11 @@ pub struct PageSpec {
     pub margin_right: f32,
     pub margin_bottom: f32,
     pub margin_left: f32,
+    /// Extra room added to the left margin for binding.
+    pub gutter: f32,
+    /// Distance from the top edge to the header text and from the bottom edge to the footer text.
+    pub header_distance: f32,
+    pub footer_distance: f32,
 }
 
 /// Margin presets of the "Margins" menu.
@@ -19,6 +24,9 @@ pub enum Margins {
 }
 
 const INCH: f32 = 96.0;
+
+/// Word's default header/footer distance: 1.25 cm (709 twips).
+pub const BAND_DISTANCE: f32 = 709.0 / 15.0;
 
 impl PageSpec {
     /// A4 (210 x 297 mm), 2.54 cm margins.
@@ -34,6 +42,9 @@ impl PageSpec {
             margin_right: INCH,
             margin_bottom: INCH,
             margin_left: INCH,
+            gutter: 0.0,
+            header_distance: BAND_DISTANCE,
+            footer_distance: BAND_DISTANCE,
         }
     }
 
@@ -98,9 +109,11 @@ impl PageSpec {
         self
     }
 
-    /// Page of `width` x `height` px with the given margins (top, right, bottom, left). Sizes are
-    /// kept sane: the sheet is at least 2 inches each way and at least an inch of text remains.
-    pub fn custom(width: f32, height: f32, margins: [f32; 4]) -> Self {
+    /// Page of `width` x `height` px with the given margins (top, right, bottom, left) and
+    /// `extras` = gutter, header distance, footer distance. Sizes are kept sane: the sheet is at
+    /// least 2 inches each way, at least an inch of text remains, and the header and footer stay
+    /// inside their margins.
+    pub fn custom(width: f32, height: f32, margins: [f32; 4], extras: [f32; 3]) -> Self {
         let width = width.clamp(2.0 * INCH, 40.0 * INCH);
         let height = height.clamp(2.0 * INCH, 40.0 * INCH);
         let fit = |m: f32, other: f32, size: f32| m.clamp(0.0, (size - other - INCH).max(0.0));
@@ -109,6 +122,8 @@ impl PageSpec {
         let bottom = fit(bottom, top, height);
         let right = fit(right, 0.0, width);
         let left = fit(left, right, width);
+        let [gutter, header, footer] = extras;
+        let gutter = fit(gutter, left + right, width);
         Self {
             width,
             height,
@@ -116,6 +131,9 @@ impl PageSpec {
             margin_right: right,
             margin_bottom: bottom,
             margin_left: left,
+            gutter,
+            header_distance: header.clamp(0.0, top),
+            footer_distance: footer.clamp(0.0, bottom),
         }
     }
 
@@ -155,12 +173,20 @@ mod tests {
 
     #[test]
     fn custom_page_keeps_an_inch_of_text() {
-        let p = PageSpec::custom(800.0, 1000.0, [50.0, 60.0, 70.0, 80.0]);
+        let p = PageSpec::custom(800.0, 1000.0, [50.0, 60.0, 70.0, 80.0], [10.0, 20.0, 99.0]);
         assert_eq!((p.margin_top, p.margin_left), (50.0, 80.0));
-        let tight = PageSpec::custom(300.0, 300.0, [500.0, 500.0, 500.0, 500.0]);
-        assert!(tight.width - tight.margin_left - tight.margin_right >= 96.0);
+        assert_eq!((p.gutter, p.header_distance), (10.0, 20.0));
+        assert_eq!(
+            p.footer_distance, 70.0,
+            "the footer stays inside its margin"
+        );
+        let tight = PageSpec::custom(300.0, 300.0, [500.0; 4], [500.0; 3]);
+        assert!(tight.width - tight.margin_left - tight.margin_right - tight.gutter >= 96.0);
         assert!(tight.height - tight.margin_top - tight.margin_bottom >= 96.0);
-        assert_eq!(PageSpec::custom(1.0, 1.0, [0.0; 4]).width, 192.0);
-        assert_eq!(PageSpec::custom(800.0, 800.0, [-5.0; 4]).margin_top, 0.0);
+        assert_eq!(PageSpec::custom(1.0, 1.0, [0.0; 4], [0.0; 3]).width, 192.0);
+        assert_eq!(
+            PageSpec::custom(800.0, 800.0, [-5.0; 4], [0.0; 3]).margin_top,
+            0.0
+        );
     }
 }

@@ -12,6 +12,8 @@ fn small() -> PageSetup {
         margin_right: 10.0,
         margin_bottom: 10.0,
         margin_left: 10.0,
+        header_distance: 5.0,
+        footer_distance: 5.0,
         paragraph_spacing: 0.0,
         line_spacing: 1.0,
     }
