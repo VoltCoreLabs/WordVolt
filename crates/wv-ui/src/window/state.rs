@@ -6,6 +6,7 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
+use super::doc_tabs::DocSlot;
 use super::find_bar::FindBar;
 use super::header_footer::{HeaderFooterEditor, HeaderFooterEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
@@ -88,6 +89,9 @@ pub struct MainWindow {
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
+    /// All open documents; `active` is the one shown (its state is in the fields above).
+    pub docs: Vec<DocSlot>,
+    pub active: usize,
     pub lang: Lang,
     pub applied_title: String,
     pub tab: Tab,
@@ -99,11 +103,7 @@ pub struct MainWindow {
 impl MainWindow {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let editor = cx.new(EditorView::new);
-        cx.observe(&editor, |this, editor, cx| {
-            this.dirty = editor.read(cx).core.is_modified();
-            cx.notify();
-        })
-        .detach();
+        Self::observe_doc(&editor, cx);
         let lang = Lang::default();
         let font_combo = cx.new(|cx| {
             let config = ComboConfig {
@@ -396,7 +396,7 @@ impl MainWindow {
         )
         .detach();
         Self {
-            editor,
+            editor: editor.clone(),
             case_menu,
             spacing_menu,
             style_combo,
@@ -415,6 +415,12 @@ impl MainWindow {
             link_editor,
             file_path: None,
             dirty: false,
+            docs: vec![DocSlot {
+                editor,
+                file_path: None,
+                dirty: false,
+            }],
+            active: 0,
             lang,
             applied_title: String::new(),
             tab: Tab::Home,

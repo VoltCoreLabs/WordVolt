@@ -2,6 +2,7 @@ mod band_controls;
 mod color_picker;
 mod combo;
 mod commands;
+mod doc_tabs;
 mod drop_files;
 mod export_pdf;
 mod file_ops;
@@ -19,6 +20,7 @@ mod side_panel;
 mod state;
 mod status_bar;
 mod style_names;
+mod tab_strip;
 mod table_picker;
 mod titlebar;
 
