@@ -39,7 +39,9 @@ fn split_row(line: &str) -> Vec<String> {
     while let Some(ch) = chars.next() {
         match ch {
             '\\' if chars.peek() == Some(&'|') => {
-                cells.last_mut().map(|c| c.push_str("\\|"));
+                if let Some(c) = cells.last_mut() {
+                    c.push_str("\\|");
+                }
                 chars.next();
             }
             '|' => cells.push(String::new()),
