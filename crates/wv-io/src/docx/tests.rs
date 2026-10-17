@@ -247,3 +247,22 @@ fn pictures_round_trip() {
     let back = decode(&encode(&e.doc).unwrap()).unwrap();
     assert_eq!(back, e.doc);
 }
+
+#[test]
+fn page_size_and_margins_round_trip() {
+    let mut doc = Document::from_text("x");
+    doc.page = wv_core::PageSpec::a4()
+        .with_paper(2)
+        .with_landscape(true)
+        .with_margins(wv_core::Margins::Wide);
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    for (a, b) in [
+        (back.page.width, doc.page.width),
+        (back.page.height, doc.page.height),
+        (back.page.margin_left, doc.page.margin_left),
+        (back.page.margin_top, doc.page.margin_top),
+    ] {
+        assert!((a - b).abs() < 0.1, "{a} vs {b}");
+    }
+    assert!(back.page.is_landscape());
+}

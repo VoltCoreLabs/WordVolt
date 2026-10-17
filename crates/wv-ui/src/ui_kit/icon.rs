@@ -47,6 +47,9 @@ pub enum Icon {
     Rows,
     PageHeader,
     Hash,
+    PagePortrait,
+    PageLandscape,
+    PageMargins,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -103,6 +106,9 @@ impl Icon {
             Icon::Rows => "rows",
             Icon::PageHeader => "page-header",
             Icon::Hash => "hash",
+            Icon::PagePortrait => "page-portrait",
+            Icon::PageLandscape => "page-landscape",
+            Icon::PageMargins => "page-margins",
         }
     }
 }

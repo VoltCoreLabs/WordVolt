@@ -7,7 +7,7 @@ pub mod position;
 pub mod search;
 pub mod style;
 
-pub use document::{Band, Document, ImageData, ImageFormat, Paragraph, Run};
+pub use document::{Band, Document, ImageData, ImageFormat, Margins, PageSpec, Paragraph, Run};
 pub use editor::MAX_IMAGE_WIDTH;
 pub use editor::{CaseKind, Editor, TableInfo};
 pub use position::{Position, Selection};

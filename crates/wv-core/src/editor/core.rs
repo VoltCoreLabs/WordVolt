@@ -1,4 +1,4 @@
-use crate::document::{Band, Document, Paragraph};
+use crate::document::{Band, Document, PageSpec, Paragraph};
 use crate::history::{Edit, History};
 use crate::position::{Position, Selection};
 use crate::style::CharStyle;
@@ -59,6 +59,14 @@ impl Editor {
         if self.doc.header != header || self.doc.footer != footer {
             self.doc.header = header;
             self.doc.footer = footer;
+            self.revision += 1;
+        }
+    }
+
+    /// Sets page size and margins (not part of undo history; the document counts as changed).
+    pub fn set_page(&mut self, page: PageSpec) {
+        if self.doc.page != page {
+            self.doc.page = page;
             self.revision += 1;
         }
     }

@@ -1,4 +1,4 @@
-use super::{Band, ImageData, Paragraph};
+use super::{Band, ImageData, PageSpec, Paragraph};
 use crate::position::Position;
 use crate::style::CharStyle;
 
@@ -10,6 +10,7 @@ pub struct Document {
     pub footer: Band,
     /// Pictures used by paragraphs (`ParaStyle::image`).
     pub images: Vec<ImageData>,
+    pub page: PageSpec,
 }
 
 impl Default for Document {
@@ -19,6 +20,7 @@ impl Default for Document {
             header: Band::default(),
             footer: Band::default(),
             images: Vec::new(),
+            page: PageSpec::default(),
         }
     }
 }

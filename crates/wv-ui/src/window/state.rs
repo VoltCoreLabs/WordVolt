@@ -15,7 +15,7 @@ use super::table_picker::{TablePicker, TablePickerEvent};
 use crate::editor::EditorView;
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::Icon;
-use wv_core::{CaseKind, NamedStyle};
+use wv_core::{CaseKind, Margins, NamedStyle, PageSpec};
 
 /// Ribbon tabs.
 #[derive(Clone, Copy, PartialEq)]
@@ -79,6 +79,8 @@ pub struct MainWindow {
     pub table_menu: Entity<TablePicker>,
     pub band_editor: Entity<HeaderFooterEditor>,
     pub table_edit_menu: Entity<MenuButton>,
+    pub paper_menu: Entity<MenuButton>,
+    pub margins_menu: Entity<MenuButton>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -293,6 +295,52 @@ impl MainWindow {
             },
         )
         .detach();
+        let paper_menu = cx.new(|cx| {
+            let items = PageSpec::SIZES
+                .iter()
+                .map(|(name, ..)| MenuItem::Text(name))
+                .collect();
+            MenuButton::new("paper", Icon::Printer, Key::TipPaperSize, items, lang, cx)
+        });
+        cx.subscribe(
+            &paper_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                let index = *index;
+                this.edit(cx, move |c| c.set_page(c.doc.page.with_paper(index)));
+            },
+        )
+        .detach();
+        let margins_menu = cx.new(|cx| {
+            let items = [
+                Key::MarginNormal,
+                Key::MarginNarrow,
+                Key::MarginModerate,
+                Key::MarginWide,
+            ]
+            .map(MenuItem::Tr)
+            .to_vec();
+            MenuButton::new(
+                "margins",
+                Icon::PageMargins,
+                Key::TipMargins,
+                items,
+                lang,
+                cx,
+            )
+        });
+        cx.subscribe(
+            &margins_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                let preset = [
+                    Margins::Normal,
+                    Margins::Narrow,
+                    Margins::Moderate,
+                    Margins::Wide,
+                ][(*index).min(3)];
+                this.edit(cx, move |c| c.set_page(c.doc.page.with_margins(preset)));
+            },
+        )
+        .detach();
         let table_edit_menu = cx.new(|cx| {
             let items = [
                 Key::TblRowAbove,
@@ -333,6 +381,8 @@ impl MainWindow {
             table_menu,
             band_editor,
             table_edit_menu,
+            paper_menu,
+            margins_menu,
             font_combo,
             size_combo,
             text_color,

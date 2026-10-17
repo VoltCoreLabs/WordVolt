@@ -2,6 +2,7 @@
 
 mod home;
 mod insert;
+mod layout;
 mod placeholder;
 mod tabs;
 
@@ -23,7 +24,8 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
     let groups = match tab {
         Tab::Home => home::groups(this, cx),
         Tab::Insert => insert::groups(this, cx),
-        Tab::Layout | Tab::View => placeholder::groups(tab, this.lang, cx),
+        Tab::Layout => layout::groups(this, cx),
+        Tab::View => placeholder::groups(tab, this.lang, cx),
     };
     let row = div()
         .flex()

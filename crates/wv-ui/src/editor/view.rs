@@ -124,7 +124,7 @@ impl EditorView {
             _ => {
                 let layout = Rc::new(DocLayout::new(
                     &self.core.doc,
-                    PageSetup::a4(),
+                    PageSetup::from_spec(&self.core.doc.page),
                     &self.measurer(window),
                 ));
                 self.layout = Some(layout.clone());
