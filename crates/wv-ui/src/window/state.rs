@@ -92,6 +92,9 @@ pub struct MainWindow {
     /// All open documents; `active` is the one shown (its state is in the fields above).
     pub docs: Vec<DocSlot>,
     pub active: usize,
+    /// Id of this running window (its recovery copies are marked with it).
+    pub instance: u64,
+    pub recovery_dir: PathBuf,
     /// Where the right-click menu is open (window coordinates).
     pub context_menu: Option<Point<Pixels>>,
     /// The tab menu (window coordinates); it belongs to the active tab.
@@ -425,11 +428,9 @@ impl MainWindow {
             link_editor,
             file_path: None,
             dirty: false,
-            docs: vec![DocSlot {
-                editor,
-                file_path: None,
-                dirty: false,
-            }],
+            docs: vec![DocSlot::new(editor)],
+            instance: wv_io::recovery::new_id(),
+            recovery_dir: wv_io::recovery::default_dir(),
             active: 0,
             context_menu: None,
             tab_menu: None,

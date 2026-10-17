@@ -42,6 +42,11 @@ impl Editor {
         self.revision != self.saved_revision
     }
 
+    /// Counts as changed since the last save (a recovered document that was never saved).
+    pub fn mark_modified(&mut self) {
+        self.revision += 1;
+    }
+
     pub fn mark_saved(&mut self) {
         self.saved_revision = self.revision;
     }

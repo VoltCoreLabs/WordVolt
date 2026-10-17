@@ -30,6 +30,11 @@ pub fn run() {
         };
         gpui_kit::open_window(options, cx, |window, cx| {
             let view = cx.new(|cx| MainWindow::new(window, cx));
+            // Documents a crashed window left behind come back first.
+            view.update(cx, |this, cx| {
+                this.restore_recovered(cx);
+                this.start_autosave(window, cx);
+            });
             // `wordvolt <file>` opens that file.
             if let Some(path) = std::env::args_os().nth(1).map(std::path::PathBuf::from)
                 && let Ok(doc) = wv_io::load_file(&path)

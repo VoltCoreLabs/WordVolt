@@ -6,6 +6,7 @@ mod format;
 mod image;
 mod md;
 mod pdf;
+pub mod recovery;
 mod txt;
 mod wvd;
 
