@@ -1,5 +1,6 @@
 //! Document editing surface: paged view drawn from the wv-layout engine; keyboard, mouse, scrolling.
 
+mod band_paint;
 mod caret;
 mod keys;
 mod measure;

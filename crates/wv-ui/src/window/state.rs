@@ -7,6 +7,7 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
 use super::find_bar::FindBar;
+use super::header_footer::{HeaderFooterEditor, HeaderFooterEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::style_names::{style_from_label, style_label};
@@ -76,6 +77,7 @@ pub struct MainWindow {
     pub style_combo: Entity<Combo>,
     pub find_bar: Entity<FindBar>,
     pub table_menu: Entity<TablePicker>,
+    pub band_editor: Entity<HeaderFooterEditor>,
     pub table_edit_menu: Entity<MenuButton>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
@@ -280,6 +282,16 @@ impl MainWindow {
             },
         )
         .detach();
+        let band_editor = cx.new(|cx| HeaderFooterEditor::new(lang, cx));
+        cx.subscribe(
+            &band_editor,
+            |this, _, HeaderFooterEvent::Set(header, footer): &HeaderFooterEvent, cx| {
+                let (header, footer) = (header.clone(), footer.clone());
+                this.edit(cx, move |c| c.set_header_footer(&header, &footer));
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         let table_edit_menu = cx.new(|cx| {
             let items = [
                 Key::TblRowAbove,
@@ -318,6 +330,7 @@ impl MainWindow {
             style_combo,
             find_bar,
             table_menu,
+            band_editor,
             table_edit_menu,
             font_combo,
             size_combo,

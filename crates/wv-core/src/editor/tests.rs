@@ -609,3 +609,15 @@ fn tables_insert_navigate_grow_shrink_and_protect_cell_borders() {
         "deleting a table is one undo step"
     );
 }
+
+#[test]
+fn page_number_toggles_in_footer() {
+    let mut e = Editor::default();
+    e.toggle_page_number();
+    assert_eq!(e.doc.footer.text, "{page}");
+    e.set_header_footer("Head", "Стр. {page}");
+    e.toggle_page_number();
+    assert_eq!(e.doc.footer.text, "Стр.");
+    assert_eq!(e.doc.header.text, "Head");
+    assert!(e.is_modified());
+}

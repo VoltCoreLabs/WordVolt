@@ -31,9 +31,17 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         }
         i = end;
     }
-    xml.push_str(
-        "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>",
-    );
+    // Header/footer parts are written by `package::write` (rIdH1 / rIdF1).
+    let mut refs = String::new();
+    if !doc.header.is_empty() {
+        refs.push_str("<w:headerReference w:type=\"default\" r:id=\"rIdH1\"/>");
+    }
+    if !doc.footer.is_empty() {
+        refs.push_str("<w:footerReference w:type=\"default\" r:id=\"rIdF1\"/>");
+    }
+    xml.push_str(&format!(
+        "<w:sectPr>{refs}<w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1418\" w:right=\"1418\" w:bottom=\"1418\" w:left=\"1418\" w:header=\"709\" w:footer=\"709\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
+    ));
     (xml, links, lists.number_lists)
 }
 

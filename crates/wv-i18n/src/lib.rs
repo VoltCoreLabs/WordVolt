@@ -108,6 +108,12 @@ pub enum Key {
     TableRows,
     TableCols,
     InsertTable,
+    TipHeaderFooter,
+    TipPageNumber,
+    HeaderLabel,
+    FooterLabel,
+    BandHint,
+    Apply,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -216,6 +222,12 @@ fn ru(key: Key) -> &'static str {
         Key::TableRows => "Строки",
         Key::TableCols => "Столбцы",
         Key::InsertTable => "Вставить",
+        Key::TipHeaderFooter => "Колонтитулы",
+        Key::TipPageNumber => "Номер страницы",
+        Key::HeaderLabel => "Верхний колонтитул",
+        Key::FooterLabel => "Нижний колонтитул",
+        Key::BandHint => "{page} — номер страницы, {pages} — число страниц",
+        Key::Apply => "Применить",
     }
 }
 
@@ -318,6 +330,12 @@ fn en(key: Key) -> &'static str {
         Key::TableRows => "Rows",
         Key::TableCols => "Columns",
         Key::InsertTable => "Insert",
+        Key::TipHeaderFooter => "Header and footer",
+        Key::TipPageNumber => "Page number",
+        Key::HeaderLabel => "Header",
+        Key::FooterLabel => "Footer",
+        Key::BandHint => "{page} = page number, {pages} = page count",
+        Key::Apply => "Apply",
     }
 }
 

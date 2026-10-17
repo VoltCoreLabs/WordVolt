@@ -142,6 +142,7 @@ impl Render for EditorView {
             .borrow_mut()
             .resize(layout.pages.len(), Bounds::default());
 
+        let bands = Rc::new((self.core.doc.header.clone(), self.core.doc.footer.clone()));
         let pages: Vec<_> = (0..layout.pages.len())
             .map(|ix| {
                 let view = PageView {
@@ -165,6 +166,8 @@ impl Render for EditorView {
                     find_color: theme.find_match,
                     find_current_color: theme.find_current,
                     table_color: theme.border_strong,
+                    bands: bands.clone(),
+                    band_color: theme.text_muted,
                 };
                 let bounds_store = self.page_bounds.clone();
                 div()

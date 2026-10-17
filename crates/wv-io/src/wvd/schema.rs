@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use wv_core::{
-    Align, Cell, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
+    Align, Band, Cell, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
 };
 
 use crate::IoError;
@@ -13,6 +13,10 @@ pub struct File {
     format: String,
     version: u32,
     paragraphs: Vec<Para>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    header: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    footer: String,
 }
 
 /// Table cell of a paragraph.
@@ -142,6 +146,8 @@ impl File {
             format: FORMAT.into(),
             version: VERSION,
             paragraphs,
+            header: doc.header.text.clone(),
+            footer: doc.footer.text.clone(),
         }
     }
 
@@ -199,11 +205,17 @@ impl File {
                     .collect(),
             })
             .collect();
-        Ok(if paragraphs.is_empty() {
+        let mut doc = if paragraphs.is_empty() {
             Document::default()
         } else {
-            Document { paragraphs }
-        })
+            Document {
+                paragraphs,
+                ..Document::default()
+            }
+        };
+        doc.header = Band::new(self.header);
+        doc.footer = Band::new(self.footer);
+        Ok(doc)
     }
 }
 

@@ -1,4 +1,4 @@
-use super::Paragraph;
+use super::{Band, Paragraph};
 use crate::position::Position;
 use crate::style::CharStyle;
 
@@ -6,12 +6,16 @@ use crate::style::CharStyle;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
     pub paragraphs: Vec<Paragraph>,
+    pub header: Band,
+    pub footer: Band,
 }
 
 impl Default for Document {
     fn default() -> Self {
         Self {
             paragraphs: vec![Paragraph::default()],
+            header: Band::default(),
+            footer: Band::default(),
         }
     }
 }
@@ -19,7 +23,10 @@ impl Default for Document {
 impl Document {
     pub fn from_text(text: &str) -> Self {
         let paragraphs: Vec<_> = text.split('\n').map(Paragraph::plain).collect();
-        Self { paragraphs }
+        Self {
+            paragraphs,
+            ..Self::default()
+        }
     }
 
     /// Plain text, paragraphs joined by `\n`.

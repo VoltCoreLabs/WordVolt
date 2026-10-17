@@ -105,6 +105,7 @@ mod tests {
                 runs: vec![styled(" bold ", true, false, false)],
                 ..Default::default()
             }],
+            ..Document::default()
         };
         assert_eq!(encode(&doc), " **bold** ");
     }

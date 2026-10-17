@@ -74,4 +74,12 @@ mod tests {
         let doc = decode(br#"{"format":"wvd","version":1,"paragraphs":[]}"#).unwrap();
         assert_eq!(doc, Document::default());
     }
+
+    #[test]
+    fn header_and_footer_round_trip() {
+        let mut doc = Document::from_text("x");
+        doc.header = wv_core::Band::new("Шапка");
+        doc.footer = wv_core::Band::new("{page}");
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
 }

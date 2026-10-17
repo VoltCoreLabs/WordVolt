@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use gpui_kit::*;
-use wv_core::Position;
+use wv_core::{Band, Position};
 use wv_layout::{DocLayout, Measurer, script_shift};
 
 use super::caret::caret_alpha;
@@ -34,6 +34,9 @@ pub struct PageView {
     pub find_current_color: Rgba,
     /// Table borders.
     pub table_color: Rgba,
+    /// Header and footer text, and their colour.
+    pub bands: Rc<(Band, Band)>,
+    pub band_color: Rgba,
 }
 
 /// More matches than this are still found and counted, but not all highlighted.
@@ -113,6 +116,8 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             ));
         }
     }
+
+    super::band_paint::paint_bands(v, &m, &at, window, cx);
 
     let setup = &v.layout.setup;
     for slice in &v.layout.pages[v.page].slices {

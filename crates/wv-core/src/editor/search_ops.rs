@@ -34,6 +34,7 @@ impl Editor {
         // Work on a copy of the affected paragraphs, last match first so earlier offsets stay valid.
         let mut work = Editor::new(Document {
             paragraphs: self.doc.paragraphs[from..=to].to_vec(),
+            ..Document::default()
         });
         let shift = |p: Position| Position::new(p.para - from, p.offset);
         for (start, end) in matches.iter().rev() {
