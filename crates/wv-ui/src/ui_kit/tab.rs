@@ -55,7 +55,7 @@ impl PillState {
 /// Label of a pill tab; the capsule behind the active one is drawn by `pill_tabs`.
 pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
     let t = cx.global::<Theme>();
-    let (fg, hover) = (if active { t.text } else { t.text_muted }, t.surface);
+    let (fg, hover) = (if active { t.on_accent } else { t.text_muted }, t.surface);
     let id = ElementId::from(SharedString::from(format!("tab-{label}")));
     let look = HoverLook {
         bg: hover,
@@ -87,7 +87,7 @@ pub fn pill_tabs(
 ) -> Div {
     state.sync(selected);
     let t = cx.global::<Theme>();
-    let (bar_bg, surface, border) = (t.border, t.surface, t.border_strong);
+    let (bar_bg, accent) = (t.border, t.accent);
     let capsule = |left: f32, top: f32, width: f32, height: f32| {
         div()
             .absolute()
@@ -96,10 +96,7 @@ pub fn pill_tabs(
             .w(px(width))
             .h(px(height))
             .rounded(px(999.))
-            .border_1()
-            .border_color(border)
-            .bg(surface)
-            .shadow_sm()
+            .bg(accent)
     };
     let slide = match (state.rect(state.prev.get()), state.rect(selected)) {
         (Some(from), Some(to)) => {
