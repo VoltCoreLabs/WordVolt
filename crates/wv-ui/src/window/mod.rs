@@ -21,6 +21,7 @@ mod side_panel;
 mod state;
 mod status_bar;
 mod style_names;
+mod tab_menu;
 mod tab_strip;
 mod table_picker;
 mod titlebar;

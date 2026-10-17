@@ -75,6 +75,15 @@ pub fn tab_strip(this: &MainWindow, window: &Window, cx: &mut Context<MainWindow
                     cx.listener(move |this, _, _, cx| this.switch_to(i, cx)),
                 )
                 .on_mouse_down(
+                    MouseButton::Right,
+                    cx.listener(move |this, ev: &MouseDownEvent, window, cx| {
+                        crate::ui_kit::hide_tooltip(window, cx);
+                        this.switch_to(i, cx);
+                        this.tab_menu = Some(ev.position);
+                        cx.notify();
+                    }),
+                )
+                .on_mouse_down(
                     MouseButton::Middle,
                     cx.listener(move |this, _, window, cx| this.close_tab(i, window, cx)),
                 )
