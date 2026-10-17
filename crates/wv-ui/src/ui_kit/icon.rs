@@ -45,6 +45,8 @@ pub enum Icon {
     WholeWord,
     Replace,
     Rows,
+    PageHeader,
+    Hash,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -99,6 +101,8 @@ impl Icon {
             Icon::WholeWord => "brackets-square",
             Icon::Replace => "swap",
             Icon::Rows => "rows",
+            Icon::PageHeader => "page-header",
+            Icon::Hash => "hash",
         }
     }
 }

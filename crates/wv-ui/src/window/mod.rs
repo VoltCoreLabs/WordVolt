@@ -2,6 +2,7 @@ mod color_picker;
 mod combo;
 mod file_ops;
 mod find_bar;
+mod header_footer;
 mod link_editor;
 mod main_window;
 mod menu_button;

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
 
-use wv_core::ListKind;
+use wv_core::{Band, ListKind};
 
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
@@ -39,8 +39,18 @@ pub fn read_document_xml(bytes: &[u8]) -> Result<Vec<u8>, IoError> {
 }
 
 /// Relationships of word/document.xml: styles plus one external relationship per hyperlink.
-fn document_rels(links: &[String]) -> String {
+fn document_rels(links: &[String], bands: (bool, bool)) -> String {
     let mut xml = String::from(DOCUMENT_RELS_HEAD);
+    for (present, kind, target, id) in [
+        (bands.0, super::bands::HEADER_TYPE, "header1.xml", "rIdH1"),
+        (bands.1, super::bands::FOOTER_TYPE, "footer1.xml", "rIdF1"),
+    ] {
+        if present {
+            xml.push_str(&format!(
+                "<Relationship Id=\"{id}\" Type=\"{kind}\" Target=\"{target}\"/>"
+            ));
+        }
+    }
     for (i, url) in links.iter().enumerate() {
         let target = url
             .replace('&', "&amp;")
@@ -126,7 +136,7 @@ fn numbering_xml(number_lists: usize) -> String {
     xml
 }
 
-fn read_part(bytes: &[u8], name: &str) -> Option<Vec<u8>> {
+pub(super) fn read_part(bytes: &[u8], name: &str) -> Option<Vec<u8>> {
     let mut archive = ZipArchive::new(Cursor::new(bytes)).ok()?;
     let file = archive.by_name(name).ok()?;
     let mut xml = Vec::new();
@@ -202,13 +212,28 @@ pub fn write(
     document_xml: &str,
     links: &[String],
     number_lists: usize,
+    (header, footer): (&Band, &Band),
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-    let rels = document_rels(links);
+    let rels = document_rels(links, (!header.is_empty(), !footer.is_empty()));
     let numbering = numbering_xml(number_lists);
+    let mut content_types = CONTENT_TYPES.to_string();
+    let mut extra: Vec<(&str, String)> = Vec::new();
+    for (band, root, name, kind) in [
+        (header, "hdr", "header1.xml", "header"),
+        (footer, "ftr", "footer1.xml", "footer"),
+    ] {
+        if !band.is_empty() {
+            content_types = content_types.replace(
+                "</Types>",
+                &format!("<Override PartName=\"/word/{name}\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.{kind}+xml\"/></Types>"),
+            );
+            extra.push((name, super::bands::part_xml(root, band)));
+        }
+    }
     let parts = [
-        ("[Content_Types].xml", CONTENT_TYPES),
+        ("[Content_Types].xml", content_types.as_str()),
         ("_rels/.rels", ROOT_RELS),
         ("word/_rels/document.xml.rels", rels.as_str()),
         ("word/styles.xml", STYLES),
@@ -217,6 +242,11 @@ pub fn write(
     ];
     for (name, content) in parts {
         zip.start_file(name, options).map_err(zip_error)?;
+        zip.write_all(content.as_bytes())?;
+    }
+    for (name, content) in extra {
+        zip.start_file(format!("word/{name}"), options)
+            .map_err(zip_error)?;
         zip.write_all(content.as_bytes())?;
     }
     Ok(zip.finish().map_err(zip_error)?.into_inner())

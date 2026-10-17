@@ -191,3 +191,40 @@ fn table_round_trips_and_merged_cells_become_empty_cells() {
         ]
     );
 }
+
+#[test]
+fn header_and_footer_round_trip_with_page_fields() {
+    let mut doc = Document::from_text("body");
+    doc.header = wv_core::Band::new("Отчёт <A&B>");
+    doc.footer = wv_core::Band::new("Стр. {page} из {pages}");
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert_eq!(back.header, doc.header);
+    assert_eq!(back.footer, doc.footer);
+    assert_eq!(back.text(), "body");
+}
+
+#[test]
+fn reads_word_style_complex_page_field_in_footer() {
+    use std::io::{Cursor, Write};
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let o = SimpleFileOptions::default();
+    let mut put = |name: &str, body: &str| {
+        zip.start_file(name, o).unwrap();
+        zip.write_all(body.as_bytes()).unwrap();
+    };
+    put(
+        "word/document.xml",
+        "<w:document xmlns:w=\"w\" xmlns:r=\"r\"><w:body><w:p><w:r><w:t>x</w:t></w:r></w:p><w:sectPr><w:footerReference w:type=\"default\" r:id=\"rId9\"/></w:sectPr></w:body></w:document>",
+    );
+    put(
+        "word/_rels/document.xml.rels",
+        "<Relationships><Relationship Id=\"rId9\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer\" Target=\"footer2.xml\"/></Relationships>",
+    );
+    put(
+        "word/footer2.xml",
+        "<w:ftr xmlns:w=\"w\"><w:p><w:r><w:t xml:space=\"preserve\">Page </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p></w:ftr>",
+    );
+    let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
+    assert_eq!(doc.footer.text, "Page {page}");
+    assert!(doc.header.is_empty());
+}

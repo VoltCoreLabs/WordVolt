@@ -320,6 +320,7 @@ impl State {
         } else {
             Document {
                 paragraphs: self.paragraphs,
+                ..Document::default()
             }
         }
     }

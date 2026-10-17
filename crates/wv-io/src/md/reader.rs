@@ -17,7 +17,10 @@ pub fn decode(text: &str) -> Document {
     if paragraphs.is_empty() {
         Document::default()
     } else {
-        Document { paragraphs }
+        Document {
+            paragraphs,
+            ..Document::default()
+        }
     }
 }
 
