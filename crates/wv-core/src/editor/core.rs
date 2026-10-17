@@ -1,4 +1,4 @@
-use crate::document::{Band, Document, PageSpec, Paragraph};
+use crate::document::{Band, DocSettings, Document, PageSpec, Paragraph};
 use crate::history::{Edit, History};
 use crate::position::{Position, Selection};
 use crate::style::CharStyle;
@@ -54,21 +54,36 @@ impl Editor {
         self.history.can_redo()
     }
 
-    /// Sets the header and footer text (not part of undo history; the document counts as changed).
+    /// Sets the header and footer (one undo step).
     pub fn set_header_footer(&mut self, header: Band, footer: Band) {
-        if self.doc.header != header || self.doc.footer != footer {
-            self.doc.header = header;
-            self.doc.footer = footer;
-            self.revision += 1;
-        }
+        let mut settings = self.doc.settings();
+        (settings.header, settings.footer) = (header, footer);
+        self.change_settings(settings);
     }
 
-    /// Sets page size and margins (not part of undo history; the document counts as changed).
+    /// Sets page size and margins (one undo step).
     pub fn set_page(&mut self, page: PageSpec) {
-        if self.doc.page != page {
-            self.doc.page = page;
-            self.revision += 1;
+        let mut settings = self.doc.settings();
+        settings.page = page;
+        self.change_settings(settings);
+    }
+
+    fn change_settings(&mut self, settings: DocSettings) {
+        let before = self.doc.settings();
+        if before == settings {
+            return;
         }
+        let edit = Edit {
+            at: 0,
+            removed: vec![],
+            inserted: vec![],
+            before: self.sel,
+            after: self.sel,
+            settings: Some((before, settings)),
+        };
+        edit.apply(&mut self.doc);
+        self.revision += 1;
+        self.history.push(edit);
     }
 
     /// Adds `{page}` to the footer, or removes it when it is already there.
@@ -120,6 +135,7 @@ impl Editor {
             inserted: new,
             before: self.sel,
             after,
+            settings: None,
         };
         edit.apply(&mut self.doc);
         self.revision += 1;
