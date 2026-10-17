@@ -21,7 +21,7 @@ pub fn decode(text: &str) -> Document {
     }
 }
 
-fn paragraph(block: &str) -> Paragraph {
+pub(super) fn paragraph(block: &str) -> Paragraph {
     if let Some(rest) = block.strip_prefix("> ").or_else(|| block.strip_prefix('>')) {
         let mut p = paragraph(rest.trim_start());
         p.style.quote = true;
@@ -266,6 +266,9 @@ fn list_marker(line: &str) -> Option<(u8, ListKind, &str)> {
 /// One blank-line separated block: text before the first list marker is a paragraph, then every
 /// marker line starts an item (other lines continue the previous item).
 fn flush_block(block: &[&str], out: &mut Vec<Paragraph>) {
+    if super::table::is_table(block) {
+        return super::table::decode(block, out);
+    }
     let split = block
         .iter()
         .position(|l| list_marker(l).is_some())

@@ -1,9 +1,11 @@
 //! Word `.docx` (Office Open XML): paragraphs, bold/italic/underline, size, colour, alignment.
-//! Not supported yet: tables as tables (their paragraphs are read as plain paragraphs), images,
-//! headers/footers, styles defined in styles.xml (only direct formatting and Heading styles).
+//! Tables: rows/columns are kept (equal column widths; merged cells become empty cells).
+//! Not supported yet: images, headers/footers, styles defined in styles.xml (only direct formatting and Heading styles).
 
 mod document_xml;
 mod package;
+mod table_read;
+mod table_xml;
 mod writer;
 
 use wv_core::Document;
