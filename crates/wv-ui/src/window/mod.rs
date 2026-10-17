@@ -11,6 +11,7 @@ mod link_editor;
 mod main_window;
 mod menu_bar;
 mod menu_button;
+mod page_setup;
 mod ribbon;
 mod side_panel;
 mod state;

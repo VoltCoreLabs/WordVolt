@@ -98,6 +98,27 @@ impl PageSpec {
         self
     }
 
+    /// Page of `width` x `height` px with the given margins (top, right, bottom, left). Sizes are
+    /// kept sane: the sheet is at least 2 inches each way and at least an inch of text remains.
+    pub fn custom(width: f32, height: f32, margins: [f32; 4]) -> Self {
+        let width = width.clamp(2.0 * INCH, 40.0 * INCH);
+        let height = height.clamp(2.0 * INCH, 40.0 * INCH);
+        let fit = |m: f32, other: f32, size: f32| m.clamp(0.0, (size - other - INCH).max(0.0));
+        let [top, right, bottom, left] = margins;
+        let top = fit(top, 0.0, height);
+        let bottom = fit(bottom, top, height);
+        let right = fit(right, 0.0, width);
+        let left = fit(left, right, width);
+        Self {
+            width,
+            height,
+            margin_top: top,
+            margin_right: right,
+            margin_bottom: bottom,
+            margin_left: left,
+        }
+    }
+
     pub fn with_margins(mut self, preset: Margins) -> Self {
         let (vertical, horizontal) = match preset {
             Margins::Normal => (INCH, INCH),
@@ -130,5 +151,16 @@ mod tests {
         assert_eq!((wide.width, wide.margin_left), (1056.0, 48.0));
         assert_eq!(wide.paper_index(), Some(2));
         assert_eq!(wide.with_paper(1).width, 793.7);
+    }
+
+    #[test]
+    fn custom_page_keeps_an_inch_of_text() {
+        let p = PageSpec::custom(800.0, 1000.0, [50.0, 60.0, 70.0, 80.0]);
+        assert_eq!((p.margin_top, p.margin_left), (50.0, 80.0));
+        let tight = PageSpec::custom(300.0, 300.0, [500.0, 500.0, 500.0, 500.0]);
+        assert!(tight.width - tight.margin_left - tight.margin_right >= 96.0);
+        assert!(tight.height - tight.margin_top - tight.margin_bottom >= 96.0);
+        assert_eq!(PageSpec::custom(1.0, 1.0, [0.0; 4]).width, 192.0);
+        assert_eq!(PageSpec::custom(800.0, 800.0, [-5.0; 4]).margin_top, 0.0);
     }
 }
