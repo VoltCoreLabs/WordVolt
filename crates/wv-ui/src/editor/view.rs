@@ -236,6 +236,7 @@ impl Render for EditorView {
             bounds.clear();
             bounds.resize(count, Bounds::default());
         }
+        let cell_selection = self.core.cell_selection();
         let build_page = |ix: usize| {
             let view = PageView {
                 layout: layout.clone(),
@@ -246,6 +247,7 @@ impl Render for EditorView {
                 focused,
                 text: theme.text,
                 selection_color: theme.accent_subtle,
+                cell_selection: cell_selection,
                 epoch: self.caret_epoch.clone(),
                 code_bg: theme.code_bg,
                 spoiler_color: theme.spoiler,

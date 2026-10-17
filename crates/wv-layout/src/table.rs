@@ -119,6 +119,11 @@ pub fn blocks(doc: &Document) -> Vec<Block> {
 /// The area of a cell, relative to the page's text area.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CellRect {
+    /// Where the cell is in the table (its top-left grid position) and how much it covers.
+    pub row: usize,
+    pub col: usize,
+    pub rowspan: usize,
+    pub colspan: usize,
     pub x: f32,
     pub y: f32,
     pub width: f32,

@@ -20,6 +20,8 @@ pub struct PageView {
     pub focused: bool,
     pub text: Rgba,
     pub selection_color: Rgba,
+    /// A block of table cells is selected (drawn as cells instead of text lines).
+    pub cell_selection: Option<wv_core::CellSelection>,
     pub epoch: Rc<Cell<Instant>>,
     pub code_bg: Rgba,
     pub spoiler_color: Rgba,
@@ -68,7 +70,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     }
 
     let (start, end) = v.selection;
-    if start != end {
+    if start != end && v.cell_selection.is_none() {
         for r in v
             .layout
             .selection_rects_on_page(start, end, v.page, &m)
