@@ -6,6 +6,7 @@ use wv_core::{
     PageSpec, ParaStyle, Paragraph, Run, Script,
 };
 
+use super::variants::VariantsDto;
 use crate::IoError;
 
 const FORMAT: &str = "wvd";
@@ -30,6 +31,9 @@ pub struct File {
     /// Page size and margins in px; absent = A4 with 2.54 cm margins.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     page: Option<PageDto>,
+    /// First-page and even-page headers/footers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    band_variants: Option<VariantsDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -207,6 +211,7 @@ impl File {
             footer: doc.footer.text.clone(),
             header_align: band_align_name(doc.header.align),
             footer_align: band_align_name(doc.footer.align),
+            band_variants: VariantsDto::of(&doc.variants),
             page: (doc.page != PageSpec::default()).then_some(PageDto {
                 width: doc.page.width,
                 height: doc.page.height,
@@ -331,18 +336,22 @@ impl File {
         }
         doc.header = Band::new(self.header).aligned(band_align_from(&self.header_align));
         doc.footer = Band::new(self.footer).aligned(band_align_from(&self.footer_align));
+        doc.variants = self
+            .band_variants
+            .map(VariantsDto::variants)
+            .unwrap_or_default();
         Ok(doc)
     }
 }
 
-fn band_align_name(align: Align) -> String {
+pub(super) fn band_align_name(align: Align) -> String {
     match align {
         Align::Center => String::new(),
         other => align_name(other).to_string(),
     }
 }
 
-fn band_align_from(name: &str) -> Align {
+pub(super) fn band_align_from(name: &str) -> Align {
     match name {
         "left" => Align::Left,
         "right" => Align::Right,

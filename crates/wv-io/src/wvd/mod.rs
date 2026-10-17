@@ -1,6 +1,7 @@
 //! Native format: JSON with a version header.
 
 mod schema;
+mod variants;
 
 use wv_core::Document;
 
@@ -108,6 +109,21 @@ mod tests {
         let mut doc = Document::from_text("x");
         doc.page =
             wv_core::PageSpec::custom(600.0, 900.0, [90.0, 60.0, 75.0, 45.0], [30.0, 20.0, 25.0]);
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
+
+    #[test]
+    fn band_variants_round_trip() {
+        let mut doc = Document::from_text("x");
+        doc.variants = wv_core::BandVariants {
+            different_first: true,
+            odd_even: true,
+            first: (wv_core::Band::new("Титул"), wv_core::Band::default()),
+            even: (
+                wv_core::Band::new("Чётная").aligned(Align::Right),
+                wv_core::Band::new("{page}"),
+            ),
+        };
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }
 }

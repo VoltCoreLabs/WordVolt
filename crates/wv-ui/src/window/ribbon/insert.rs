@@ -21,16 +21,18 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
-    let (header, footer, numbered) = {
+    let (header, footer, variants, numbered) = {
         let doc = &this.editor.read(cx).core.doc;
         (
             doc.header.clone(),
             doc.footer.clone(),
+            doc.variants.clone(),
             doc.footer.has_page_number(),
         )
     };
-    this.band_editor
-        .update(cx, |editor, _| editor.set_current(&header, &footer));
+    this.band_editor.update(cx, |editor, _| {
+        editor.set_current(&header, &footer, &variants)
+    });
     let page_number = icon_button("ins-page-number", Icon::Hash, numbered, cx)
         .tip(t(this.lang, Key::TipPageNumber))
         .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.toggle_page_number())));

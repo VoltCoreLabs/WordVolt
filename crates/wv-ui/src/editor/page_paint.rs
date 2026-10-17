@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
-use wv_core::{Band, Position};
+use wv_core::{Band, BandVariants, Position};
 use wv_layout::{DocLayout, Measurer, script_shift};
 
 use super::caret::caret_alpha;
@@ -36,7 +36,7 @@ pub struct PageView {
     /// Table borders.
     pub table_color: Rgba,
     /// Header and footer text, and their colour.
-    pub bands: Rc<(Band, Band)>,
+    pub bands: Rc<(Band, Band, BandVariants)>,
     /// Pictures of the document by `ImageRef::id`.
     pub images: Rc<Vec<Arc<Image>>>,
     pub band_color: Rgba,

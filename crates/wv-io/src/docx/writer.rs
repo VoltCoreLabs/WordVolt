@@ -31,18 +31,20 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         }
         i = end;
     }
-    // Header/footer parts are written by `package::write` (rIdH1 / rIdF1).
-    let mut refs = String::new();
-    if !doc.header.is_empty() {
-        refs.push_str("<w:headerReference w:type=\"default\" r:id=\"rIdH1\"/>");
-    }
-    if !doc.footer.is_empty() {
-        refs.push_str("<w:footerReference w:type=\"default\" r:id=\"rIdF1\"/>");
-    }
+    // Header/footer parts are written by `package::write` (`band_parts`).
+    let refs: String = super::band_parts::parts(doc)
+        .iter()
+        .map(|p| p.reference())
+        .collect();
+    let title_page = if doc.variants.different_first {
+        "<w:titlePg/>"
+    } else {
+        ""
+    };
     let twips = |px: f32| (px * 15.0).round() as i64;
     let page = doc.page;
     xml.push_str(&format!(
-        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/></w:sectPr></w:body></w:document>",
+        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{title_page}</w:sectPr></w:body></w:document>",
         twips(page.width),
         twips(page.height),
         if page.is_landscape() { " w:orient=\"landscape\"" } else { "" },

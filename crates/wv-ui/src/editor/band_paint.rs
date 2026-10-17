@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Align, Band, CharStyle};
+use wv_core::{Align, CharStyle};
 use wv_layout::Measurer;
 
 use super::measure::GpuiMeasurer;
@@ -24,7 +24,7 @@ pub fn paint_bands(
     let (ascent, descent) = (m.ascent(&style), m.descent(&style));
     let z = v.zoom;
     let height = ascent + descent;
-    let (header, footer): &(Band, Band) = &v.bands;
+    let (header, footer) = v.bands.2.pick(v.page, &v.bands.0, &v.bands.1);
     for (band, top) in [
         (header, setup.header_distance),
         (footer, setup.height - setup.footer_distance - height),

@@ -292,9 +292,9 @@ impl MainWindow {
         let band_editor = cx.new(|cx| HeaderFooterEditor::new(lang, cx));
         cx.subscribe(
             &band_editor,
-            |this, _, HeaderFooterEvent::Set(header, footer): &HeaderFooterEvent, cx| {
-                let (header, footer) = (header.clone(), footer.clone());
-                this.edit(cx, move |c| c.set_header_footer(header, footer));
+            |this, _, HeaderFooterEvent::Set(header, footer, variants): &HeaderFooterEvent, cx| {
+                let (header, footer, variants) = (header.clone(), footer.clone(), variants.clone());
+                this.edit(cx, move |c| c.set_bands(header, footer, variants));
                 this.editor.update(cx, |view, cx| view.request_focus(cx));
             },
         )
