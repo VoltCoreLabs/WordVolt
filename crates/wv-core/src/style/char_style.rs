@@ -1,5 +1,5 @@
 /// Superscript / subscript.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Script {
     #[default]
     Normal,
@@ -8,7 +8,7 @@ pub enum Script {
 }
 
 /// Character formatting of a run.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Hash)]
 pub struct CharStyle {
     pub bold: bool,
     pub italic: bool,

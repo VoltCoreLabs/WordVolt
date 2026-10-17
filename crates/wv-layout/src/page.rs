@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use std::rc::Rc;
+
 use crate::paragraph::ParagraphLayout;
 use crate::table::{Block, TABLE_GAP, TableBox};
 
@@ -98,7 +100,11 @@ impl Page {
 /// Flows body paragraphs and tables onto pages. A paragraph may continue on the next page (between
 /// lines); a table row never splits (the table continues on the next page). The gap above a
 /// paragraph is dropped at the top of a page.
-pub fn paginate(paragraphs: &[ParagraphLayout], blocks: &[Block], setup: &PageSetup) -> Vec<Page> {
+pub fn paginate(
+    paragraphs: &[Rc<ParagraphLayout>],
+    blocks: &[Block],
+    setup: &PageSetup,
+) -> Vec<Page> {
     let limit = setup.content_height();
     let content_width = setup.content_width();
     let mut pages = vec![Page::default()];

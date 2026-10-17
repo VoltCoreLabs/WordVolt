@@ -1,5 +1,7 @@
 use wv_core::{Document, Position};
 
+use std::rc::Rc;
+
 use crate::Measurer;
 use crate::layout_cache::LayoutCache;
 use crate::numbering::Counters;
@@ -28,7 +30,7 @@ pub struct SelectionRect {
 /// Whole-document layout: every paragraph laid out and flowed onto pages.
 pub struct DocLayout {
     pub setup: PageSetup,
-    pub paragraphs: Vec<ParagraphLayout>,
+    pub paragraphs: Vec<Rc<ParagraphLayout>>,
     pub pages: Vec<Page>,
     /// For every paragraph the (page, slice index) pairs where it is placed, in order.
     locations: Vec<Vec<(usize, usize)>>,
@@ -52,10 +54,12 @@ impl DocLayout {
         cache.begin();
         let content_width = setup.content_width();
         let fractions = table::column_fractions(doc);
-        let mut paragraphs: Vec<_> = doc
+        let mut counters = Counters::default();
+        let paragraphs: Vec<Rc<ParagraphLayout>> = doc
             .paragraphs
             .iter()
             .map(|p| {
+                let marker = counters.marker(&p.style);
                 let width = match p.style.cell {
                     Some(cell) => table::inner_width(
                         content_width,
@@ -70,15 +74,11 @@ impl DocLayout {
                     line_spacing: setup.line_spacing,
                 };
                 match p.with_named_style() {
-                    Some(resolved) => cache.layout(&resolved, &options, m),
-                    None => cache.layout(p, &options, m),
+                    Some(resolved) => cache.layout(&resolved, &options, marker, m),
+                    None => cache.layout(p, &options, marker, m),
                 }
             })
             .collect();
-        let mut counters = Counters::default();
-        for (layout, p) in paragraphs.iter_mut().zip(&doc.paragraphs) {
-            layout.marker = counters.marker(&p.style);
-        }
         cache.end();
         let pages = paginate(&paragraphs, &table::blocks(doc), &setup);
         let mut locations = vec![Vec::new(); paragraphs.len()];

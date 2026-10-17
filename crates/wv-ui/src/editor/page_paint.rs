@@ -9,7 +9,6 @@ use wv_layout::{DocLayout, Measurer, script_shift};
 
 use super::caret::caret_alpha;
 use super::measure::{GpuiMeasurer, MeasureCache};
-use super::scroll::ScrollState;
 
 /// Everything needed to paint one page; cheap to clone into the canvas closure.
 pub struct PageView {
@@ -22,8 +21,6 @@ pub struct PageView {
     pub text: Rgba,
     pub selection_color: Rgba,
     pub epoch: Rc<Cell<Instant>>,
-    pub scroll: Rc<ScrollState>,
-    pub reveal: Rc<Cell<bool>>,
     pub code_bg: Rgba,
     pub spoiler_color: Rgba,
     pub link_color: Rgba,
@@ -66,7 +63,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
 
     // A page that is off screen paints nothing (only the caret may still ask to be scrolled to).
     if !visible(0.0, v.layout.setup.height) {
-        paint_caret(v, &m, origin, &at, &sz, window);
+        paint_caret(v, &m, &at, &sz, window);
         return;
     }
 
@@ -254,20 +251,17 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
     }
 
-    paint_caret(v, &m, origin, &at, &sz, window);
+    paint_caret(v, &m, &at, &sz, window);
 }
 
-/// The caret (blinking) when it is on this page; the first time it is painted after a move it
-/// asks the scroll area to bring it into view.
+/// The caret (blinking) when it is on this page.
 fn paint_caret(
     v: &PageView,
     m: &GpuiMeasurer,
-    origin: Point<Pixels>,
     at: &dyn Fn(f32, f32) -> Point<Pixels>,
     sz: &dyn Fn(f32, f32) -> Size<Pixels>,
     window: &mut Window,
 ) {
-    let z = v.zoom;
     if v.focused
         && let Some(c) = v.layout.caret(v.head, m)
         && c.page == v.page
@@ -277,9 +271,6 @@ fn paint_caret(
             Bounds::new(at(c.x, c.y), sz(1.5, c.height)),
             Rgba { a: alpha, ..v.text },
         ));
-        if v.reveal.replace(false) {
-            v.scroll.reveal(origin.y + px(c.y * z), px(c.height * z));
-        }
         window.request_animation_frame();
     }
 }

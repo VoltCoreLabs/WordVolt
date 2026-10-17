@@ -75,6 +75,9 @@ impl EditorView {
             let Some(page_layout) = layout.pages.get(page) else {
                 continue;
             };
+            if b.size.height <= px(0.) {
+                continue;
+            }
             let origin = (f32::from(b.origin.x), f32::from(b.origin.y));
             for table in &page_layout.tables {
                 let Some((grab, row_height)) =

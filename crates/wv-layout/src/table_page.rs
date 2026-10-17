@@ -1,11 +1,13 @@
 use crate::page::{EPS, Page, PageSetup, Slice};
+use std::rc::Rc;
+
 use crate::paragraph::ParagraphLayout;
 use crate::table::{CELL_PADDING, CellBlock, CellRect, MIN_ROW_TEXT, Shade, TableBlock, TableBox};
 
 /// Flows a table onto the pages. A row never splits; rows tied together by a merged cell move as
 /// one block.
 pub(crate) fn paginate_table(
-    paragraphs: &[ParagraphLayout],
+    paragraphs: &[Rc<ParagraphLayout>],
     table: &TableBlock,
     setup: &PageSetup,
     pages: &mut Vec<Page>,

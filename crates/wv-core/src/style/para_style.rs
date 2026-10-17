@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Align {
     #[default]
     Left,
@@ -7,7 +7,7 @@ pub enum Align {
     Justify,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ListKind {
     Bullet,
     Number,
@@ -15,7 +15,7 @@ pub enum ListKind {
 
 /// Position of a paragraph inside a table. A table is a run of consecutive paragraphs that share
 /// `table`, ordered by (row, col); a cell may hold several paragraphs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Cell {
     pub table: u32,
     pub row: u16,
@@ -86,4 +86,25 @@ pub struct ParaStyle {
     pub image: Option<ImageRef>,
     /// Line of the table of contents (replaced when the contents are updated).
     pub toc: bool,
+}
+
+// Sizes hash by their bits (an exact match is what the layout cache needs).
+impl std::hash::Hash for ImageRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.id, self.width.to_bits(), self.height.to_bits()).hash(state);
+    }
+}
+
+impl std::hash::Hash for ParaStyle {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.align.hash(state);
+        self.named.hash(state);
+        self.quote.hash(state);
+        self.list.hash(state);
+        self.indent.hash(state);
+        self.line_spacing.map(f32::to_bits).hash(state);
+        self.cell.hash(state);
+        self.image.hash(state);
+        self.toc.hash(state);
+    }
 }

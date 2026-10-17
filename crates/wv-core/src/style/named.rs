@@ -2,7 +2,7 @@ use super::CharStyle;
 
 /// Built-in paragraph styles. A style supplies default size, weight, colour and spacing;
 /// formatting applied directly to the text wins over it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum NamedStyle {
     #[default]
     Normal,

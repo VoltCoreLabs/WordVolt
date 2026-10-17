@@ -50,6 +50,27 @@ impl ScrollState {
         self.viewport_w.get()
     }
 
+    pub fn viewport_height(&self) -> f32 {
+        self.viewport_h.get()
+    }
+
+    /// Scrolls just enough to bring something at `y` (from the top of the content, height `h`)
+    /// into view.
+    pub fn reveal_at(&self, y: f32, h: f32) {
+        const MARGIN: f32 = 48.;
+        let current = self.current.get();
+        let (top, bottom) = (current + MARGIN, current + self.viewport_h.get() - MARGIN);
+        let target = if y < top {
+            y - MARGIN
+        } else if y + h > bottom {
+            y + h - self.viewport_h.get() + MARGIN
+        } else {
+            return;
+        };
+        self.target.set(target.clamp(0., self.max()));
+        self.last_activity.set(Instant::now());
+    }
+
     /// Keeps the same part of the document in view after the content height changed by `factor`.
     pub fn rescale(&self, factor: f32) {
         self.target.set(self.target.get() * factor);
@@ -65,26 +86,6 @@ impl ScrollState {
     pub fn scroll_by(&self, dy: f32) {
         self.target
             .set((self.target.get() + dy).clamp(0., self.max()));
-        self.last_activity.set(Instant::now());
-    }
-
-    /// Scrolls just enough to bring a caret at window `y` (height `h`) into view.
-    pub fn reveal(&self, y: Pixels, h: Pixels) {
-        const MARGIN: f32 = 48.;
-        let (top, bottom) = (
-            self.viewport_top.get() + MARGIN,
-            self.viewport_top.get() + self.viewport_h.get() - MARGIN,
-        );
-        let (y, bottom_edge) = (f32::from(y), f32::from(y + h));
-        let delta = if y < top {
-            y - top
-        } else if bottom_edge > bottom {
-            bottom_edge - bottom
-        } else {
-            return;
-        };
-        self.target
-            .set((self.current.get() + delta).clamp(0., self.max()));
         self.last_activity.set(Instant::now());
     }
 
