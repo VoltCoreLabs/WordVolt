@@ -130,13 +130,20 @@ impl HeaderFooterEditor {
     }
 
     pub(super) fn toggle_flag(&mut self, first: bool, window: &mut Window, cx: &mut Context<Self>) {
-        if first {
+        self.store_fields();
+        let on = if first {
             self.flags.0 = !self.flags.0;
+            self.flags.0
         } else {
             self.flags.1 = !self.flags.1;
+            self.flags.1
+        };
+        // A variant that starts out empty would hide the page number: begin with the main one.
+        let slot = if first { 1 } else { 2 };
+        if on && self.sets[slot].0.is_empty() && self.sets[slot].1.is_empty() {
+            self.sets[slot] = self.sets[0].clone();
         }
-        let gone = (self.which == 1 && !self.flags.0) || (self.which == 2 && !self.flags.1);
-        if gone {
+        if !on && self.which == slot {
             self.select(0, window, cx);
         }
         cx.notify();
