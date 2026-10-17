@@ -707,3 +707,19 @@ fn table_of_contents_is_inserted_and_replaced_in_one_step() {
     assert!(e.undo());
     assert!(e.doc.paragraphs[3].text().ends_with("1"));
 }
+
+#[test]
+fn dragging_a_picture_size_is_one_undo_step() {
+    let mut e = Editor::new(Document::default());
+    e.insert_image(crate::ImageFormat::Png, vec![1, 2, 3], 200.0, 100.0);
+    e.set_head(Position::new(0, 0), false);
+    for (i, width) in [210.0, 250.0, 300.0].into_iter().enumerate() {
+        e.drag_image_width(width, i == 0);
+    }
+    let image = e.image_at_caret().unwrap();
+    assert_eq!((image.width, image.height), (300.0, 150.0));
+    assert!(e.undo());
+    assert_eq!(e.image_at_caret().unwrap().width, 200.0);
+    assert!(e.redo());
+    assert_eq!(e.image_at_caret().unwrap().width, 300.0);
+}

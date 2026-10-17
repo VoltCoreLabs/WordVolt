@@ -8,6 +8,7 @@ mod measure;
 mod mouse;
 mod nav;
 mod page_paint;
+mod resize;
 mod scroll;
 mod toc;
 mod view;

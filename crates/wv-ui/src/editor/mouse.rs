@@ -28,6 +28,9 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
+        if self.start_resize(ev.position) {
+            return;
+        }
         let Some(at) = self.hit(ev.position, window) else {
             return;
         };
@@ -57,6 +60,14 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.resizing.is_some() {
+            if ev.pressed_button == Some(MouseButton::Left) {
+                self.drag_resize(ev.position, cx);
+            } else {
+                self.resizing = None;
+            }
+            return;
+        }
         if !self.selecting || ev.pressed_button != Some(MouseButton::Left) {
             return;
         }
@@ -67,5 +78,6 @@ impl EditorView {
 
     pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
         self.selecting = false;
+        self.resizing = None;
     }
 }

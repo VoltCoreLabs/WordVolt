@@ -67,6 +67,26 @@ impl Editor {
         });
     }
 
+    /// Like `set_image_width` for a drag: the first call (`first`) starts an undo step, the
+    /// following ones change that step.
+    pub fn drag_image_width(&mut self, width: f32, first: bool) {
+        if first {
+            return self.set_image_width(width);
+        }
+        let Some(image) = self.image_at_caret() else {
+            return;
+        };
+        let width = width.clamp(16.0, 2000.0);
+        let para = self.sel.head.para;
+        let mut changed = self.doc.paragraphs[para].clone();
+        changed.style.image = Some(ImageRef {
+            width,
+            height: image.height * width / image.width,
+            ..image
+        });
+        self.amend_last_edit(para, changed);
+    }
+
     /// Scales the caret's picture by `factor`, keeping its proportions.
     pub fn scale_image(&mut self, factor: f32) {
         if let Some(image) = self.image_at_caret() {

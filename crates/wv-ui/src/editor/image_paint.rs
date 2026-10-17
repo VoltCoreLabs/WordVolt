@@ -6,6 +6,7 @@ use std::sync::Arc;
 use wv_core::ImageFormat;
 
 use super::page_paint::PageView;
+use super::resize::{CORNERS, HANDLE};
 use super::view::EditorView;
 
 impl EditorView {
@@ -68,5 +69,38 @@ pub fn paint_images(
         if let Some(data) = source.clone().use_render_image(window, cx) {
             let _ = window.paint_image(bounds, bounds, Corners::default(), data, 0, false);
         }
+        if v.head.para == slice.para {
+            paint_handles(v, bounds, window);
+        }
+    }
+}
+
+/// Outline and corner handles of the selected picture.
+fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
+    let accent = v.link_color;
+    let line = px(1.5);
+    let (o, s) = (bounds.origin, bounds.size);
+    for edge in [
+        Bounds::new(o, size(s.width, line)),
+        Bounds::new(point(o.x, o.y + s.height - line), size(s.width, line)),
+        Bounds::new(o, size(line, s.height)),
+        Bounds::new(point(o.x + s.width - line, o.y), size(line, s.height)),
+    ] {
+        window.paint_quad(fill(edge, accent));
+    }
+    let half = px(HANDLE / 2.0);
+    for corner in CORNERS {
+        let (x, y) = corner.of(
+            f32::from(o.x),
+            f32::from(o.y),
+            f32::from(s.width),
+            f32::from(s.height),
+        );
+        let outer = Bounds::new(
+            point(px(x) - half, px(y) - half),
+            size(px(HANDLE), px(HANDLE)),
+        );
+        window.paint_quad(fill(outer, accent));
+        window.paint_quad(fill(outer.dilate(px(-2.0)), rgb(0xffffff)));
     }
 }
