@@ -122,6 +122,7 @@ impl Render for MainWindow {
                         pages,
                         words,
                         self.editor.read(cx).zoom,
+                        self.editor.read(cx).multi_page,
                         cx,
                     )),
             )

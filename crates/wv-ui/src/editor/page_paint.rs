@@ -64,13 +64,19 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         top + height * v.zoom > view_top - CULL && top < view_bottom + CULL
     };
 
+    // A page that is off screen paints nothing (only the caret may still ask to be scrolled to).
+    if !visible(0.0, v.layout.setup.height) {
+        paint_caret(v, &m, origin, &at, &sz, window);
+        return;
+    }
+
     let (start, end) = v.selection;
     if start != end {
         for r in v
             .layout
-            .selection_rects(start, end, &m)
+            .selection_rects_on_page(start, end, v.page, &m)
             .iter()
-            .filter(|r| r.page == v.page && visible(r.y, r.height))
+            .filter(|r| visible(r.y, r.height))
         {
             window.paint_quad(fill(
                 Bounds::new(at(r.x, r.y), sz(r.width, r.height)),
@@ -79,8 +85,22 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
     }
 
-    // Search matches go over the selection (the current match is usually selected too).
+    // Search matches go over the selection (the current match is usually selected too). Only the
+    // matches in the paragraphs of this page are looked at.
+    let page_paras =
+        v.layout.pages[v.page]
+            .slices
+            .iter()
+            .fold(None, |acc: Option<(usize, usize)>, s| {
+                Some(acc.map_or((s.para, s.para), |(lo, hi)| {
+                    (lo.min(s.para), hi.max(s.para))
+                }))
+            });
     for (i, (from, to)) in v.find.iter().enumerate().take(MAX_HIGHLIGHTS) {
+        let Some((lo, hi)) = page_paras else { break };
+        if to.para < lo || from.para > hi {
+            continue;
+        }
         let color = if Some(i) == v.find_current {
             v.find_current_color
         } else {
@@ -88,9 +108,9 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         };
         for r in v
             .layout
-            .selection_rects(*from, *to, &m)
+            .selection_rects_on_page(*from, *to, v.page, &m)
             .iter()
-            .filter(|r| r.page == v.page && visible(r.y, r.height))
+            .filter(|r| visible(r.y, r.height))
         {
             window.paint_quad(fill(
                 Bounds::new(at(r.x, r.y), sz(r.width, r.height)),
@@ -234,8 +254,22 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
     }
 
+    paint_caret(v, &m, origin, &at, &sz, window);
+}
+
+/// The caret (blinking) when it is on this page; the first time it is painted after a move it
+/// asks the scroll area to bring it into view.
+fn paint_caret(
+    v: &PageView,
+    m: &GpuiMeasurer,
+    origin: Point<Pixels>,
+    at: &dyn Fn(f32, f32) -> Point<Pixels>,
+    sz: &dyn Fn(f32, f32) -> Size<Pixels>,
+    window: &mut Window,
+) {
+    let z = v.zoom;
     if v.focused
-        && let Some(c) = v.layout.caret(v.head, &m)
+        && let Some(c) = v.layout.caret(v.head, m)
         && c.page == v.page
     {
         let alpha = caret_alpha(v.epoch.get().elapsed().as_secs_f32());

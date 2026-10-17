@@ -2,6 +2,7 @@
 
 mod band_line;
 mod document;
+mod layout_cache;
 mod leader;
 mod line;
 mod measure;
@@ -13,6 +14,7 @@ mod table_page;
 
 pub use band_line::{BandLine, BandPart, band_line};
 pub use document::{CaretRect, DocLayout, SelectionRect};
+pub use layout_cache::LayoutCache;
 pub use leader::leader;
 pub use line::{Fragment, Line};
 pub use measure::{DEFAULT_SIZE_PT, Measurer, base_px, font_px, script_shift};
