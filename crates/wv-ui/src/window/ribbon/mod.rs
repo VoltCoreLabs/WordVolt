@@ -4,7 +4,7 @@ mod home;
 mod insert;
 mod layout;
 mod tabs;
-mod view;
+pub(crate) mod view;
 
 use std::time::Duration;
 

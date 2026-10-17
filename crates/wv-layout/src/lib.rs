@@ -1,6 +1,7 @@
 //! Text layout and pagination. See README.md.
 
 mod document;
+mod leader;
 mod line;
 mod measure;
 mod numbering;
@@ -9,6 +10,7 @@ mod paragraph;
 mod table;
 
 pub use document::{CaretRect, DocLayout, SelectionRect};
+pub use leader::leader;
 pub use line::{Fragment, Line};
 pub use measure::{DEFAULT_SIZE_PT, Measurer, base_px, font_px, script_shift};
 pub use page::{Page, PageSetup, Slice};
