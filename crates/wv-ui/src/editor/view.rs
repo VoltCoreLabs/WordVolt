@@ -219,6 +219,14 @@ impl Render for EditorView {
             .track_focus(&self.focus)
             .key_context("Editor")
             .on_key_down(cx.listener(Self::on_key_down))
+            .on_action(cx.listener(|this, _: &crate::actions::EditorTab, _, cx| {
+                this.apply(cx, |c| c.tab_key(false))
+            }))
+            .on_action(
+                cx.listener(|this, _: &crate::actions::EditorTabBack, _, cx| {
+                    this.apply(cx, |c| c.tab_key(true))
+                }),
+            )
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
             .on_mouse_move(cx.listener(Self::on_drag_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))

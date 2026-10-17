@@ -6,7 +6,9 @@ use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
 use crate::ui_kit::color_math::{hex, hsv_to_rgb, mix, parse_hex, rgb_to_hsv};
-use crate::ui_kit::{Icon, LineEdit, Outcome, RecentColors, Tip, icon_button, pop_in};
+use crate::ui_kit::{
+    Icon, LineEdit, Outcome, RecentColors, Tip, icon_button, pop_in, track_bounds,
+};
 
 pub enum ColorEvent {
     /// `None` = no colour (automatic text colour / no highlight).
@@ -32,6 +34,8 @@ pub struct ColorPicker {
     /// Colour shown in the bar under the icon.
     current: Option<u32>,
     open: bool,
+    /// Bounds of the open panel (see `track_bounds`).
+    panel_bounds: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
     /// Counts openings so the pop-in animation restarts each time.
     epoch: u64,
     hsv: (f32, f32, f32),
@@ -86,6 +90,7 @@ impl ColorPicker {
             lang,
             current: None,
             open: false,
+            panel_bounds: Default::default(),
             epoch: 0,
             hsv: (210.0, 0.8, 0.9),
             hex: LineEdit::default(),
@@ -409,6 +414,7 @@ impl ColorPicker {
         div()
             .id(SharedString::from(format!("{id}-panel")))
             .occlude()
+            .relative()
             .w(px(SQUARE.0 + 24.))
             .p(px(12.))
             .flex()
@@ -432,6 +438,7 @@ impl ColorPicker {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.end_drag(cx)),
             )
+            .child(track_bounds(self.panel_bounds.clone()))
             .child(none)
             .child(div().flex().flex_col().gap(px(4.)).children(grid))
             .children(recent_row)
@@ -478,8 +485,8 @@ impl Render for ColorPicker {
         });
         div()
             .relative()
-            .on_mouse_down_out(cx.listener(|this, _, _, cx| {
-                if this.open {
+            .on_mouse_down_out(cx.listener(|this, ev: &MouseDownEvent, _, cx| {
+                if this.open && !this.panel_bounds.get().contains(&ev.position) {
                     this.open = false;
                     cx.notify();
                 }

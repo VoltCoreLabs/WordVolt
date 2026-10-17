@@ -2,7 +2,7 @@ use gpui_kit::*;
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
-use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button, pop_in};
+use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button, pop_in, track_bounds};
 
 pub enum LinkEvent {
     /// `None` removes the link.
@@ -14,6 +14,8 @@ pub struct LinkEditor {
     lang: Lang,
     current: Option<String>,
     open: bool,
+    /// Bounds of the open panel (see `track_bounds`).
+    panel_bounds: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
     /// Counts openings so the pop-in animation restarts each time.
     epoch: u64,
     edit: LineEdit,
@@ -28,6 +30,7 @@ impl LinkEditor {
             lang,
             current: None,
             open: false,
+            panel_bounds: Default::default(),
             epoch: 0,
             edit: LineEdit::default(),
             focus: cx.focus_handle(),
@@ -131,6 +134,7 @@ impl Render for LinkEditor {
             let body = div()
                 .id("link-panel")
                 .occlude()
+                .relative()
                 .w(px(300.))
                 .p(px(12.))
                 .flex()
@@ -141,6 +145,7 @@ impl Render for LinkEditor {
                 .border_color(border)
                 .rounded(radius::md())
                 .shadow_lg()
+                .child(track_bounds(self.panel_bounds.clone()))
                 .child(
                     div()
                         .text_xs()
@@ -159,8 +164,8 @@ impl Render for LinkEditor {
         });
         div()
             .relative()
-            .on_mouse_down_out(cx.listener(|this, _, _, cx| {
-                if this.open {
+            .on_mouse_down_out(cx.listener(|this, ev: &MouseDownEvent, _, cx| {
+                if this.open && !this.panel_bounds.get().contains(&ev.position) {
                     this.open = false;
                     cx.notify();
                 }

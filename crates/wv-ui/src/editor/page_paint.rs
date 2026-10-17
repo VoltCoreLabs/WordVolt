@@ -139,7 +139,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                 ) = (false, false, false, None, None);
                 let color: Hsla = style.color.map_or(v.text, rgb).into();
                 let (ascent, descent) = (m.ascent(&style), m.descent(&style));
-                let x = setup.margin_left + para.indent - 6.0 - m.width(marker, &style);
+                let x = setup.margin_left + slice.x + para.indent - 6.0 - m.width(marker, &style);
                 let y = top + line.baseline - ascent;
                 let shaped = m.shape(marker, &style, color);
                 let _ = shaped.paint(
@@ -154,7 +154,10 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
         if para.quote {
             let bar = Bounds::new(
-                at(setup.margin_left + 4.0, setup.margin_top + slice.y),
+                at(
+                    setup.margin_left + slice.x + 4.0,
+                    setup.margin_top + slice.y,
+                ),
                 size(px(3.), px(slice.height)),
             );
             window.paint_quad(fill(bar, v.bar_color));
@@ -180,7 +183,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     .into();
                 let (ascent, descent) = (m.ascent(&f.style), m.descent(&f.style));
                 let y = top + line.baseline - ascent + script_shift(&f.style);
-                let mut x = setup.margin_left + line.x + f.x;
+                let mut x = setup.margin_left + slice.x + line.x + f.x;
                 let background = f
                     .style
                     .highlight

@@ -105,6 +105,9 @@ pub enum Key {
     TblDelRow,
     TblDelCol,
     TblDelTable,
+    TableRows,
+    TableCols,
+    InsertTable,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -210,6 +213,9 @@ fn ru(key: Key) -> &'static str {
         Key::TblDelRow => "Удалить строку",
         Key::TblDelCol => "Удалить столбец",
         Key::TblDelTable => "Удалить таблицу",
+        Key::TableRows => "Строки",
+        Key::TableCols => "Столбцы",
+        Key::InsertTable => "Вставить",
     }
 }
 
@@ -309,6 +315,9 @@ fn en(key: Key) -> &'static str {
         Key::TblDelRow => "Delete row",
         Key::TblDelCol => "Delete column",
         Key::TblDelTable => "Delete table",
+        Key::TableRows => "Rows",
+        Key::TableCols => "Columns",
+        Key::InsertTable => "Insert",
     }
 }
 

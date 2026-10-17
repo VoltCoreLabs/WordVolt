@@ -186,11 +186,9 @@ impl FindBar {
         cx.notify();
     }
 
-    fn on_find_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn on_find_key(&mut self, ev: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let key = ev.keystroke.key.as_str();
-        if key == "tab" && self.show_replace {
-            window.focus(&self.replace_focus, cx);
-        } else if key == "enter" {
+        if key == "enter" {
             self.step(if ev.keystroke.modifiers.shift { -1 } else { 1 }, cx);
         } else {
             match self.find.key(ev, cx) {
@@ -205,11 +203,9 @@ impl FindBar {
         cx.stop_propagation();
     }
 
-    fn on_replace_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn on_replace_key(&mut self, ev: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let key = ev.keystroke.key.as_str();
-        if key == "tab" {
-            window.focus(&self.find_focus, cx);
-        } else if key == "enter" {
+        if key == "enter" {
             self.replace_one(cx);
         } else {
             match self.replace.key(ev, cx) {
@@ -284,6 +280,14 @@ impl Render for FindBar {
             window,
             cx,
         )
+        .key_context("TabField")
+        .on_action(
+            cx.listener(|this, _: &crate::actions::FieldNext, window, cx| {
+                if this.show_replace {
+                    window.focus(&this.replace_focus, cx);
+                }
+            }),
+        )
         .on_key_down(cx.listener(Self::on_find_key))
         .on_mouse_down(
             MouseButton::Left,
@@ -342,6 +346,12 @@ impl Render for FindBar {
                 replace_focused,
                 window,
                 cx,
+            )
+            .key_context("TabField")
+            .on_action(
+                cx.listener(|this, _: &crate::actions::FieldNext, window, cx| {
+                    window.focus(&this.find_focus, cx)
+                }),
             )
             .on_key_down(cx.listener(Self::on_replace_key))
             .on_mouse_down(
