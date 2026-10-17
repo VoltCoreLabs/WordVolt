@@ -6,7 +6,10 @@ use crate::window::state::MainWindow;
 
 /// Layout tab: paper size, margins and orientation of the document's pages.
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
-    let landscape = this.editor.read(cx).core.doc.page.is_landscape();
+    let spec = this.editor.read(cx).core.doc.page;
+    let landscape = spec.is_landscape();
+    this.page_setup
+        .update(cx, |editor, _| editor.set_current(spec));
     let orientation = |id: &'static str,
                        icon: Icon,
                        tip: Key,
@@ -26,6 +29,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         vec![
             this.paper_menu.clone().into_any_element(),
             this.margins_menu.clone().into_any_element(),
+            this.page_setup.clone().into_any_element(),
             orientation(
                 "page-portrait",
                 Icon::PagePortrait,
