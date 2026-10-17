@@ -2,19 +2,20 @@ use std::collections::HashSet;
 
 use wv_core::{Cell, Paragraph};
 
-/// Orders the paragraphs of one parsed table by cell and fills cells the file left out (merged or
-/// missing), so that every row has every column.
+/// Orders the paragraphs of one parsed table by cell and fills the positions the file left out
+/// (the ones a merged cell covers need no cell), so that every row has every column.
 pub fn normalize(mut paras: Vec<Paragraph>, table: u32) -> Vec<Paragraph> {
     let mut seen = HashSet::new();
     let (mut rows, mut cols) = (0, 0);
-    for c in paras.iter().filter_map(|p| p.style.cell) {
+    let cells: Vec<Cell> = paras.iter().filter_map(|p| p.style.cell).collect();
+    for c in &cells {
         seen.insert((c.row, c.col));
-        rows = rows.max(c.row + 1);
-        cols = cols.max(c.col + 1);
+        rows = rows.max(c.row_end());
+        cols = cols.max(c.col_end());
     }
     for row in 0..rows {
         for col in 0..cols {
-            if !seen.contains(&(row, col)) {
+            if !seen.contains(&(row, col)) && !cells.iter().any(|c| c.covers(row, col)) {
                 let mut p = Paragraph::default();
                 p.style.cell = Some(Cell::at(table, row, col));
                 paras.push(p);

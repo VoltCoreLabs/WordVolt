@@ -270,3 +270,41 @@ fn column_widths_and_cell_shading_shape_the_table() {
     assert_eq!(table.shades[0].color, 0xFFEE99);
     assert!((table.shades[0].x - 20.0).abs() < 0.01 && (table.shades[0].width - 60.0).abs() < 0.01);
 }
+
+fn merged_table(cells: &[(u16, u16, u8, u8)]) -> DocLayout {
+    let text: Vec<String> = (0..cells.len()).map(|i| format!("c{i}")).collect();
+    let mut doc = Document::from_text(&text.join(
+        "
+",
+    ));
+    for (i, (row, col, colspan, rowspan)) in cells.iter().copied().enumerate() {
+        doc.paragraphs[i].style.cell = Some(wv_core::Cell {
+            colspan,
+            rowspan,
+            ..wv_core::Cell::at(0, row, col)
+        });
+    }
+    DocLayout::new(&doc, small(), &Fixed)
+}
+
+#[test]
+fn a_merged_cell_spans_columns() {
+    let layout = merged_table(&[(0, 0, 2, 1), (1, 0, 1, 1), (1, 1, 1, 1)]);
+    let table = &layout.pages[0].tables[0];
+    assert_eq!(table.cells.len(), 3);
+    assert!(
+        (table.cells[0].width - 80.0).abs() < 0.01,
+        "covers both columns"
+    );
+    assert!((table.cells[1].width - 40.0).abs() < 0.01);
+    assert_eq!(table.row_y.len(), 3, "two rows");
+}
+
+#[test]
+fn a_merged_cell_spans_rows() {
+    let layout = merged_table(&[(0, 0, 1, 2), (0, 1, 1, 1), (1, 1, 1, 1)]);
+    let table = &layout.pages[0].tables[0];
+    let tall = &table.cells[0];
+    assert!((tall.height - (table.row_y[2] - table.row_y[0])).abs() < 0.01);
+    assert_eq!(layout.pages[0].slices.len(), 3);
+}

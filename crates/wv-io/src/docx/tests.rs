@@ -155,7 +155,7 @@ fn reads_word_numbering_and_indents() {
 }
 
 #[test]
-fn table_round_trips_and_merged_cells_become_empty_cells() {
+fn table_round_trips_and_a_column_span_stays_one_cell() {
     let mut e = Editor::default();
     e.insert_text("before");
     e.insert_table(2, 3);
@@ -179,11 +179,11 @@ fn table_round_trips_and_merged_cells_become_empty_cells() {
         })
         .collect();
     let s = |t: &str| t.to_string();
+    assert_eq!(doc.paragraphs[0].style.cell.unwrap().colspan, 2);
     assert_eq!(
         cells,
         [
             (0, 0, s("wide")),
-            (0, 1, s("")),
             (0, 2, s("c")),
             (1, 0, s("1")),
             (1, 1, s("")),
@@ -345,4 +345,38 @@ fn table_widths_and_shading_round_trip() {
         .map(|c| (c.row, c.col))
         .collect();
     assert_eq!(shaded, vec![(0, 0)]);
+}
+
+#[test]
+fn merged_cells_round_trip() {
+    let mut e = wv_core::Editor::new(Document::from_text("x"));
+    e.insert_table(3, 3);
+    let first = e.table_info().unwrap().first;
+    // 2x2 block at the top left, then a two-column cell in the last row.
+    e.select_range(
+        wv_core::Position::new(first, 0),
+        wv_core::Position::new(first + 4, 0),
+    );
+    e.merge_cells();
+    let last_row = e
+        .doc
+        .paragraphs
+        .iter()
+        .position(|p| p.style.cell.is_some_and(|c| (c.row, c.col) == (2, 0)))
+        .unwrap();
+    e.select_range(
+        wv_core::Position::new(last_row, 0),
+        wv_core::Position::new(last_row + 1, 0),
+    );
+    e.merge_cells();
+    let doc = e.doc.clone();
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    let cells = |d: &Document| -> Vec<(u16, u16, u8, u8)> {
+        d.paragraphs
+            .iter()
+            .filter_map(|p| p.style.cell)
+            .map(|c| (c.row, c.col, c.rowspan, c.colspan))
+            .collect()
+    };
+    assert_eq!(cells(&back), cells(&doc));
 }

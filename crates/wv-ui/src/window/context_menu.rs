@@ -347,6 +347,34 @@ pub fn context_menu(
         for (id, key, action) in table {
             items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());
         }
+        let (can_merge, can_split) = {
+            let core = &this.editor.read(cx).core;
+            (core.can_merge(), core.can_split())
+        };
+        let merge: Action = |t, _, cx| t.edit(cx, |c| c.merge_cells());
+        let split: Action = |t, _, cx| t.edit(cx, |c| c.split_cell());
+        items.push(
+            row(
+                "ctx-merge",
+                t(lang, Key::CtxMerge),
+                None,
+                can_merge,
+                merge,
+                cx,
+            )
+            .into_any_element(),
+        );
+        items.push(
+            row(
+                "ctx-split",
+                t(lang, Key::CtxSplit),
+                None,
+                can_split,
+                split,
+                cx,
+            )
+            .into_any_element(),
+        );
         items.push(shade_row(lang, cx).into_any_element());
     }
     if image {

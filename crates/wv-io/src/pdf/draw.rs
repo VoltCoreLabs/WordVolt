@@ -135,8 +135,6 @@ fn draw_bands(
 fn draw_tables(c: &mut Canvas, layout: &DocLayout, page: usize) {
     let (left, top) = (layout.setup.margin_left, layout.setup.margin_top);
     for table in &layout.pages[page].tables {
-        let (first, last) = (table.row_y[0], table.row_y[table.row_y.len() - 1]);
-        let width = table.col_x[table.col_x.len() - 1];
         for shade in &table.shades {
             c.fill(
                 left + shade.x,
@@ -146,17 +144,13 @@ fn draw_tables(c: &mut Canvas, layout: &DocLayout, page: usize) {
                 shade.color,
             );
         }
-        for y in &table.row_y {
-            c.fill(left, top + y - 0.5, width, 1.0, TABLE);
-        }
-        for x in &table.col_x {
-            c.fill(
-                left + x - 0.5,
-                top + first - 0.5,
-                1.0,
-                last - first + 1.0,
-                TABLE,
-            );
+        // Borders around every cell (merged cells show no line inside).
+        for cell in &table.cells {
+            let (x, y, w, h) = (left + cell.x, top + cell.y, cell.width, cell.height);
+            c.fill(x, y - 0.5, w, 1.0, TABLE);
+            c.fill(x, y + h - 0.5, w, 1.0, TABLE);
+            c.fill(x - 0.5, y, 1.0, h, TABLE);
+            c.fill(x + w - 0.5, y, 1.0, h, TABLE);
         }
     }
 }

@@ -22,6 +22,10 @@ pub struct Cell {
     pub col: u16,
     /// Background of the cell (0xRRGGBB); `None` = none.
     pub shade: Option<u32>,
+    /// Columns and rows the cell covers (merged cells); the covered positions have no cell of
+    /// their own.
+    pub colspan: u8,
+    pub rowspan: u8,
 }
 
 impl Cell {
@@ -32,7 +36,24 @@ impl Cell {
             row,
             col,
             shade: None,
+            colspan: 1,
+            rowspan: 1,
         }
+    }
+
+    /// First row after the cell.
+    pub fn row_end(&self) -> u16 {
+        self.row + u16::from(self.rowspan.max(1))
+    }
+
+    /// First column after the cell.
+    pub fn col_end(&self) -> u16 {
+        self.col + u16::from(self.colspan.max(1))
+    }
+
+    /// The cell covers the position (`row`, `col`).
+    pub fn covers(&self, row: u16, col: u16) -> bool {
+        (self.row..self.row_end()).contains(&row) && (self.col..self.col_end()).contains(&col)
     }
 }
 

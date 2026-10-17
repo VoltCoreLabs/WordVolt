@@ -43,9 +43,12 @@ impl DocLayout {
             .iter()
             .map(|p| {
                 let width = match p.style.cell {
-                    Some(cell) => {
-                        table::inner_width(content_width, &fractions[&cell.table], cell.col)
-                    }
+                    Some(cell) => table::inner_width(
+                        content_width,
+                        &fractions[&cell.table],
+                        cell.col,
+                        cell.colspan,
+                    ),
                     None => content_width,
                 };
                 let options = Options {

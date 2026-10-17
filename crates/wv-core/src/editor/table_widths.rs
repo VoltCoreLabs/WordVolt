@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use super::Editor;
 use crate::position::Selection;
 
@@ -58,16 +56,16 @@ impl Editor {
         let Some(info) = self.table_info() else {
             return;
         };
-        let (start, end) = self.sel.range();
-        let cells: BTreeSet<(u16, u16)> = self.doc.paragraphs
-            [start.para.max(info.first)..=end.para.min(info.last)]
-            .iter()
-            .filter_map(|p| p.style.cell)
-            .map(|c| (c.row, c.col))
-            .collect();
+        let Some((_, rect)) = self.selected_rect(&info) else {
+            return;
+        };
         let mut paras = self.doc.paragraphs[info.first..=info.last].to_vec();
         for cell in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-            if cells.contains(&(cell.row, cell.col)) {
+            if cell.row >= rect.r0
+                && cell.row <= rect.r1
+                && cell.col >= rect.c0
+                && cell.col <= rect.c1
+            {
                 cell.shade = shade;
             }
         }

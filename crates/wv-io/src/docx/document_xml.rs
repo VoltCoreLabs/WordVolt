@@ -92,6 +92,10 @@ struct TableState {
     col: u16,
     span: u16,
     cell: Option<Cell>,
+    /// The cell being read continues the one above (`w:vMerge` without `restart`).
+    continues: bool,
+    /// Where the cell's paragraphs start in `State::paragraphs`.
+    cell_start: usize,
     /// `w:gridCol` widths (twips) of the table being read.
     grid: Vec<u32>,
 }
@@ -120,6 +124,8 @@ impl State {
             }
             b"tc" if self.table.depth == 1 && !empty => {
                 self.table.span = 1;
+                self.table.continues = false;
+                self.table.cell_start = self.paragraphs.len();
                 self.table.cell = Some(Cell::at(
                     self.table.next_id,
                     self.table.row.unwrap_or(0),
@@ -146,6 +152,12 @@ impl State {
                 self.table.span = attr(e, b"val")
                     .and_then(|v| v.parse::<u16>().ok())
                     .map_or(1, |n| n.clamp(1, 63));
+                if let Some(cell) = self.table.cell.as_mut() {
+                    cell.colspan = self.table.span as u8;
+                }
+            }
+            b"vMerge" if self.table.depth == 1 && self.table.cell.is_some() => {
+                self.table.continues = attr(e, b"val").as_deref() != Some("restart");
             }
             b"drawing" if !empty => {
                 self.pictures.in_drawing = true;
@@ -278,7 +290,7 @@ impl State {
                     let cols = rows
                         .iter()
                         .filter_map(|p| p.style.cell)
-                        .map(|c| usize::from(c.col) + 1)
+                        .map(|c| usize::from(c.col_end()))
                         .max()
                         .unwrap_or(0);
                     if let Some(f) = super::table_read::fractions(&self.table.grid, cols) {
@@ -350,17 +362,30 @@ impl State {
         self.pictures.after = true;
     }
 
-    /// Closes a cell; a column span leaves empty cells for the columns it covered.
+    /// Closes a cell. One that continues the cell above (`w:vMerge`) is dropped and makes that
+    /// cell taller; a column span just widens the cell (the covered columns have no cells).
     fn end_cell(&mut self) {
         self.end_paragraph();
         if let Some(cell) = self.table.cell.take() {
-            for extra in 1..self.table.span {
-                let mut p = Paragraph::default();
-                p.style.cell = Some(Cell {
-                    col: cell.col + extra,
-                    ..cell
-                });
-                self.paragraphs.push(p);
+            if self.table.continues {
+                self.paragraphs.truncate(self.table.cell_start);
+                let start = self.table.start;
+                let above = (cell.row.saturating_sub(1), cell.col);
+                // The cell above in this column, wherever it started.
+                let origin = self.paragraphs[start..]
+                    .iter()
+                    .filter_map(|p| p.style.cell)
+                    .find(|c| c.col == above.1 && c.row_end() == cell.row)
+                    .map(|c| (c.row, c.col));
+                if let Some(key) = origin {
+                    for p in self.paragraphs[start..].iter_mut() {
+                        if let Some(c) = p.style.cell.as_mut()
+                            && (c.row, c.col) == key
+                        {
+                            c.rowspan = c.rowspan.saturating_add(1);
+                        }
+                    }
+                }
             }
             self.table.col += self.table.span.max(1);
         }

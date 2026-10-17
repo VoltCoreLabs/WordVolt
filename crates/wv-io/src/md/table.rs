@@ -15,8 +15,10 @@ pub fn encode(paras: &[Paragraph]) -> String {
             cells.entry((c.row, c.col)).or_default().push(text);
         }
     }
-    let rows = cells.keys().map(|k| k.0 + 1).max().unwrap_or(0);
-    let cols = cells.keys().map(|k| k.1 + 1).max().unwrap_or(0);
+    let ends = paras.iter().filter_map(|p| p.style.cell);
+    let (rows, cols) = ends.fold((0, 0), |(r, c), cell| {
+        (r.max(cell.row_end()), c.max(cell.col_end()))
+    });
     let mut lines = Vec::new();
     for r in 0..rows {
         let row: Vec<String> = (0..cols)

@@ -152,4 +152,21 @@ mod tests {
         assert_eq!(back, doc);
         assert_eq!(back.table_widths[&table], vec![0.3, 0.7]);
     }
+
+    #[test]
+    fn merged_cells_round_trip() {
+        let mut e = wv_core::Editor::new(Document::from_text("x"));
+        e.insert_table(3, 3);
+        let first = e.table_info().unwrap().first;
+        e.select_range(
+            wv_core::Position::new(first, 0),
+            wv_core::Position::new(first + 4, 0),
+        );
+        e.merge_cells();
+        let doc = e.doc.clone();
+        let back = decode(&encode(&doc).unwrap()).unwrap();
+        assert_eq!(back, doc);
+        let merged = back.paragraphs[first].style.cell.unwrap();
+        assert_eq!((merged.rowspan, merged.colspan), (2, 2));
+    }
 }
