@@ -3,18 +3,23 @@ use gpui_kit::*;
 use crate::theme::space;
 use wv_i18n::{Key, t};
 
-use crate::ui_kit::{Icon, Tip, icon_button, tab};
+use crate::ui_kit::{Icon, Tip, icon_button, pill_tabs, tab};
 use crate::window::state::{MainWindow, Tab};
 
 /// Tabs on the left; collapse-ribbon and side-panel toggles on the right.
 pub fn tab_bar(this: &MainWindow, cx: &mut Context<MainWindow>) -> Div {
-    let tabs = Tab::ALL.map(|t| {
-        tab(t.label(this.lang), this.tab == t, cx).on_click(cx.listener(move |this, _, _, cx| {
-            this.tab = t;
-            this.ribbon_open = true;
-            cx.notify();
-        }))
-    });
+    let tabs = pill_tabs(
+        Tab::ALL.map(|t| {
+            tab(t.label(this.lang), this.tab == t, cx).on_click(cx.listener(
+                move |this, _, _, cx| {
+                    this.tab = t;
+                    this.ribbon_open = true;
+                    cx.notify();
+                },
+            ))
+        }),
+        cx,
+    );
     let collapse = if this.ribbon_open {
         Icon::CaretUp
     } else {
@@ -22,15 +27,14 @@ pub fn tab_bar(this: &MainWindow, cx: &mut Context<MainWindow>) -> Div {
     };
     div()
         .flex()
-        .items_end()
+        .items_center()
         .gap(space::xs())
-        .children(tabs)
+        .child(tabs)
         .child(div().flex_1())
         .child(
             div()
                 .flex()
                 .gap(space::sm())
-                .pb(space::xs())
                 .child(
                     icon_button("toggle-panel", Icon::PaintBucket, this.panel_open, cx)
                         .tip(t(this.lang, Key::TipPanel))
