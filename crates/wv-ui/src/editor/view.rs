@@ -20,7 +20,7 @@ const PAGE_GAP: f32 = 24.0;
 /// Stored picture bytes (cache keys) and the GPUI images built from them.
 pub(super) type PictureCache = (Vec<Arc<Vec<u8>>>, Rc<Vec<Arc<Image>>>);
 
-pub const MIN_ZOOM: f32 = 0.25;
+pub const MIN_ZOOM: f32 = 0.10;
 pub const MAX_ZOOM: f32 = 4.0;
 /// Space reserved at each side of the page when fitting it to the width.
 const FIT_PADDING: f32 = 24.0;
@@ -85,7 +85,7 @@ impl EditorView {
         }
     }
 
-    /// Sets the display scale (clamped to 25%..400%), keeping the scrolled-to part in view.
+    /// Sets the display scale (clamped to 10%..400%), keeping the scrolled-to part in view.
     pub fn set_zoom(&mut self, zoom: f32, cx: &mut Context<Self>) {
         let zoom = zoom.clamp(MIN_ZOOM, MAX_ZOOM);
         if (zoom - self.zoom).abs() > f32::EPSILON {
@@ -309,9 +309,12 @@ impl Render for EditorView {
                     .w_full()
                     .min_w(px(layout.setup.width * self.zoom + 2.0 * FIT_PADDING))
                     .ml(px(-self.scroll_x))
+                    // Pages sit side by side while they fit (zoomed out), like in Word.
                     .flex()
-                    .flex_col()
-                    .items_center()
+                    .flex_row()
+                    .flex_wrap()
+                    .justify_center()
+                    .items_start()
                     .gap(px(PAGE_GAP))
                     .py(space::xl())
                     .mt(px(-offset))
