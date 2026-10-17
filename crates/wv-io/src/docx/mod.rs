@@ -6,28 +6,77 @@
 mod bands;
 mod document_xml;
 mod package;
+mod picture;
 mod read_util;
 mod table_read;
 mod table_xml;
 mod writer;
 
-use wv_core::Document;
+use std::collections::HashMap;
+
+use wv_core::{Document, ImageData, ImageRef};
 
 use crate::IoError;
 
 pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
-    let mut doc = document_xml::parse(
+    let links = package::read_links(bytes);
+    let (mut doc, rels) = document_xml::parse(
         &package::read_document_xml(bytes)?,
-        &package::read_links(bytes),
+        &links,
         &package::read_numbering(bytes),
     )?;
+    attach_images(&mut doc, &rels, &links, bytes);
     (doc.header, doc.footer) = bands::read(bytes);
     Ok(doc)
 }
 
+/// Loads the pictures the body refers to (`rels[i]` = relationship id of picture `i`) into
+/// `doc.images`; pictures whose file is missing or unreadable are dropped.
+fn attach_images(
+    doc: &mut Document,
+    rels: &[String],
+    links: &HashMap<String, String>,
+    bytes: &[u8],
+) {
+    let mut ids: Vec<Option<u32>> = Vec::new();
+    for rel in rels {
+        let loaded = links
+            .get(rel)
+            .and_then(|target| {
+                package::read_part(
+                    bytes,
+                    &format!("word/{}", target.trim_start_matches("/word/")),
+                )
+            })
+            .and_then(|data| crate::probe_image(&data).map(|(format, _, _)| (format, data)));
+        ids.push(loaded.map(|(format, data)| {
+            doc.images.push(ImageData {
+                format,
+                bytes: std::sync::Arc::new(data),
+            });
+            (doc.images.len() - 1) as u32
+        }));
+    }
+    for p in &mut doc.paragraphs {
+        if let Some(image) = p.style.image {
+            p.style.image = ids
+                .get(image.id as usize)
+                .copied()
+                .flatten()
+                .map(|id| ImageRef { id, ..image });
+        }
+    }
+}
+
 pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
     let (xml, links, number_lists) = writer::document_xml(doc);
-    package::write(&xml, &links, number_lists, (&doc.header, &doc.footer))
+    package::write(
+        &xml,
+        &links,
+        number_lists,
+        (&doc.header, &doc.footer),
+        &doc.images,
+    )
 }
 
 #[cfg(test)]

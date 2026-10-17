@@ -30,6 +30,12 @@ pub fn run() {
         };
         gpui_kit::open_window(options, cx, |window, cx| {
             let view = cx.new(MainWindow::new);
+            // `wordvolt <file>` opens that file.
+            if let Some(path) = std::env::args_os().nth(1).map(std::path::PathBuf::from)
+                && let Ok(doc) = wv_io::load_file(&path)
+            {
+                view.update(cx, |this, cx| this.install(doc, Some(path), cx));
+            }
             let weak = view.downgrade();
             window.on_window_should_close(cx, move |window, cx| {
                 weak.update(cx, |this, cx| this.should_close(window, cx))

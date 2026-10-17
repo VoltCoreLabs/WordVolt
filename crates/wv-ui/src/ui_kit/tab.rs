@@ -73,8 +73,9 @@ pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
         .text_sm()
         .when(active, |s| s.font_weight(FontWeight::SEMIBOLD))
         .cursor_pointer();
+    // The active pill has no hover effect.
     track_hover(tab, &id)
-        .child(hover_layer(&id, look, None, cx))
+        .when(!active, |t| t.child(hover_layer(&id, look, None, cx)))
         .child(div().relative().child(label))
 }
 

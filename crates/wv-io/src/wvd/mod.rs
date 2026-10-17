@@ -82,4 +82,15 @@ mod tests {
         doc.footer = wv_core::Band::new("{page}");
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }
+
+    #[test]
+    fn pictures_round_trip() {
+        use wv_core::{ImageFormat, ImageRef};
+        let mut e = Editor::default();
+        e.insert_image(ImageFormat::Jpeg, vec![9, 8, 7, 0, 255], 100.0, 50.0);
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        let image: ImageRef = doc.paragraphs[0].style.image.unwrap();
+        assert_eq!((image.width, image.height), (100.0, 50.0));
+    }
 }

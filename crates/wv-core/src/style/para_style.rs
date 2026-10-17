@@ -22,6 +22,15 @@ pub struct Cell {
     pub col: u16,
 }
 
+/// A picture that fills the paragraph (its text is empty): index into `Document::images` and the
+/// displayed size in px (96 dpi).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ImageRef {
+    pub id: u32,
+    pub width: f32,
+    pub height: f32,
+}
+
 /// Paragraph formatting.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParaStyle {
@@ -38,4 +47,6 @@ pub struct ParaStyle {
     pub line_spacing: Option<f32>,
     /// Set for paragraphs that belong to a table cell.
     pub cell: Option<Cell>,
+    /// Set for picture paragraphs.
+    pub image: Option<ImageRef>,
 }

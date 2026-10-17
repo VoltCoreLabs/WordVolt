@@ -49,6 +49,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
 /// gets its own num (2, 3, ...) so it restarts at 1.
 #[derive(Default)]
 pub struct Lists {
+    pictures: u32,
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -120,6 +121,10 @@ pub fn write_paragraph(
             xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));
         }
         xml.push_str("</w:pPr>");
+    }
+    if let Some(image) = p.style.image {
+        lists.pictures += 1;
+        xml.push_str(&super::picture::drawing_xml(image, lists.pictures));
     }
     let mut open_link: Option<&str> = None;
     for run in &p.runs {

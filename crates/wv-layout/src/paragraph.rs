@@ -44,6 +44,16 @@ pub struct ParagraphLayout {
     pub space_after: Option<f32>,
     pub lines: Vec<Line>,
     pub height: f32,
+    /// Picture of a picture paragraph (it is drawn on the paragraph's only line).
+    pub image: Option<ImageBox>,
+}
+
+/// Picture placement inside a paragraph layout.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ImageBox {
+    pub id: u32,
+    pub width: f32,
+    pub height: f32,
 }
 
 impl ParagraphLayout {
@@ -119,6 +129,24 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         .map(|_| LIST_SPACE_AFTER)
         .or(p.style.named.space_after());
     layout.lines.iter_mut().for_each(|line| line.x += indent);
+    if let Some(img) = p.style.image {
+        let free = (opts.width - img.width).max(0.0);
+        let offset = match p.style.align {
+            Align::Center => free / 2.0,
+            Align::Right => free,
+            _ => 0.0,
+        };
+        layout.image = Some(ImageBox {
+            id: img.id,
+            width: img.width,
+            height: img.height,
+        });
+        if let Some(line) = layout.lines.first_mut() {
+            (line.x, line.y, line.width) = (indent + offset, 0.0, img.width);
+            (line.height, line.baseline) = (img.height, img.height);
+        }
+        layout.height = img.height;
+    }
     layout
 }
 
@@ -215,6 +243,7 @@ fn build(
         space_after: None,
         lines,
         height: y,
+        image: None,
     }
 }
 

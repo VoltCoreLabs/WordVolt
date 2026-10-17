@@ -38,7 +38,6 @@ pub(super) fn flag(e: &BytesStart) -> bool {
     )
 }
 
-
 /// Word's built-in style ids ("Heading1", "heading 2", "Title", ...) -> our styles; deeper headings map to Heading 3.
 pub(super) fn named_from_docx(id: &str) -> NamedStyle {
     let key: String = id

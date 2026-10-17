@@ -11,6 +11,10 @@ impl Editor {
         if self.doc.paragraphs[start.para].style.cell != self.doc.paragraphs[end.para].style.cell {
             return;
         }
+        // A picture paragraph holds no text.
+        if !text.is_empty() && self.doc.paragraphs[start.para].style.image.is_some() {
+            return;
+        }
         let mut style = self
             .pending_style
             .take()
@@ -27,6 +31,7 @@ impl Editor {
         let mut first = self.doc.paragraphs[start.para].clone();
         let mut last = self.doc.paragraphs[end.para].clone();
         let tail = last.split_off(end.offset);
+        let last_style = last.style.clone();
         first.delete(start.offset, first.len());
 
         let mut lines = text.split('\n');
@@ -39,6 +44,12 @@ impl Editor {
             };
             p.insert(0, line, &style);
             paras.push(p);
+        }
+        // Text that joins a picture paragraph replaces the picture.
+        if paras[0].style.image.is_some()
+            && (paras.len() > 1 || !paras[0].is_empty() || !tail.is_empty())
+        {
+            paras[0].style = last_style;
         }
         let new_last = paras.len() - 1;
         let caret_offset = paras[new_last].len();
@@ -64,6 +75,16 @@ impl Editor {
 
     pub fn enter(&mut self) {
         let at = self.sel.head;
+        if self.sel.is_collapsed() && self.doc.paragraphs[at.para].style.image.is_some() {
+            let caret = Position::new(at.para + 1, 0);
+            self.edit_paragraphs(
+                at.para + 1,
+                0,
+                vec![Paragraph::default()],
+                Selection::caret(caret),
+            );
+            return;
+        }
         let p = &self.doc.paragraphs[at.para];
         // Enter on an empty list item ends the list instead of adding another item.
         if self.sel.is_collapsed() && p.is_empty() && p.style.list.is_some() {
@@ -89,6 +110,9 @@ impl Editor {
         if self.delete_selection() {
             return;
         }
+        if self.remove_image_at_caret() {
+            return;
+        }
         let at = self.sel.head;
         // Backspace at the start of a list item first removes the bullet/number.
         if at.offset == 0 && self.doc.paragraphs[at.para].style.list.is_some() {
@@ -102,6 +126,9 @@ impl Editor {
 
     pub fn delete_forward(&mut self) {
         if self.delete_selection() {
+            return;
+        }
+        if self.remove_image_at_caret() {
             return;
         }
         let at = self.sel.head;

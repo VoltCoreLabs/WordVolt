@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, Cell, CharStyle, Document, ListKind, NamedStyle, Paragraph, Script};
+use wv_core::{
+    Align, Cell, CharStyle, Document, ImageRef, ListKind, NamedStyle, Paragraph, Script,
+};
 
 use super::read_util::{attr, flag, named_from_docx, named_highlight};
 use crate::IoError;
@@ -12,7 +14,7 @@ pub fn parse(
     xml: &[u8],
     links: &HashMap<String, String>,
     numbering: &HashMap<String, ListKind>,
-) -> Result<Document, IoError> {
+) -> Result<(Document, Vec<String>), IoError> {
     let mut reader = Reader::from_reader(xml);
     let mut state = State {
         links: links.clone(),
@@ -39,7 +41,8 @@ pub fn parse(
         }
         buf.clear();
     }
-    Ok(state.finish())
+    let rels = std::mem::take(&mut state.pictures.rels);
+    Ok((state.finish(), rels))
 }
 
 #[derive(Default)]
@@ -60,6 +63,20 @@ struct State {
     in_run_props: bool,
     in_text: bool,
     table: TableState,
+    pictures: PictureState,
+    /// Picture of the paragraph being read (index into `pictures.rels`).
+    image: Option<ImageRef>,
+}
+
+/// Pictures found in the body: relationship ids in order of appearance (`ImageRef::id` indexes them).
+#[derive(Default)]
+struct PictureState {
+    rels: Vec<String>,
+    in_drawing: bool,
+    embed: Option<String>,
+    size: (f32, f32),
+    /// The paragraph that follows a picture inside one `w:p`; dropped if it stays empty.
+    after: bool,
 }
 
 /// Position inside the outermost table being read (nested tables are flattened into their cell).
@@ -109,6 +126,16 @@ impl State {
                     .and_then(|v| v.parse::<u16>().ok())
                     .map_or(1, |n| n.clamp(1, 63));
             }
+            b"drawing" if !empty => {
+                self.pictures.in_drawing = true;
+                self.pictures.embed = None;
+                self.pictures.size = (0.0, 0.0);
+            }
+            b"extent" if self.pictures.in_drawing && self.pictures.size.0 == 0.0 => {
+                let px = |name: &[u8]| attr(e, name).map_or(0.0, |v| super::picture::emu_to_px(&v));
+                self.pictures.size = (px(b"cx"), px(b"cy"));
+            }
+            b"blip" if self.pictures.in_drawing => self.pictures.embed = attr(e, b"embed"),
             b"pPr" => self.in_paragraph_props = true,
             b"ilvl" if self.in_paragraph_props => {
                 self.indent = attr(e, b"val")
@@ -196,6 +223,7 @@ impl State {
     fn end(&mut self, name: &[u8]) {
         match name {
             b"p" => self.end_paragraph(),
+            b"drawing" => self.end_drawing(),
             b"tc" if self.table.depth == 1 => self.end_cell(),
             b"tbl" if self.table.depth > 0 => {
                 self.table.depth -= 1;
@@ -228,6 +256,9 @@ impl State {
 
     fn end_paragraph(&mut self) {
         if let Some(mut p) = self.current.take() {
+            if std::mem::take(&mut self.pictures.after) && p.is_empty() && self.image.is_none() {
+                return;
+            }
             p.style.align = self.align;
             p.style.quote = self.quote;
             p.style.named = self.named;
@@ -235,8 +266,34 @@ impl State {
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
             p.style.cell = self.table.cell;
+            p.style.image = self.image.take();
             self.paragraphs.push(p);
         }
+    }
+
+    /// A picture ends the text paragraph before it and becomes a paragraph of its own.
+    fn end_drawing(&mut self) {
+        let pictures = &mut self.pictures;
+        pictures.in_drawing = false;
+        let Some(rid) = pictures.embed.take() else {
+            return;
+        };
+        let (mut width, mut height) = pictures.size;
+        if width < 1.0 || height < 1.0 {
+            (width, height) = (200.0, 150.0);
+        }
+        let id = pictures.rels.len() as u32;
+        pictures.rels.push(rid);
+        if self.current.as_ref().is_some_and(|p| !p.is_empty()) {
+            self.line_break();
+        }
+        self.image = Some(ImageRef { id, width, height });
+        let (align, named) = (self.align, self.named);
+        self.end_paragraph();
+        self.current = Some(Paragraph::default());
+        self.align = align;
+        self.named = named;
+        self.pictures.after = true;
     }
 
     /// Closes a cell; a column span leaves empty cells for the columns it covered.
