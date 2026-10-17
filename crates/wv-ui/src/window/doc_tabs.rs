@@ -57,6 +57,7 @@ impl MainWindow {
         self.file_path = slot.file_path.clone();
         self.dirty = slot.dirty;
         self.active = index;
+        self.tab_scroll.scroll_to_item(index);
         let editor = self.editor.clone();
         self.find_bar
             .update(cx, |bar, cx| bar.set_editor(editor, cx));

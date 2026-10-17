@@ -92,6 +92,8 @@ pub struct MainWindow {
     /// All open documents; `active` is the one shown (its state is in the fields above).
     pub docs: Vec<DocSlot>,
     pub active: usize,
+    /// Horizontal scroll of the tab strip.
+    pub tab_scroll: ScrollHandle,
     pub lang: Lang,
     pub applied_title: String,
     pub tab: Tab,
@@ -421,6 +423,7 @@ impl MainWindow {
                 dirty: false,
             }],
             active: 0,
+            tab_scroll: ScrollHandle::new(),
             lang,
             applied_title: String::new(),
             tab: Tab::Home,

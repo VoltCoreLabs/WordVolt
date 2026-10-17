@@ -146,6 +146,25 @@ pub fn tab_strip(this: &MainWindow, window: &Window, cx: &mut Context<MainWindow
             cx.listener(|this, _, window, cx| this.open_document(window, cx)),
         )
         .child("+");
+    // The tabs scroll sideways when there are more than fit (wheel, or Shift+wheel).
+    let scroller = div()
+        .id("doc-tabs")
+        .h_full()
+        .min_w_0()
+        .flex()
+        .items_center()
+        .gap(px(2.))
+        .overflow_x_scroll()
+        .track_scroll(&this.tab_scroll)
+        .on_scroll_wheel(cx.listener(|this, ev: &ScrollWheelEvent, _, cx| {
+            let delta = ev.delta.pixel_delta(px(24.));
+            let mut offset = this.tab_scroll.offset();
+            let max = this.tab_scroll.max_offset().x;
+            offset.x = (offset.x + delta.x + delta.y).clamp(-max, px(0.));
+            this.tab_scroll.set_offset(offset);
+            cx.notify();
+        }))
+        .children(tabs);
     div()
         .h_full()
         .min_w_0()
@@ -154,7 +173,7 @@ pub fn tab_strip(this: &MainWindow, window: &Window, cx: &mut Context<MainWindow
         .items_center()
         .gap(px(2.))
         .overflow_hidden()
-        .children(tabs)
+        .child(scroller)
         .child(plus)
         .child(
             // Empty space drags the window.
