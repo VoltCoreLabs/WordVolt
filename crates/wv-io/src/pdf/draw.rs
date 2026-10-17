@@ -16,7 +16,6 @@ const TABLE: u32 = 0x999999;
 const QUOTE_BAR: u32 = 0x9aa0a6;
 const CODE_BG: u32 = 0xf0f0f0;
 const SPOILER: u32 = 0x333333;
-const BAND_PT: u16 = 10;
 
 /// One page's content stream and the pictures it uses.
 pub struct PageContent {
@@ -106,27 +105,23 @@ fn draw_bands(
     layout: &DocLayout,
 ) {
     let setup = &layout.setup;
-    let style = CharStyle {
-        size_pt: Some(BAND_PT),
-        ..Default::default()
-    };
-    let (ascent, descent) = (c.fonts.ascent(&style), c.fonts.descent(&style));
-    for (band, top) in [
-        (bands.0, setup.header_distance),
-        (
-            bands.1,
-            setup.height - setup.footer_distance - (ascent + descent),
-        ),
-    ] {
+    for (band, is_header) in [(bands.0, true), (bands.1, false)] {
         let text = band.render(page + 1, pages);
+        let style = band.style.char_style();
+        let (ascent, descent) = (c.fonts.ascent(&style), c.fonts.descent(&style));
+        let top = if is_header {
+            setup.header_distance
+        } else {
+            setup.height - setup.footer_distance - (ascent + descent)
+        };
         let width = c.fonts.width(&text, &style);
         let x = match band.align {
             Align::Right => setup.width - setup.margin_right - width,
             Align::Center => (setup.width - width) / 2.0,
             _ => setup.margin_left,
         };
-        let baseline = top + ascent;
-        c.text(&text, &style, x.max(0.0), baseline, BAND);
+        let rgb = band.style.color.unwrap_or(BAND);
+        c.text(&text, &style, x.max(0.0), top + ascent, rgb);
     }
 }
 

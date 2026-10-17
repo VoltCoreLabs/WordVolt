@@ -126,4 +126,23 @@ mod tests {
         };
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }
+
+    #[test]
+    fn band_style_round_trips() {
+        let mut doc = Document::from_text("x");
+        let style = wv_core::BandStyle {
+            bold: true,
+            italic: true,
+            underline: false,
+            size_pt: Some(14),
+            color: Some(0x336699),
+        };
+        doc.header = wv_core::Band::new("Head").styled(style);
+        doc.variants.first = (
+            wv_core::Band::new("T").styled(style),
+            wv_core::Band::default(),
+        );
+        doc.variants.different_first = true;
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::{Align, Band, BandVariants};
+use wv_core::{Align, BAND_SIZE_PT, Band, BandStyle, BandVariants};
 
 use super::package::{read_document_xml, read_part};
 
@@ -14,6 +14,7 @@ pub const FOOTER_TYPE: &str =
 /// word/header1.xml or footer1.xml (`root` = "hdr" / "ftr"): one centred paragraph; `{page}` and
 /// `{pages}` become PAGE / NUMPAGES fields.
 pub fn part_xml(root: &str, band: &Band) -> String {
+    let rpr = run_props(&band.style);
     let mut runs = String::new();
     let mut rest = band.text.as_str();
     while !rest.is_empty() {
@@ -27,7 +28,7 @@ pub fn part_xml(root: &str, band: &Band) -> String {
         };
         if !literal.is_empty() {
             runs.push_str(&format!(
-                "<w:r><w:t xml:space=\"preserve\">{}</w:t></w:r>",
+                "<w:r>{rpr}<w:t xml:space=\"preserve\">{}</w:t></w:r>",
                 escape(literal)
             ));
         }
@@ -38,7 +39,7 @@ pub fn part_xml(root: &str, band: &Band) -> String {
             "NUMPAGES"
         };
         runs.push_str(&format!(
-            "<w:fldSimple w:instr=\" {instr} \"><w:r><w:t>1</w:t></w:r></w:fldSimple>"
+            "<w:fldSimple w:instr=\" {instr} \"><w:r>{rpr}<w:t>1</w:t></w:r></w:fldSimple>"
         ));
         rest = &rest[rest.find(token).unwrap_or(0) + token.len()..];
     }
@@ -50,6 +51,28 @@ pub fn part_xml(root: &str, band: &Band) -> String {
     format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:{root} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:jc w:val=\"{jc}\"/></w:pPr>{runs}</w:p></w:{root}>"
     )
+}
+
+/// `<w:rPr>` of the band's formatting (the size is always written: Word's default is 11 pt).
+fn run_props(style: &BandStyle) -> String {
+    let mut xml = String::from("<w:rPr>");
+    if style.bold {
+        xml.push_str("<w:b/>");
+    }
+    if style.italic {
+        xml.push_str("<w:i/>");
+    }
+    if style.underline {
+        xml.push_str("<w:u w:val=\"single\"/>");
+    }
+    if let Some(color) = style.color {
+        xml.push_str(&format!("<w:color w:val=\"{color:06X}\"/>"));
+    }
+    let half_points = u32::from(style.size()) * 2;
+    xml.push_str(&format!(
+        "<w:sz w:val=\"{half_points}\"/><w:szCs w:val=\"{half_points}\"/></w:rPr>"
+    ));
+    xml
 }
 
 fn escape(text: &str) -> String {
@@ -83,8 +106,8 @@ pub fn read(bytes: &[u8]) -> (Band, Band, BandVariants) {
         target
             .and_then(|t| read_part(bytes, &format!("word/{}", t.trim_start_matches('/'))))
             .map(|xml| {
-                let (text, align) = part_text(&xml);
-                Band::new(text).aligned(align)
+                let (text, align, style) = part_text(&xml);
+                Band::new(text).aligned(align).styled(style)
             })
             .unwrap_or_default()
     };
@@ -206,8 +229,9 @@ fn references(bytes: &[u8]) -> Refs {
 
 /// Text of a header/footer part; PAGE and NUMPAGES fields become `{page}` / `{pages}` and the
 /// cached field result is dropped. Paragraphs are joined with a space.
-fn part_text(xml: &[u8]) -> (String, Align) {
+fn part_text(xml: &[u8]) -> (String, Align, BandStyle) {
     let mut align = None;
+    let mut style = BandStyle::default();
     let mut reader = Reader::from_reader(xml);
     let mut buf = Vec::new();
     let (mut out, mut instr) = (String::new(), String::new());
@@ -233,6 +257,18 @@ fn part_text(xml: &[u8]) -> (String, Align) {
                     _ => {}
                 },
                 b"tab" => out.push(' '),
+                b"b" => style.bold = flag(&e),
+                b"i" => style.italic = flag(&e),
+                b"u" => style.underline = attr(&e, b"val").as_deref() != Some("none"),
+                b"sz" => {
+                    let points = attr(&e, b"val")
+                        .and_then(|v| v.parse::<u16>().ok())
+                        .map(|half| (half / 2).clamp(6, 72));
+                    style.size_pt = points.filter(|p| *p != BAND_SIZE_PT);
+                }
+                b"color" => {
+                    style.color = attr(&e, b"val").and_then(|v| u32::from_str_radix(&v, 16).ok());
+                }
                 b"jc" if align.is_none() => {
                     align = Some(match attr(&e, b"val").as_deref() {
                         Some("right" | "end") => Align::Right,
@@ -260,7 +296,12 @@ fn part_text(xml: &[u8]) -> (String, Align) {
         }
         buf.clear();
     }
-    (out.trim().to_string(), align.unwrap_or(Align::Left))
+    (out.trim().to_string(), align.unwrap_or(Align::Left), style)
+}
+
+/// `<w:b/>` is on, `<w:b w:val="0"/>` off.
+fn flag(e: &BytesStart) -> bool {
+    !matches!(attr(e, b"val").as_deref(), Some("0" | "false" | "off"))
 }
 
 fn field_token(instr: &str) -> String {
