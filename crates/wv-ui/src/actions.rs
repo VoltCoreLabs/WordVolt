@@ -16,6 +16,7 @@ actions!(
         EditorTabBack,
         FieldNext,
         NewTab,
+        PrintDocument,
         CloseTab,
         NextTab,
         PrevTab
@@ -30,6 +31,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("secondary-s", SaveDocument, None),
         KeyBinding::new("secondary-shift-s", SaveDocumentAs, None),
         KeyBinding::new("secondary-t", NewTab, None),
+        KeyBinding::new("secondary-p", PrintDocument, None),
         KeyBinding::new("secondary-w", CloseTab, None),
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PrevTab, None),

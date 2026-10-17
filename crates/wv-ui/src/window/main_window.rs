@@ -9,7 +9,7 @@ use super::tab_menu::tab_menu;
 use super::titlebar::titlebar;
 use crate::actions::{
     CloseTab, FindInDocument, FindNext, FindPrevious, InsertLink, NewDocument, NewTab, NextTab,
-    OpenDocument, PrevTab, ReplaceInDocument, SaveDocument, SaveDocumentAs,
+    OpenDocument, PrevTab, PrintDocument, ReplaceInDocument, SaveDocument, SaveDocumentAs,
 };
 use crate::theme::{Theme, space, ui_font};
 use crate::ui_kit::{block, tooltip_layer};
@@ -82,6 +82,9 @@ impl Render for MainWindow {
                 });
             }))
             .on_action(cx.listener(|this, _: &NewTab, _, cx| this.new_tab(cx)))
+            .on_action(
+                cx.listener(|this, _: &PrintDocument, window, cx| this.print_document(window, cx)),
+            )
             .on_action(
                 cx.listener(|this, _: &CloseTab, window, cx| {
                     this.close_tab(this.active, window, cx)

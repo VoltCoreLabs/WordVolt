@@ -13,6 +13,7 @@ pub enum Command {
     Save,
     SaveAs,
     ExportPdf,
+    Print,
     Undo,
     Redo,
     Find,
@@ -36,6 +37,7 @@ const FILE: &[Entry] = &[
     (Key::Save, "S", Command::Save),
     (Key::MenuSaveAs, "Shift+S", Command::SaveAs),
     (Key::TipExportPdf, "", Command::ExportPdf),
+    (Key::MenuPrint, "P", Command::Print),
 ];
 const EDIT: &[Entry] = &[
     (Key::MenuFind, "F", Command::Find),
