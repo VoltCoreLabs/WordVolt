@@ -12,5 +12,12 @@ pub fn block_group(caption: &'static str, controls: Vec<AnyElement>, cx: &App) -
         .flex_col()
         .gap(space::sm())
         .child(div().flex().gap(space::sm()).children(controls))
-        .child(div().text_xs().text_color(muted).child(caption))
+        .child(
+            div()
+                .w_full()
+                .text_center()
+                .text_xs()
+                .text_color(muted)
+                .child(caption),
+        )
 }
