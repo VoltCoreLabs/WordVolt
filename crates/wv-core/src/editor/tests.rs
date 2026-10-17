@@ -657,3 +657,26 @@ fn pictures_are_block_paragraphs() {
     assert!(e.undo());
     assert!(e.doc.paragraphs[1].style.image.is_some());
 }
+
+#[test]
+fn header_footer_and_page_setup_are_undoable() {
+    use crate::{Band, Margins, PageSpec};
+    let mut e = Editor::default();
+    e.insert_text("x");
+    e.set_header_footer(Band::new("Head"), Band::new("{page}"));
+    e.set_page(PageSpec::a4().with_paper(2).with_margins(Margins::Wide));
+    assert_eq!(e.doc.header.text, "Head");
+    assert!(e.undo());
+    assert_eq!(e.doc.page, PageSpec::a4());
+    assert_eq!(e.doc.header.text, "Head");
+    assert!(e.undo());
+    assert!(e.doc.header.is_empty() && e.doc.footer.is_empty());
+    assert_eq!(e.doc.text(), "x");
+    assert!(e.redo() && e.redo());
+    assert_eq!(e.doc.page.width, 816.0);
+    assert_eq!(e.doc.footer.text, "{page}");
+    // No change = no history entry.
+    let depth = e.can_undo();
+    e.set_page(e.doc.page);
+    assert_eq!(depth, e.can_undo());
+}

@@ -25,7 +25,29 @@ impl Default for Document {
     }
 }
 
+/// Document-wide settings that are not paragraphs; changing them is one undo step.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocSettings {
+    pub header: Band,
+    pub footer: Band,
+    pub page: PageSpec,
+}
+
 impl Document {
+    pub fn settings(&self) -> DocSettings {
+        DocSettings {
+            header: self.header.clone(),
+            footer: self.footer.clone(),
+            page: self.page,
+        }
+    }
+
+    pub fn set_settings(&mut self, settings: &DocSettings) {
+        self.header = settings.header.clone();
+        self.footer = settings.footer.clone();
+        self.page = settings.page;
+    }
+
     pub fn from_text(text: &str) -> Self {
         let paragraphs: Vec<_> = text.split('\n').map(Paragraph::plain).collect();
         Self {
