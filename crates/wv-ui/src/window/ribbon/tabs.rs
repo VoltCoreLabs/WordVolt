@@ -38,7 +38,7 @@ pub fn tab_bar(this: &MainWindow, cx: &mut Context<MainWindow>) -> Div {
                 .flex()
                 .gap(space::sm())
                 .child(
-                    icon_button("toggle-panel", Icon::PaintBucket, this.panel_open, cx)
+                    icon_button("toggle-panel", Icon::ListNumbers, this.panel_open, cx)
                         .tip(t(this.lang, Key::TipPanel))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.panel_open = !this.panel_open;

@@ -4,6 +4,7 @@ mod band_paint;
 mod caret;
 mod image_paint;
 mod keys;
+mod locate;
 mod measure;
 mod mouse;
 mod nav;

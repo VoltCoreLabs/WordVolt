@@ -34,7 +34,7 @@ impl Render for MainWindow {
                     .overflow_hidden()
                     .child(self.editor.clone()),
             )
-            .child(side_panel(self, cx));
+            .child(side_panel(self, window, cx));
         div()
             .size_full()
             .on_action(

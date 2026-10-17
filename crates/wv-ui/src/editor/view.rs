@@ -147,7 +147,7 @@ impl EditorView {
         GpuiMeasurer::new(window, self.measure_cache.clone())
     }
 
-    fn ensure_layout(&mut self, window: &Window) -> Rc<DocLayout> {
+    pub(super) fn ensure_layout(&mut self, window: &Window) -> Rc<DocLayout> {
         let key = (self.core.revision(), self.doc_epoch);
         match &self.layout {
             Some(layout) if key == self.layout_key => layout.clone(),
