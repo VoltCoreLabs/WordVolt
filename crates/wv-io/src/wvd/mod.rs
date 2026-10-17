@@ -128,21 +128,19 @@ mod tests {
     }
 
     #[test]
-    fn band_style_round_trips() {
+    fn formatted_band_words_round_trip() {
         let mut doc = Document::from_text("x");
-        let style = wv_core::BandStyle {
-            bold: true,
-            italic: true,
-            underline: false,
-            size_pt: Some(14),
-            color: Some(0x336699),
-        };
-        doc.header = wv_core::Band::new("Head").styled(style);
-        doc.variants.first = (
-            wv_core::Band::new("T").styled(style),
-            wv_core::Band::default(),
-        );
+        let mut head = wv_core::Band::new("Head bold end");
+        head.restyle(5, 9, |s| {
+            s.bold = true;
+            s.size_pt = Some(14);
+            s.color = Some(0x336699);
+        });
+        doc.header = head.clone();
+        doc.variants.first = (head, wv_core::Band::default());
         doc.variants.different_first = true;
-        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+        let back = decode(&encode(&doc).unwrap()).unwrap();
+        assert_eq!(back, doc);
+        assert_eq!(back.header.runs().len(), 3);
     }
 }

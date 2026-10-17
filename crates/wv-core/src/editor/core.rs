@@ -96,13 +96,15 @@ impl Editor {
     /// Adds `{page}` to the footer, or removes it when it is already there.
     pub fn toggle_page_number(&mut self) {
         let mut footer = self.doc.footer.clone();
-        footer.text = if footer.has_page_number() {
-            footer.text.replace("{page}", "").trim().to_string()
+        let text = footer.text();
+        let new = if footer.has_page_number() {
+            text.replace("{page}", "").trim().to_string()
         } else if footer.is_empty() {
             "{page}".to_string()
         } else {
-            format!("{} {{page}}", footer.text)
+            format!("{text} {{page}}")
         };
+        footer.set_text(&new);
         self.set_header_footer(self.doc.header.clone(), footer);
     }
 

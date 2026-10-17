@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Align, BandStyle};
+use wv_core::{Align, BAND_SIZE_PT, CharStyle};
 use wv_i18n::{Key, t as tr};
 
 use super::band_controls::check_box;
@@ -8,6 +8,11 @@ use crate::theme::{Theme, radius, space};
 use crate::ui_kit::{ButtonKind, Icon, LineEdit, Tip, button, icon_button, track_bounds};
 
 const FIELD_WIDTH: f32 = 280.0;
+
+/// Text colours offered in the popover (document content, not theme colours).
+const SWATCHES: [u32; 7] = [
+    0x000000, 0x666666, 0x2563EB, 0xDC2626, 0x16A34A, 0xEA580C, 0x9333EA,
+];
 
 impl HeaderFooterEditor {
     pub(super) fn panel(&mut self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -60,39 +65,49 @@ impl HeaderFooterEditor {
                     .cursor_text()
                     .child(edit.view(FIELD_WIDTH - 24.0, window, cx))
             };
-        let styles = self.styles;
+        let work = self.work.clone();
         let format_row = |in_header: bool, cx: &mut Context<Self>| {
-            let s = if in_header { styles.0 } else { styles.1 };
-            let toggles = [
-                ("b", Icon::TextB, s.bold, Key::TipBold),
-                ("i", Icon::TextItalic, s.italic, Key::TipItalic),
-                ("u", Icon::TextUnderline, s.underline, Key::TipUnderline),
-            ]
-            .map(|(id, icon, on, tip)| {
+            type Flag = (
+                &'static str,
+                Icon,
+                Key,
+                fn(&CharStyle) -> bool,
+                fn(&mut CharStyle, bool),
+            );
+            let flags: [Flag; 3] = [
+                (
+                    "b",
+                    Icon::TextB,
+                    Key::TipBold,
+                    |s| s.bold,
+                    |s, v| s.bold = v,
+                ),
+                (
+                    "i",
+                    Icon::TextItalic,
+                    Key::TipItalic,
+                    |s| s.italic,
+                    |s, v| s.italic = v,
+                ),
+                (
+                    "u",
+                    Icon::TextUnderline,
+                    Key::TipUnderline,
+                    |s| s.underline,
+                    |s, v| s.underline = v,
+                ),
+            ];
+            let toggles = flags.map(|(id, icon, tip, get, set)| {
                 icon_button(
                     ElementId::from(SharedString::from(format!("band-fmt-{in_header}-{id}"))),
                     icon,
-                    on,
+                    self.all_chars(in_header, get),
                     cx,
                 )
                 .tip(tr(lang, tip))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.restyle(
-                        in_header,
-                        |s| match id {
-                            "b" => BandStyle { bold: !s.bold, ..s },
-                            "i" => BandStyle {
-                                italic: !s.italic,
-                                ..s
-                            },
-                            _ => BandStyle {
-                                underline: !s.underline,
-                                ..s
-                            },
-                        },
-                        cx,
-                    )
-                }))
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.toggle_style(in_header, get, set, cx)),
+                )
                 .into_any_element()
             });
             let sizes = [(-1, "A−", Key::TipSizeDown), (1, "A+", Key::TipSizeUp)].map(
@@ -105,23 +120,69 @@ impl HeaderFooterEditor {
                     )
                     .tip(tr(lang, tip))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.restyle(in_header, |s| s.resized(delta), cx)
+                        this.restyle(
+                            in_header,
+                            move |s| {
+                                let size = i32::from(s.size_pt.unwrap_or(BAND_SIZE_PT)) + delta;
+                                s.size_pt = Some(size.clamp(6, 72) as u16);
+                            },
+                            cx,
+                        )
                     }))
                     .into_any_element()
                 },
             );
+            let swatches = std::iter::once(None)
+                .chain(SWATCHES.map(Some))
+                .enumerate()
+                .map(|(i, color)| {
+                    let fill = color.map_or(surface, rgb);
+                    div()
+                        .id(SharedString::from(format!("band-color-{in_header}-{i}")))
+                        .size(px(18.))
+                        .flex_none()
+                        .rounded(radius::sm())
+                        .border_1()
+                        .border_color(border)
+                        .bg(fill)
+                        .cursor_pointer()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .text_xs()
+                        .text_color(muted)
+                        .child(if color.is_none() { "×" } else { "" })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.restyle(in_header, move |s| s.color = color, cx)
+                        }))
+                        .into_any_element()
+                });
+            let size = if in_header { &work.0 } else { &work.1 }
+                .style_at(0)
+                .size_pt
+                .unwrap_or(BAND_SIZE_PT);
             div()
                 .flex()
-                .items_center()
-                .gap(space::xs())
-                .children(toggles)
-                .child(div().px(px(6.)).text_xs().text_color(muted).child(format!(
-                    "{} pt",
-                    if in_header { styles.0 } else { styles.1 }.size()
-                )))
-                .children(sizes)
+                .flex_col()
+                .gap(px(4.))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(space::xs())
+                        .children(toggles)
+                        .child(
+                            div()
+                                .px(px(6.))
+                                .text_xs()
+                                .text_color(muted)
+                                .child(format!("{size} pt")),
+                        )
+                        .children(sizes),
+                )
+                .child(div().flex().items_center().gap(px(4.)).children(swatches))
         };
-        let aligns = self.aligns;
+        let aligns = (self.work.0.align, self.work.1.align);
         let label = |key: Key, in_header: bool, cx: &mut Context<Self>| {
             let current = if in_header { aligns.0 } else { aligns.1 };
             let buttons = [
@@ -138,9 +199,9 @@ impl HeaderFooterEditor {
                 )
                 .on_click(cx.listener(move |this, _, _, cx| {
                     if in_header {
-                        this.aligns.0 = align;
+                        this.work.0.align = align;
                     } else {
-                        this.aligns.1 = align;
+                        this.work.1.align = align;
                     }
                     cx.notify();
                 }))

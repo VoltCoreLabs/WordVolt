@@ -225,7 +225,7 @@ fn reads_word_style_complex_page_field_in_footer() {
         "<w:ftr xmlns:w=\"w\"><w:p><w:r><w:t xml:space=\"preserve\">Page </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p></w:ftr>",
     );
     let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
-    assert_eq!(doc.footer.text, "Page {page}");
+    assert_eq!(doc.footer.text(), "Page {page}");
     assert!(doc.header.is_empty());
 }
 
@@ -306,20 +306,19 @@ fn switches_off_means_variants_are_not_written() {
 }
 
 #[test]
-fn band_style_round_trips() {
+fn formatted_band_words_round_trip() {
     let mut doc = Document::from_text("x");
-    let style = wv_core::BandStyle {
-        bold: true,
-        italic: true,
-        underline: true,
-        size_pt: Some(14),
-        color: Some(0x336699),
-    };
-    doc.header = wv_core::Band::new("Head").styled(style);
-    doc.footer = wv_core::Band::new("Стр. {page}").styled(wv_core::BandStyle {
-        bold: true,
-        ..Default::default()
+    let mut head = wv_core::Band::new("Head bold {page} end");
+    head.restyle(5, 9, |s| {
+        s.bold = true;
+        s.italic = true;
+        s.underline = true;
+        s.size_pt = Some(14);
+        s.color = Some(0x336699);
     });
+    head.restyle(10, 16, |s| s.bold = true);
+    doc.header = head;
+    doc.footer = wv_core::Band::new("Стр. {page}");
     let back = decode(&encode(&doc).unwrap()).unwrap();
     assert_eq!(back.header, doc.header);
     assert_eq!(back.footer, doc.footer);
