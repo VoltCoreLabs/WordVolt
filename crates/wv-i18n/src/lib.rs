@@ -131,6 +131,9 @@ pub enum Key {
     TipZoomOut,
     TipZoomIn,
     TipZoomReset,
+    GroupToc,
+    TocTitle,
+    TipToc,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -261,6 +264,9 @@ fn ru(key: Key) -> &'static str {
         Key::TipZoomOut => "Уменьшить (Ctrl + колесо)",
         Key::TipZoomIn => "Увеличить (Ctrl + колесо)",
         Key::TipZoomReset => "Масштаб 100%",
+        Key::GroupToc => "Оглавление",
+        Key::TocTitle => "Оглавление",
+        Key::TipToc => "Вставить или обновить оглавление",
         Key::ImageBad => "не удалось прочитать изображение (нужен PNG, JPEG, GIF или WebP)",
     }
 }
@@ -386,6 +392,9 @@ fn en(key: Key) -> &'static str {
         Key::TipZoomOut => "Zoom out (Ctrl + wheel)",
         Key::TipZoomIn => "Zoom in (Ctrl + wheel)",
         Key::TipZoomReset => "Zoom 100%",
+        Key::GroupToc => "Contents",
+        Key::TocTitle => "Contents",
+        Key::TipToc => "Insert or update the table of contents",
         Key::ImageBad => "cannot read the image (PNG, JPEG, GIF or WebP expected)",
     }
 }

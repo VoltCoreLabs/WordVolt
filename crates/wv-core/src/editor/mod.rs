@@ -11,8 +11,10 @@ mod table_ops;
 #[cfg(test)]
 mod tests;
 mod text_ops;
+mod toc_ops;
 
 pub use case_ops::CaseKind;
 pub use core::Editor;
 pub use image_ops::MAX_IMAGE_WIDTH;
 pub use table_ops::TableInfo;
+pub use toc_ops::{Heading, TocEntry};

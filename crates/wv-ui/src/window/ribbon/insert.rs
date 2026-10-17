@@ -42,7 +42,26 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
-    let mut groups = vec![objects.into_any_element(), bands.into_any_element()];
+    let toc = block_group(
+        t(this.lang, Key::GroupToc),
+        vec![
+            icon_button("ins-toc", Icon::ListNumbers, false, cx)
+                .tip(t(this.lang, Key::TipToc))
+                .on_click(cx.listener(|this, _, window, cx| {
+                    let title = t(this.lang, Key::TocTitle);
+                    this.editor
+                        .update(cx, |view, cx| view.update_toc(title, window, cx));
+                    this.editor.update(cx, |view, cx| view.request_focus(cx));
+                }))
+                .into_any_element(),
+        ],
+        cx,
+    );
+    let mut groups = vec![
+        objects.into_any_element(),
+        bands.into_any_element(),
+        toc.into_any_element(),
+    ];
     if this.editor.read(cx).core.image_at_caret().is_some() {
         let picture = block_group(
             t(this.lang, Key::GroupPicture),

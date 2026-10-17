@@ -11,7 +11,7 @@ pub use document::{
     Band, DocSettings, Document, ImageData, ImageFormat, Margins, PageSpec, Paragraph, Run,
 };
 pub use editor::MAX_IMAGE_WIDTH;
-pub use editor::{CaseKind, Editor, TableInfo};
+pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;
 pub use style::{Align, Cell, CharStyle, ImageRef, ListKind, NamedStyle, ParaStyle, Script};

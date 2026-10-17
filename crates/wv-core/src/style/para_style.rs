@@ -49,4 +49,6 @@ pub struct ParaStyle {
     pub cell: Option<Cell>,
     /// Set for picture paragraphs.
     pub image: Option<ImageRef>,
+    /// Line of the table of contents (replaced when the contents are updated).
+    pub toc: bool,
 }

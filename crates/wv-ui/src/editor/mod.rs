@@ -9,6 +9,7 @@ mod mouse;
 mod nav;
 mod page_paint;
 mod scroll;
+mod toc;
 mod view;
 
 pub use view::EditorView;
