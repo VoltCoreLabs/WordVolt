@@ -78,6 +78,7 @@ Rust 2024, GPUI (+ gpui-component), cosmic-text, ropey/собственная м
 - Hover-анимации: `ui_kit/hover.rs` (`track_hover` + `hover_layer`), не `.hover()` — он мгновенный (D-016).
 - Текст документа рисуем сами по `wv-layout` (`editor/page_paint.rs`), не через GPUI `StyledText`/`TextLayout` (нет разных размеров, ломается align) — D-020.
 - GPUI `svg()` рисуется только с `text_color` на самом svg (не наследуется от родителя) — см. `ui_kit/icon.rs`.
+- GPUI: `window.insert_hitbox` можно звать только в prepaint/request_layout — в фазе paint это паника (краш приложения). Курсор при рисовании — `window.set_window_cursor_style` (проверяя `window.mouse_position()` вручную).
 - SF Pro лежит локально в `assets/fonts/SFPro*` и в git не попадает (лицензия, D-012).
 - `gpui-kit 0.7.x` — API нужно сверять с docs.rs перед использованием (код в `src/main.rs` — набросок, может не компилироваться).
 - Платформа разработки: Windows 11 (GPUI на Windows использует DirectX; нужен Visual Studio Build Tools).
