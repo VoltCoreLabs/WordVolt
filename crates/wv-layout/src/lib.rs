@@ -19,7 +19,7 @@ pub use page::{Page, PageSetup, Slice};
 pub use paragraph::{
     INDENT_STEP, ImageBox, LIST_HANGING, Options, ParagraphLayout, QUOTE_INDENT, layout_paragraph,
 };
-pub use table::{CELL_PADDING, TableBox};
+pub use table::{CELL_PADDING, Shade, TableBox};
 
 #[cfg(test)]
 mod test_support;

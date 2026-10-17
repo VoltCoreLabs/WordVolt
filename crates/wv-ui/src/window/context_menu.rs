@@ -347,6 +347,7 @@ pub fn context_menu(
         for (id, key, action) in table {
             items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());
         }
+        items.push(shade_row(lang, cx).into_any_element());
     }
     if image {
         items.push(separator(cx).into_any_element());
@@ -443,4 +444,52 @@ pub(super) fn popup(
             ),
     )
     .with_priority(20)
+}
+
+/// Light backgrounds offered for table cells (document content, not theme colours).
+const SHADES: [u32; 10] = [
+    0xFFF2CC, 0xFCE5CD, 0xF4CCCC, 0xD9EAD3, 0xCFE2F3, 0xD9D2E9, 0xEEEEEE, 0xFFE599, 0xB6D7A8,
+    0x9FC5E8,
+];
+
+/// "Cell background": a row of swatches, the first one clears the background.
+fn shade_row(lang: wv_i18n::Lang, cx: &mut Context<MainWindow>) -> Div {
+    let th = cx.global::<Theme>();
+    let (border, muted, surface) = (th.border, th.text_muted, th.surface);
+    let swatches = std::iter::once(None)
+        .chain(SHADES.map(Some))
+        .enumerate()
+        .map(|(i, color)| {
+            div()
+                .id(("ctx-shade", i))
+                .size(px(18.))
+                .flex_none()
+                .rounded(radius::sm())
+                .border_1()
+                .border_color(border)
+                .bg(color.map_or(surface, rgb))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_xs()
+                .text_color(muted)
+                .child(if color.is_none() { "×" } else { "" })
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, _, _, cx| {
+                        this.context_menu = None;
+                        this.edit(cx, move |c| c.set_cell_shade(color));
+                        this.editor.update(cx, |view, cx| view.request_focus(cx));
+                    }),
+                )
+        });
+    div()
+        .px(px(10.))
+        .py(px(6.))
+        .flex()
+        .flex_col()
+        .gap(px(6.))
+        .child(div().text_sm().child(t(lang, Key::CtxShade)))
+        .child(div().flex().gap(px(2.)).children(swatches))
 }

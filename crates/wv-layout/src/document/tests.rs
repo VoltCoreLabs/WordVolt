@@ -178,7 +178,7 @@ fn table_cells_are_laid_out_side_by_side_and_hit_tested() {
     // 2 x 2 table: content 80 px -> columns of 40 px, text 28 px wide inside 6 px padding.
     let mut doc = Document::from_text("before\nA1\nB1\nA2\nB2\nafter");
     for (i, (row, col)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
-        doc.paragraphs[i + 1].style.cell = Some(Cell { table: 0, row, col });
+        doc.paragraphs[i + 1].style.cell = Some(Cell::at(0, row, col));
     }
     let tall = PageSetup {
         height: 220.0,
@@ -223,11 +223,7 @@ fn table_rows_move_to_the_next_page_instead_of_splitting() {
     // Rows are 16 + 12 = 28 px high; the page content is 80 px: 2 rows fit, the 3rd starts page 2.
     let mut doc = Document::from_text("a\nb\nc");
     for (i, row) in [0u16, 1, 2].into_iter().enumerate() {
-        doc.paragraphs[i].style.cell = Some(Cell {
-            table: 0,
-            row,
-            col: 0,
-        });
+        doc.paragraphs[i].style.cell = Some(Cell::at(0, row, 0));
     }
     let l = DocLayout::new(&doc, small(), &Fixed);
     assert_eq!(l.pages.len(), 2);
@@ -256,4 +252,21 @@ fn picture_paragraph_takes_its_height_and_follows_alignment() {
     assert_eq!(l.paragraphs[1].lines[0].x, 20.0);
     // 16 + 50 + 16 = 82 > 80: "b" moves to the next page.
     assert_eq!(l.pages.len(), 2);
+}
+
+#[test]
+fn column_widths_and_cell_shading_shape_the_table() {
+    let mut doc = Document::from_text("a\nb\nc\nd");
+    for (i, (row, col)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
+        doc.paragraphs[i].style.cell = Some(wv_core::Cell::at(0, row, col));
+    }
+    doc.paragraphs[1].style.cell.as_mut().unwrap().shade = Some(0xFFEE99);
+    doc.table_widths.insert(0, vec![0.25, 0.75]);
+    let layout = DocLayout::new(&doc, small(), &Fixed);
+    let table = &layout.pages[0].tables[0];
+    assert_eq!(table.table, 0);
+    assert!((table.col_x[1] - 20.0).abs() < 0.01 && (table.col_x[2] - 80.0).abs() < 0.01);
+    assert_eq!(table.shades.len(), 1);
+    assert_eq!(table.shades[0].color, 0xFFEE99);
+    assert!((table.shades[0].x - 20.0).abs() < 0.01 && (table.shades[0].width - 60.0).abs() < 0.01);
 }

@@ -39,6 +39,9 @@ pub struct File {
     /// First-page and even-page headers/footers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     band_variants: Option<VariantsDto>,
+    /// Column widths of tables: (table id, fractions of the text width).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    table_widths: Vec<(u32, Vec<f32>)>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -81,6 +84,8 @@ struct CellDto {
     table: u32,
     row: u16,
     col: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    shade: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -177,6 +182,7 @@ impl File {
                     table: c.table,
                     row: c.row,
                     col: c.col,
+                    shade: c.shade,
                 }),
                 style: if p.style.named == NamedStyle::Normal {
                     String::new()
@@ -200,6 +206,11 @@ impl File {
             header_runs: styled_runs(&doc.header),
             footer_runs: styled_runs(&doc.footer),
             band_variants: VariantsDto::of(&doc.variants),
+            table_widths: doc
+                .table_widths
+                .iter()
+                .map(|(t, w)| (*t, w.clone()))
+                .collect(),
             page: (doc.page != PageSpec::default()).then_some(PageDto {
                 width: doc.page.width,
                 height: doc.page.height,
@@ -249,9 +260,8 @@ impl File {
                         height: i.height,
                     }),
                     cell: p.cell.map(|c| Cell {
-                        table: c.table,
-                        row: c.row,
-                        col: c.col,
+                        shade: c.shade,
+                        ..Cell::at(c.table, c.row, c.col)
                     }),
                     named: NamedStyle::from_id(&p.style).unwrap_or_default(),
                     list: list_from(&p.list),
@@ -303,6 +313,7 @@ impl File {
         }
         doc.header = band_of(self.header, self.header_runs, &self.header_align);
         doc.footer = band_of(self.footer, self.footer_runs, &self.footer_align);
+        doc.table_widths = self.table_widths.into_iter().collect();
         doc.variants = self
             .band_variants
             .map(VariantsDto::variants)

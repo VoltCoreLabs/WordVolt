@@ -12,6 +12,7 @@ pub use document::{
     Margins, PageSpec, Paragraph, Run,
 };
 pub use editor::MAX_IMAGE_WIDTH;
+pub use editor::MIN_COLUMN;
 pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;

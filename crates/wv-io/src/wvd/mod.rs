@@ -43,11 +43,7 @@ mod tests {
         e.doc.paragraphs[0].runs[0].style.link = Some("https://example.com/?a=1&b=2".into());
         e.doc.paragraphs[1].style.quote = true;
         e.doc.paragraphs[0].style.named = wv_core::NamedStyle::Heading2;
-        e.doc.paragraphs[1].style.cell = Some(wv_core::Cell {
-            table: 3,
-            row: 1,
-            col: 2,
-        });
+        e.doc.paragraphs[1].style.cell = Some(wv_core::Cell::at(3, 1, 2));
         e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
         e.doc.paragraphs[0].style.indent = 2;
         e.doc.paragraphs[0].style.line_spacing = Some(1.5);
@@ -142,5 +138,18 @@ mod tests {
         let back = decode(&encode(&doc).unwrap()).unwrap();
         assert_eq!(back, doc);
         assert_eq!(back.header.runs().len(), 3);
+    }
+
+    #[test]
+    fn table_widths_and_shading_round_trip() {
+        let mut e = wv_core::Editor::new(Document::from_text("x"));
+        e.insert_table(2, 2);
+        let table = e.table_info().unwrap().table;
+        e.set_table_widths(table, vec![0.3, 0.7]);
+        e.set_cell_shade(Some(0xFFEE99));
+        let doc = e.doc.clone();
+        let back = decode(&encode(&doc).unwrap()).unwrap();
+        assert_eq!(back, doc);
+        assert_eq!(back.table_widths[&table], vec![0.3, 0.7]);
     }
 }

@@ -13,6 +13,10 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     let mut links: Vec<String> = Vec::new();
     let mut lists = Lists::default();
     let paras = &doc.paragraphs;
+    // Text width in twips (tables are laid out in it).
+    let page = &doc.page;
+    let text_width = ((page.width - page.margin_left - page.margin_right - page.gutter) * 15.0)
+        .max(1500.0) as usize;
     let mut i = 0;
     while i < paras.len() {
         let Some(first) = paras[i].style.cell else {
@@ -24,7 +28,15 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
             .iter()
             .position(|p| p.style.cell.is_none_or(|c| c.table != first.table))
             .map_or(paras.len(), |n| i + n);
-        super::table_xml::write(&mut xml, &paras[i..end], &mut links, &mut lists);
+        let table = first.table;
+        super::table_xml::write(
+            &mut xml,
+            &paras[i..end],
+            doc.table_widths.get(&table),
+            text_width,
+            &mut links,
+            &mut lists,
+        );
         // Word merges adjacent tables and wants a paragraph before the section properties.
         if end == paras.len() || paras[end].style.cell.is_some() {
             xml.push_str("<w:p/>");

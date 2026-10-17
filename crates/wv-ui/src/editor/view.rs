@@ -32,6 +32,7 @@ pub struct EditorView {
     /// Set by a right click: the window asks for its context menu at this point.
     pub context_request: Option<Point<Pixels>>,
     pub(super) resizing: Option<super::resize::Resize>,
+    pub(super) col_drag: Option<super::table_resize::ColDrag>,
     /// Time of the last edit/caret move; drives the caret fade/blink animation.
     pub(super) caret_epoch: Rc<Cell<Instant>>,
     pub(super) scroll: Rc<ScrollState>,
@@ -65,6 +66,7 @@ impl EditorView {
             selecting: false,
             context_request: None,
             resizing: None,
+            col_drag: None,
             caret_epoch: Rc::new(Cell::new(Instant::now())),
             scroll: Rc::default(),
             reveal_caret: Rc::default(),

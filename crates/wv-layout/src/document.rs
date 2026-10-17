@@ -37,13 +37,15 @@ const BREAK_MARK: f32 = 6.0;
 impl DocLayout {
     pub fn new(doc: &Document, setup: PageSetup, m: &dyn Measurer) -> Self {
         let content_width = setup.content_width();
-        let columns = table::column_counts(doc);
+        let fractions = table::column_fractions(doc);
         let mut paragraphs: Vec<_> = doc
             .paragraphs
             .iter()
             .map(|p| {
                 let width = match p.style.cell {
-                    Some(cell) => table::inner_width(content_width, columns[&cell.table]),
+                    Some(cell) => {
+                        table::inner_width(content_width, &fractions[&cell.table], cell.col)
+                    }
                     None => content_width,
                 };
                 let options = Options {
