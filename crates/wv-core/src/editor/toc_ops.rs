@@ -10,6 +10,8 @@ pub struct TocEntry {
     pub level: u8,
     pub text: String,
     pub page: usize,
+    /// Leader dots between the text and the page number (the UI sizes them to the line).
+    pub dots: usize,
 }
 
 /// A heading of the document.
@@ -67,7 +69,7 @@ impl Editor {
             let mut p = Paragraph::default();
             p.insert(
                 0,
-                &format!("{}  ····  {}", e.text, e.page),
+                &format!("{} {} {}", e.text, "·".repeat(e.dots.max(2)), e.page),
                 &CharStyle::default(),
             );
             p.style.toc = true;
