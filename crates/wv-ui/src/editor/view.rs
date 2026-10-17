@@ -247,7 +247,7 @@ impl Render for EditorView {
                 focused,
                 text: theme.text,
                 selection_color: theme.accent_subtle,
-                cell_selection: cell_selection,
+                cell_selection,
                 epoch: self.caret_epoch.clone(),
                 code_bg: theme.code_bg,
                 spoiler_color: theme.spoiler,
