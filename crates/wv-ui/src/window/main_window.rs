@@ -21,7 +21,16 @@ impl Render for MainWindow {
             window.set_window_title(&title);
             self.applied_title = title;
         }
-        let words = self.editor.read(cx).core.doc.word_count();
+        // Counting the words of a huge document takes a while: only when the text changed.
+        let (id, revision) = {
+            let view = self.editor.read(cx);
+            (self.editor.entity_id(), view.core.revision())
+        };
+        if self.words.0 != Some(id) || self.words.1 != revision {
+            let count = self.editor.read(cx).core.doc.word_count();
+            self.words = (Some(id), revision, count);
+        }
+        let words = self.words.2;
         let pages = self.editor.update(cx, |view, _| view.page_info(window));
         let t = cx.global::<Theme>();
         let (bg, text) = (t.bg, t.text);

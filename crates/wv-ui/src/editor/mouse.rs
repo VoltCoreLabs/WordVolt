@@ -8,23 +8,29 @@ impl EditorView {
     fn hit(&self, point: Point<Pixels>, window: &Window) -> Option<Position> {
         let layout = self.layout.as_ref()?;
         let bounds = self.page_bounds.borrow();
-        // The row of pages under the pointer (pages side by side share a bottom edge), then the
-        // page of that row nearest horizontally.
-        let row = bounds
+        // Only rendered pages have bounds. The row under the pointer (pages side by side share a
+        // bottom edge), then the page of that row nearest horizontally.
+        let rendered: Vec<usize> = (0..bounds.len())
+            .filter(|i| bounds[*i].size.height > px(0.))
+            .collect();
+        let row_page = rendered
             .iter()
-            .position(|b| point.y <= b.bottom())
-            .unwrap_or(bounds.len().checked_sub(1)?);
-        let bottom = f32::from(bounds[row].bottom());
+            .copied()
+            .find(|i| point.y <= bounds[*i].bottom())
+            .or_else(|| rendered.last().copied())?;
+        let bottom = f32::from(bounds[row_page].bottom());
         let distance = |b: &Bounds<Pixels>| {
             let (left, right) = (f32::from(b.left()), f32::from(b.right()));
             (left - f32::from(point.x))
                 .max(f32::from(point.x) - right)
                 .max(0.0)
         };
-        let page = (0..bounds.len())
+        let page = rendered
+            .iter()
+            .copied()
             .filter(|i| (f32::from(bounds[*i].bottom()) - bottom).abs() < 1.0)
             .min_by(|a, b| distance(&bounds[*a]).total_cmp(&distance(&bounds[*b])))
-            .unwrap_or(row);
+            .unwrap_or(row_page);
         let b = bounds[page];
         Some(layout.position_at(
             page,

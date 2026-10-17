@@ -92,6 +92,8 @@ pub struct MainWindow {
     /// All open documents; `active` is the one shown (its state is in the fields above).
     pub docs: Vec<DocSlot>,
     pub active: usize,
+    /// Word count of the document last counted: (editor, revision, words).
+    pub words: (Option<EntityId>, u64, usize),
     /// Id of this running window (its recovery copies are marked with it).
     pub instance: u64,
     pub recovery_dir: PathBuf,
@@ -432,6 +434,7 @@ impl MainWindow {
             instance: wv_io::recovery::new_id(),
             recovery_dir: wv_io::recovery::default_dir(),
             active: 0,
+            words: (None, 0, 0),
             context_menu: None,
             tab_menu: None,
             tab_scroll: ScrollHandle::new(),

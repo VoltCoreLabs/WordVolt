@@ -118,7 +118,12 @@ pub fn scan(dir: &Path, stale_after: Duration) -> Vec<Recovered> {
     let mut found = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("wvd") {
+        let ext = path.extension().and_then(|e| e.to_str());
+        // Marks of windows that ended long ago (killed, crashed) are litter.
+        if ext == Some("alive") && !is_fresh(&path, Duration::from_secs(24 * 3600)) {
+            let _ = fs::remove_file(&path);
+        }
+        if ext != Some("wvd") {
             continue;
         }
         let Some(session) = path
@@ -196,6 +201,24 @@ mod tests {
         fs::write(session_file(&dir, 3, "wvd"), b"not json").unwrap();
         assert!(scan(&dir, Duration::from_secs(30)).is_empty());
         assert!(!session_file(&dir, 3, "wvd").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn old_heartbeat_marks_are_cleaned_up() {
+        let dir = temp("litter");
+        heartbeat(&dir, 1);
+        heartbeat(&dir, 2);
+        let old = SystemTime::now() - Duration::from_secs(3 * 24 * 3600);
+        let file = fs::File::options()
+            .write(true)
+            .open(heartbeat_file(&dir, 1))
+            .unwrap();
+        file.set_modified(old).unwrap();
+        drop(file);
+        scan(&dir, Duration::from_secs(30));
+        assert!(!heartbeat_file(&dir, 1).exists());
+        assert!(heartbeat_file(&dir, 2).exists());
         fs::remove_dir_all(&dir).unwrap();
     }
 

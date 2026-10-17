@@ -60,7 +60,11 @@ impl EditorView {
                 .find(|s| s.para == para && s.lines.start == 0)
                 .map(|s| (i, s))
         })?;
-        let origin = self.page_bounds.borrow().get(page)?.origin;
+        let bounds = *self.page_bounds.borrow().get(page)?;
+        if bounds.size.height <= px(0.) {
+            return None;
+        }
+        let origin = bounds.origin;
         let (x, y) = (
             layout.setup.margin_left + slice.x + layout.paragraphs[para].lines[0].x,
             layout.setup.margin_top + slice.y,

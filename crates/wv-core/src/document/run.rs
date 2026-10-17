@@ -1,7 +1,7 @@
 use crate::style::CharStyle;
 
 /// A piece of text with uniform formatting.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Run {
     pub text: String,
     pub style: CharStyle,

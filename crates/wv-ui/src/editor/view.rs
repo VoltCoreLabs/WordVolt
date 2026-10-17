@@ -1,4 +1,3 @@
-use gpui_kit::prelude::FluentBuilder;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -196,68 +195,124 @@ impl Render for EditorView {
         let theme = cx.global::<Theme>();
         let (page_bg, border, thumb) = (theme.page, theme.border, theme.border_strong);
         let focused = self.focus.is_focused(window);
-        self.page_bounds
-            .borrow_mut()
-            .resize(layout.pages.len(), Bounds::default());
-
         let images = self.picture_sources();
         let doc = &self.core.doc;
         let bands = Rc::new((doc.header.clone(), doc.footer.clone(), doc.variants.clone()));
-        let pages: Vec<_> = (0..layout.pages.len())
-            .map(|ix| {
-                let view = PageView {
-                    layout: layout.clone(),
-                    measure: self.measure_cache.clone(),
-                    page: ix,
-                    selection: self.core.sel.range(),
-                    head: self.core.sel.head,
-                    focused,
-                    text: theme.text,
-                    selection_color: theme.accent_subtle,
-                    epoch: self.caret_epoch.clone(),
-                    scroll: self.scroll.clone(),
-                    reveal: self.reveal_caret.clone(),
-                    code_bg: theme.code_bg,
-                    spoiler_color: theme.spoiler,
-                    link_color: theme.accent,
-                    bar_color: theme.border_strong,
-                    find: self.find.clone(),
-                    find_current: self.find_current,
-                    find_color: theme.find_match,
-                    find_current_color: theme.find_current,
-                    table_color: theme.border_strong,
-                    bands: bands.clone(),
-                    images: images.clone(),
-                    band_color: theme.text_muted,
-                    zoom: self.zoom,
-                };
-                let bounds_store = self.page_bounds.clone();
-                div()
-                    .relative()
-                    .flex_none()
-                    .w(px(layout.setup.width * self.zoom))
-                    .h(px(layout.setup.height * self.zoom))
-                    .bg(page_bg)
-                    .border_1()
-                    .border_color(border)
-                    .child(
-                        canvas(
-                            move |bounds, _, _| {
-                                if let Some(slot) = bounds_store.borrow_mut().get_mut(ix) {
-                                    *slot = bounds;
-                                }
-                            },
-                            move |bounds, (), window, cx| paint_page(&view, bounds, window, cx),
-                        )
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .size_full(),
-                    )
-            })
-            .collect();
-
+        // Only the rows of pages near the viewport become elements; the rest is two spacers of the
+        // exact height (so a document of thousands of pages costs no more than a screenful).
+        let setup = &layout.setup;
+        let (page_w, page_h) = (setup.width * self.zoom, setup.height * self.zoom);
+        let pad = f32::from(space::xl());
+        let viewport_w = self.scroll.viewport_width().max(page_w + 2.0 * FIT_PADDING);
+        let viewport_h = if self.scroll.viewport_height() > 0.0 {
+            self.scroll.viewport_height()
+        } else {
+            800.0
+        };
+        let cols = if self.multi_page {
+            (((viewport_w + PAGE_GAP) / (page_w + PAGE_GAP)).floor() as usize).max(1)
+        } else {
+            1
+        };
+        let count = layout.pages.len();
+        let total_rows = count.div_ceil(cols).max(1);
+        let row_h = page_h + PAGE_GAP;
+        // A move of the caret scrolls it into view (worked out from the layout, so it also works
+        // when the caret's page is not among the rendered ones).
+        if focused
+            && self.reveal_caret.replace(false)
+            && let Some(c) = layout.caret(self.core.sel.head, &self.measurer(window))
+        {
+            let y = pad + (c.page / cols) as f32 * row_h + c.y * self.zoom;
+            self.scroll.reveal_at(y, c.height * self.zoom);
+        }
         let offset = self.scroll.tick(window);
+        let first_row = (((offset - pad) / row_h).floor().max(0.0) as usize).saturating_sub(1);
+        let last_row = ((((offset + viewport_h - pad) / row_h).ceil().max(0.0)) as usize + 1)
+            .min(total_rows - 1);
+        {
+            // Pages that are not rendered have no bounds (hit tests skip them).
+            let mut bounds = self.page_bounds.borrow_mut();
+            bounds.clear();
+            bounds.resize(count, Bounds::default());
+        }
+        let build_page = |ix: usize| {
+            let view = PageView {
+                layout: layout.clone(),
+                measure: self.measure_cache.clone(),
+                page: ix,
+                selection: self.core.sel.range(),
+                head: self.core.sel.head,
+                focused,
+                text: theme.text,
+                selection_color: theme.accent_subtle,
+                epoch: self.caret_epoch.clone(),
+                code_bg: theme.code_bg,
+                spoiler_color: theme.spoiler,
+                link_color: theme.accent,
+                bar_color: theme.border_strong,
+                find: self.find.clone(),
+                find_current: self.find_current,
+                find_color: theme.find_match,
+                find_current_color: theme.find_current,
+                table_color: theme.border_strong,
+                bands: bands.clone(),
+                images: images.clone(),
+                band_color: theme.text_muted,
+                zoom: self.zoom,
+            };
+            let bounds_store = self.page_bounds.clone();
+            div()
+                .relative()
+                .flex_none()
+                .w(px(layout.setup.width * self.zoom))
+                .h(px(layout.setup.height * self.zoom))
+                .bg(page_bg)
+                .border_1()
+                .border_color(border)
+                .child(
+                    canvas(
+                        move |bounds, _, _| {
+                            if let Some(slot) = bounds_store.borrow_mut().get_mut(ix) {
+                                *slot = bounds;
+                            }
+                        },
+                        move |bounds, (), window, cx| paint_page(&view, bounds, window, cx),
+                    )
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full(),
+                )
+        };
+        let spacer = |rows: usize| {
+            div()
+                .flex_none()
+                .w_full()
+                .h(px(rows as f32 * row_h - PAGE_GAP))
+                .into_any_element()
+        };
+        let mut rows: Vec<AnyElement> = Vec::new();
+        if first_row > 0 {
+            rows.push(spacer(first_row));
+        }
+        for r in first_row..=last_row {
+            let in_row = (r * cols..((r + 1) * cols).min(count)).map(build_page);
+            rows.push(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_none()
+                    .justify_center()
+                    .gap(px(PAGE_GAP))
+                    .children(in_row)
+                    .into_any_element(),
+            );
+        }
+        if last_row + 1 < total_rows {
+            rows.push(spacer(total_rows - 1 - last_row));
+        }
+
         let (content_scroll, viewport_scroll) = (self.scroll.clone(), self.scroll.clone());
         let content_probe = canvas(
             move |b, _, _| content_scroll.set_content_height(b.size.height),
@@ -325,17 +380,14 @@ impl Render for EditorView {
                     .w_full()
                     .min_w(px(layout.setup.width * self.zoom + 2.0 * FIT_PADDING))
                     .ml(px(-self.scroll_x))
-                    // Pages sit side by side while they fit (zoomed out), like in Word, or always
-                    // one per row.
+                    // Rows of pages (several per row while they fit, like in Word, or one).
                     .flex()
-                    .when(self.multi_page, |d| {
-                        d.flex_row().flex_wrap().justify_center().items_start()
-                    })
-                    .when(!self.multi_page, |d| d.flex_col().items_center())
+                    .flex_col()
+                    .items_center()
                     .gap(px(PAGE_GAP))
-                    .py(space::xl())
+                    .py(px(pad))
                     .mt(px(-offset))
-                    .children(pages)
+                    .children(rows)
                     .child(content_probe),
             )
             .child(viewport_probe)
