@@ -9,10 +9,9 @@ pub mod style;
 
 pub use document::{
     BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, DocSettings, Document, ImageData, ImageFormat,
-    Margins, PageSpec, Paragraph, Run,
+    MIN_COLUMN, Margins, PageSpec, Paragraph, Run, TableLook,
 };
 pub use editor::MAX_IMAGE_WIDTH;
-pub use editor::MIN_COLUMN;
 pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;

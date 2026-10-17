@@ -1,5 +1,5 @@
 use super::Editor;
-use crate::document::Paragraph;
+use crate::document::{Paragraph, TableLook};
 use crate::position::{Position, Selection};
 use crate::style::Cell;
 
@@ -91,24 +91,24 @@ impl Editor {
         self.rebuild_table_with(f, |_, _| None);
     }
 
-    /// `rebuild_table` that also sets the table's column widths (in the same undo step):
-    /// `widths(info, current)` returns the new fractions, an empty list for "equal" (or none left),
-    /// or `None` to keep them.
+    /// `rebuild_table` that also changes the table's look (in the same undo step):
+    /// `look(info, current)` returns the new look, one without columns to forget it, or `None` to
+    /// keep it.
     pub(super) fn rebuild_table_with(
         &mut self,
         f: impl FnOnce(&mut Vec<Paragraph>, TableInfo) -> (u16, u16),
-        widths: impl FnOnce(&TableInfo, Vec<f32>) -> Option<Vec<f32>>,
+        look: impl FnOnce(&TableInfo, TableLook) -> Option<TableLook>,
     ) {
         let Some(info) = self.table_info() else {
             return;
         };
-        let current = self.col_fractions(info.table, usize::from(info.cols));
-        let settings = widths(&info, current).map(|new| {
+        let current = self.table_look(info.table);
+        let settings = look(&info, current).map(|new| {
             let mut s = self.doc.settings();
-            if new.is_empty() {
-                s.table_widths.remove(&info.table);
+            if new.widths.is_empty() {
+                s.table_looks.remove(&info.table);
             } else {
-                s.table_widths.insert(info.table, new);
+                s.table_looks.insert(info.table, new.normalized());
             }
             s
         });
@@ -135,7 +135,7 @@ impl Editor {
                 paras.clear();
                 (0, 0)
             },
-            |_, _| Some(Vec::new()),
+            |_, _| Some(TableLook::default()),
         );
     }
 
