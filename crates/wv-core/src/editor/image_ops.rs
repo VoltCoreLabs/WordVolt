@@ -25,7 +25,7 @@ impl Editor {
                 self.doc.images.len() - 1
             }
         };
-        let scale = (MAX_IMAGE_WIDTH / width).min(1.0);
+        let scale = (MAX_IMAGE_WIDTH.min(self.max_image_width()) / width).min(1.0);
         let mut picture = Paragraph::default();
         picture.style.image = Some(ImageRef {
             id: id as u32,
@@ -45,6 +45,11 @@ impl Editor {
         self.edit_paragraphs(index, removed, paras, Selection::caret(caret));
     }
 
+    /// Widest a picture can be: the text width of the page (it never leaves the sheet).
+    fn max_image_width(&self) -> f32 {
+        self.doc.page.width - self.doc.page.margin_left - self.doc.page.margin_right
+    }
+
     /// The picture paragraph under the caret.
     pub fn image_at_caret(&self) -> Option<ImageRef> {
         self.doc.paragraphs[self.sel.head.para].style.image
@@ -55,7 +60,7 @@ impl Editor {
         let Some(image) = self.image_at_caret() else {
             return;
         };
-        let width = width.clamp(16.0, 2000.0);
+        let width = width.clamp(16.0, self.max_image_width().max(16.0));
         let height = image.height * width / image.width;
         let para = self.sel.head.para;
         self.edit_para_styles(para, para, |s| {
@@ -76,7 +81,7 @@ impl Editor {
         let Some(image) = self.image_at_caret() else {
             return;
         };
-        let width = width.clamp(16.0, 2000.0);
+        let width = width.clamp(16.0, self.max_image_width().max(16.0));
         let para = self.sel.head.para;
         let mut changed = self.doc.paragraphs[para].clone();
         changed.style.image = Some(ImageRef {

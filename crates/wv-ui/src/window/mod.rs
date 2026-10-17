@@ -1,6 +1,7 @@
 mod color_picker;
 mod combo;
 mod commands;
+mod drop_files;
 mod export_pdf;
 mod file_ops;
 mod find_bar;

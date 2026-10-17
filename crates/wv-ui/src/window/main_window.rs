@@ -70,6 +70,9 @@ impl Render for MainWindow {
                     }
                 });
             }))
+            .on_drop(cx.listener(|this, files: &ExternalPaths, window, cx| {
+                this.drop_files(files.paths(), window, cx)
+            }))
             .on_action(
                 cx.listener(|this, _: &OpenDocument, window, cx| this.open_document(window, cx)),
             )

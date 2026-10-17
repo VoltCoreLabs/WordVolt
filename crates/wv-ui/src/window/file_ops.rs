@@ -167,11 +167,28 @@ impl MainWindow {
         cx.spawn_in(window, async move |this, cx| {
             let Some(handle) = picked.await else { return };
             let path = handle.path().to_path_buf();
-            let to_read = path.clone();
-            let loaded = cx
-                .background_executor()
-                .spawn(async move { wv_io::load_file(&to_read) })
-                .await;
+            this.update_in(cx, |this, window, cx| this.load_path(path, window, cx))
+                .ok();
+        })
+        .detach();
+    }
+
+    /// Opens a file (asks about unsaved changes first).
+    pub(super) fn open_path(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        self.confirm_then(
+            window,
+            cx,
+            Box::new(move |this, window, cx| this.load_path(path, window, cx)),
+        );
+    }
+
+    fn load_path(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        let to_read = path.clone();
+        let loaded = cx
+            .background_executor()
+            .spawn(async move { wv_io::load_file(&to_read) });
+        cx.spawn_in(window, async move |this, cx| {
+            let loaded = loaded.await;
             this.update_in(cx, |this, window, cx| match loaded {
                 Ok(doc) => this.install(doc, Some(path), cx),
                 Err(err) => this.show_error(window, cx, &format!("{}: {err}", path.display())),
