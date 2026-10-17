@@ -169,3 +169,18 @@ fn quote_is_indented_and_wraps_narrower() {
     // 80 px - 24 px indent = 56 px = 7 chars: the second word moves to the next line.
     assert_eq!(l.lines.len(), 2);
 }
+
+#[test]
+fn a_tab_in_the_contents_pushes_the_page_number_to_the_right_edge() {
+    let mut p = plain("Intro\t7");
+    p.style.toc = true;
+    let l = layout_paragraph(&p, &opts(40.0), &Fixed);
+    assert_eq!(l.lines.len(), 1);
+    let line = &l.lines[0];
+    assert_eq!(line.width, 40.0 * CHAR);
+    // "Intro", the tab and "7" are separate fragments; the tab takes the free room.
+    let widths: Vec<f32> = line.fragments.iter().map(|f| f.width).collect();
+    assert_eq!(widths, [5.0 * CHAR, 34.0 * CHAR, CHAR]);
+    let (dots, offset) = crate::leader(widths[1], &CharStyle::default(), &Fixed).unwrap();
+    assert!(!dots.is_empty() && offset > 0.0);
+}

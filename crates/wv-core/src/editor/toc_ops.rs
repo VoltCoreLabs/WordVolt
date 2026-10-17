@@ -10,8 +10,6 @@ pub struct TocEntry {
     pub level: u8,
     pub text: String,
     pub page: usize,
-    /// Leader dots between the text and the page number (the UI sizes them to the line).
-    pub dots: usize,
 }
 
 /// A heading of the document.
@@ -58,7 +56,7 @@ impl Editor {
     }
 
     /// Inserts the table of contents after the caret's paragraph, or replaces the existing one
-    /// (one undo step). Entries are indented by level and end with the page number.
+    /// (one undo step). Entries are indented by level and end with a tab and the page number (the layout right-aligns it with dot leaders).
     pub fn set_toc(&mut self, title: &str, entries: &[TocEntry]) {
         let mut paras = Vec::with_capacity(entries.len() + 1);
         let mut head = Paragraph::plain(title);
@@ -67,11 +65,7 @@ impl Editor {
         paras.push(head);
         for e in entries {
             let mut p = Paragraph::default();
-            p.insert(
-                0,
-                &format!("{} {} {}", e.text, "·".repeat(e.dots.max(2)), e.page),
-                &CharStyle::default(),
-            );
+            p.insert(0, &format!("{}\t{}", e.text, e.page), &CharStyle::default());
             p.style.toc = true;
             p.style.indent = e.level.saturating_sub(1);
             paras.push(p);

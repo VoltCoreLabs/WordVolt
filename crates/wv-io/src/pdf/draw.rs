@@ -216,6 +216,12 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
                     .style
                     .color
                     .unwrap_or(if f.style.link.is_some() { LINK } else { TEXT });
+                if text == "\t" {
+                    if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, fonts) {
+                        c.text(&dots, &f.style, x + offset, baseline, rgb);
+                    }
+                    continue;
+                }
                 if line.space_extra == 0.0 {
                     c.text(text, &f.style, x, baseline, rgb);
                     continue;

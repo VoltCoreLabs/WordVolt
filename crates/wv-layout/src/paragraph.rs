@@ -189,7 +189,12 @@ fn pieces(
         .filter_map(|(run, span)| {
             let part = range.start.max(span.start)..range.end.min(span.end);
             (part.start < part.end).then(|| Piece {
-                width: m.width(&text[part.clone()], &p.runs[run].style),
+                // A tab has no width of its own (the layout stretches it, see `build_line`).
+                width: if p.style.toc && &text[part.clone()] == "\t" {
+                    0.0
+                } else {
+                    m.width(&text[part.clone()], &p.runs[run].style)
+                },
                 range: part,
                 run,
                 space,
@@ -260,7 +265,14 @@ fn build_line(
 ) -> Line {
     let trailing = row.iter().rev().take_while(|x| x.space).count();
     let visible = &row[..row.len() - trailing];
-    let visible_width: f32 = visible.iter().map(|x| x.width).sum();
+    // In the contents, a tab pushes the rest of the line (the page number) to the right edge.
+    let is_tab = |x: &Piece| p.style.toc && &text[x.range.clone()] == "\t";
+    let tab_extra = if row.iter().any(is_tab) {
+        (opts.width - visible.iter().map(|x| x.width).sum::<f32>()).max(0.0)
+    } else {
+        0.0
+    };
+    let visible_width: f32 = visible.iter().map(|x| x.width).sum::<f32>() + tab_extra;
     let start = row.first().map_or(0, |x| x.range.start);
     let end = row.last().map_or(0, |x| x.range.end);
     let visible_end = visible.last().map_or(start, |x| x.range.end);
@@ -291,9 +303,18 @@ fn build_line(
                 .filter(|b| *b == b' ')
                 .count() as f32
             * f32::from(piece.range.end <= visible_end);
-        let width = piece.width + extra;
+        let tab = is_tab(piece);
+        let width = piece.width + extra + if tab { tab_extra } else { 0.0 };
+        let after_tab = fragments
+            .last()
+            .is_some_and(|f| text[f.range.clone()].ends_with('\t'));
         match fragments.last_mut() {
-            Some(f) if f.range.end == piece.range.start && f.style == p.runs[piece.run].style => {
+            Some(f)
+                if f.range.end == piece.range.start
+                    && f.style == p.runs[piece.run].style
+                    && !tab
+                    && !after_tab =>
+            {
                 f.range.end = piece.range.end;
                 f.width += width;
             }

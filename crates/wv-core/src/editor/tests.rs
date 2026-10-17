@@ -693,7 +693,6 @@ fn table_of_contents_is_inserted_and_replaced_in_one_step() {
         level: 1,
         text: "Intro".into(),
         page,
-        dots: 4,
     };
     e.sel = crate::Selection::caret(Position::new(1, 0));
     e.set_toc("Contents", &[entry(1)]);

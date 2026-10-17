@@ -232,6 +232,13 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                         );
                     }
                 };
+                if text == "\t" {
+                    // A tab (contents entry): dot leader up to the page number.
+                    if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, &m) {
+                        paint(&dots, x + offset, window, cx);
+                    }
+                    continue;
+                }
                 if line.space_extra == 0.0 {
                     paint(text, x, window, cx);
                 } else {

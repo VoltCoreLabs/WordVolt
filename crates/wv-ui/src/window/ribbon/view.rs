@@ -5,7 +5,7 @@ use crate::ui_kit::{ButtonKind, Tip, block_group, button};
 use crate::window::state::MainWindow;
 
 /// Zoom steps of the − / + buttons.
-const STEP: f32 = 1.25;
+pub(crate) const STEP: f32 = 1.25;
 
 /// View tab: zoom of the page view.
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
@@ -50,7 +50,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     vec![group.into_any_element()]
 }
 
-fn zoom_to(
+pub(crate) fn zoom_to(
     cx: &mut Context<MainWindow>,
     f: fn(f32) -> f32,
 ) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
