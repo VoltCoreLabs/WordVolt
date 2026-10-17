@@ -14,7 +14,11 @@ actions!(
         FindPrevious,
         EditorTab,
         EditorTabBack,
-        FieldNext
+        FieldNext,
+        NewTab,
+        CloseTab,
+        NextTab,
+        PrevTab
     ]
 );
 
@@ -25,6 +29,10 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("secondary-o", OpenDocument, None),
         KeyBinding::new("secondary-s", SaveDocument, None),
         KeyBinding::new("secondary-shift-s", SaveDocumentAs, None),
+        KeyBinding::new("secondary-t", NewTab, None),
+        KeyBinding::new("secondary-w", CloseTab, None),
+        KeyBinding::new("ctrl-tab", NextTab, None),
+        KeyBinding::new("ctrl-shift-tab", PrevTab, None),
         KeyBinding::new("secondary-k", InsertLink, None),
         KeyBinding::new("secondary-f", FindInDocument, None),
         KeyBinding::new("secondary-h", ReplaceInDocument, None),
