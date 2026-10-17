@@ -25,9 +25,9 @@ pub fn paint_bands(
     let z = v.zoom;
     let height = ascent + descent;
     let (header, footer): &(Band, Band) = &v.bands;
-    for (band, centre) in [
-        (header, setup.margin_top / 2.0),
-        (footer, setup.height - setup.margin_bottom / 2.0),
+    for (band, top) in [
+        (header, setup.header_distance),
+        (footer, setup.height - setup.footer_distance - height),
     ] {
         let text = band.render(v.page + 1, pages);
         if text.is_empty() {
@@ -41,7 +41,7 @@ pub fn paint_bands(
         };
         let shaped = m.shape_zoomed(&text, &style, v.band_color.into(), z);
         let _ = shaped.paint(
-            at(x.max(0.0), centre - height / 2.0),
+            at(x.max(0.0), top),
             px(height * z),
             TextAlign::Left,
             None,

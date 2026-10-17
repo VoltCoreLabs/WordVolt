@@ -8,6 +8,6 @@ mod run;
 pub use band::Band;
 pub use doc::{DocSettings, Document};
 pub use image::{ImageData, ImageFormat};
-pub use page::{Margins, PageSpec};
+pub use page::{BAND_DISTANCE, Margins, PageSpec};
 pub use paragraph::Paragraph;
 pub use run::Run;

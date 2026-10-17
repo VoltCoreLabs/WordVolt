@@ -157,6 +157,9 @@ impl State {
                 p.margin_right = px(b"right", p.margin_right);
                 p.margin_bottom = px(b"bottom", p.margin_bottom);
                 p.margin_left = px(b"left", p.margin_left);
+                p.gutter = px(b"gutter", p.gutter);
+                p.header_distance = px(b"header", p.header_distance);
+                p.footer_distance = px(b"footer", p.footer_distance);
             }
             b"pPr" => self.in_paragraph_props = true,
             b"ilvl" if self.in_paragraph_props => {

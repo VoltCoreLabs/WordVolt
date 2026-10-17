@@ -111,9 +111,12 @@ fn draw_bands(
         ..Default::default()
     };
     let (ascent, descent) = (c.fonts.ascent(&style), c.fonts.descent(&style));
-    for (band, centre) in [
-        (bands.0, setup.margin_top / 2.0),
-        (bands.1, setup.height - setup.margin_bottom / 2.0),
+    for (band, top) in [
+        (bands.0, setup.header_distance),
+        (
+            bands.1,
+            setup.height - setup.footer_distance - (ascent + descent),
+        ),
     ] {
         let text = band.render(page + 1, pages);
         let width = c.fonts.width(&text, &style);
@@ -122,7 +125,7 @@ fn draw_bands(
             Align::Center => (setup.width - width) / 2.0,
             _ => setup.margin_left,
         };
-        let baseline = centre - (ascent + descent) / 2.0 + ascent;
+        let baseline = top + ascent;
         c.text(&text, &style, x.max(0.0), baseline, BAND);
     }
 }

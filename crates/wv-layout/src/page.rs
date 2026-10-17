@@ -14,6 +14,9 @@ pub struct PageSetup {
     pub margin_right: f32,
     pub margin_bottom: f32,
     pub margin_left: f32,
+    /// Distance from the page edge to the header / footer text.
+    pub header_distance: f32,
+    pub footer_distance: f32,
     /// Gap after every paragraph.
     pub paragraph_spacing: f32,
     /// Line height multiplier.
@@ -30,6 +33,8 @@ impl PageSetup {
             margin_right: 96.0,
             margin_bottom: 96.0,
             margin_left: 96.0,
+            header_distance: 47.2,
+            footer_distance: 47.2,
             paragraph_spacing: 8.0,
             line_spacing: 1.15,
         }
@@ -43,7 +48,10 @@ impl PageSetup {
             margin_top: spec.margin_top,
             margin_right: spec.margin_right,
             margin_bottom: spec.margin_bottom,
-            margin_left: spec.margin_left,
+            // The gutter is part of the left margin as far as the text is concerned.
+            margin_left: spec.margin_left + spec.gutter,
+            header_distance: spec.header_distance,
+            footer_distance: spec.footer_distance,
             ..Self::a4()
         }
     }

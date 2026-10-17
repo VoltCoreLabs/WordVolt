@@ -47,7 +47,8 @@ impl Editor {
 
     /// Widest a picture can be: the text width of the page (it never leaves the sheet).
     fn max_image_width(&self) -> f32 {
-        self.doc.page.width - self.doc.page.margin_left - self.doc.page.margin_right
+        let p = &self.doc.page;
+        p.width - p.margin_left - p.margin_right - p.gutter
     }
 
     /// The picture paragraph under the caret.

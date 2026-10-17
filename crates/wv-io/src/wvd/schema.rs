@@ -40,6 +40,16 @@ struct PageDto {
     right: f32,
     bottom: f32,
     left: f32,
+    #[serde(default)]
+    gutter: f32,
+    #[serde(default = "band_distance")]
+    header_distance: f32,
+    #[serde(default = "band_distance")]
+    footer_distance: f32,
+}
+
+fn band_distance() -> f32 {
+    wv_core::BAND_DISTANCE
 }
 
 /// Embedded picture: format name and base64 data.
@@ -204,6 +214,9 @@ impl File {
                 right: doc.page.margin_right,
                 bottom: doc.page.margin_bottom,
                 left: doc.page.margin_left,
+                gutter: doc.page.gutter,
+                header_distance: doc.page.header_distance,
+                footer_distance: doc.page.footer_distance,
             }),
             images: doc
                 .images
@@ -311,6 +324,9 @@ impl File {
                 margin_right: p.right.max(0.0),
                 margin_bottom: p.bottom.max(0.0),
                 margin_left: p.left.max(0.0),
+                gutter: p.gutter.max(0.0),
+                header_distance: p.header_distance.max(0.0),
+                footer_distance: p.footer_distance.max(0.0),
             };
         }
         doc.header = Band::new(self.header).aligned(band_align_from(&self.header_align));
