@@ -33,7 +33,7 @@ WordVolt/
 │  ├─ wv-io/                 форматы файлов
 │  ├─ wv-i18n/               локализация
 │  └─ wv-ui/                 GPUI-интерфейс
-└─ app/                      бинарник `wordvolt` (main.rs ≤ 50 строк)
+└─ app/                      бинарник `wordvolt` (main.rs ≤ 50 строк); icon.ico + app.rc + build.rs — иконка exe (ресурс 1, из него GPUI берёт иконку окна/панели задач); логотип — assets/brand/logo.png
 ```
 
 ### wv-core — модель и операции
