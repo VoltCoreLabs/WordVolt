@@ -13,6 +13,15 @@ pub enum ListKind {
     Number,
 }
 
+/// Position of a paragraph inside a table. A table is a run of consecutive paragraphs that share
+/// `table`, ordered by (row, col); a cell may hold several paragraphs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cell {
+    pub table: u32,
+    pub row: u16,
+    pub col: u16,
+}
+
 /// Paragraph formatting.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParaStyle {
@@ -27,4 +36,6 @@ pub struct ParaStyle {
     pub indent: u8,
     /// Line height multiplier; `None` = the document default.
     pub line_spacing: Option<f32>,
+    /// Set for paragraphs that belong to a table cell.
+    pub cell: Option<Cell>,
 }

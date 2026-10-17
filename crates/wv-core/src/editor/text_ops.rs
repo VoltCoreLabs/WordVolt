@@ -7,6 +7,10 @@ use crate::position::{Position, Selection};
 impl Editor {
     /// Replaces `start..end` with `text` (`\n` starts a new paragraph). Caret goes after the text.
     pub fn replace_range(&mut self, start: Position, end: Position, text: &str) {
+        // Text edits stay inside one table cell (or outside tables): never merge cells or cell and body.
+        if self.doc.paragraphs[start.para].style.cell != self.doc.paragraphs[end.para].style.cell {
+            return;
+        }
         let mut style = self
             .pending_style
             .take()

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use wv_core::{
-    Align, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
+    Align, Cell, CharStyle, Document, ListKind, NamedStyle, ParaStyle, Paragraph, Run, Script,
 };
 
 use crate::IoError;
@@ -15,6 +15,14 @@ pub struct File {
     paragraphs: Vec<Para>,
 }
 
+/// Table cell of a paragraph.
+#[derive(Serialize, Deserialize, Clone, Copy)]
+struct CellDto {
+    table: u32,
+    row: u16,
+    col: u16,
+}
+
 #[derive(Serialize, Deserialize)]
 struct Para {
     #[serde(default)]
@@ -25,6 +33,8 @@ struct Para {
     quote: bool,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     list: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    cell: Option<CellDto>,
     #[serde(default, skip_serializing_if = "is_zero")]
     indent: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -93,6 +103,11 @@ impl File {
             .map(|p| Para {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
+                cell: p.style.cell.map(|c| CellDto {
+                    table: c.table,
+                    row: c.row,
+                    col: c.col,
+                }),
                 style: if p.style.named == NamedStyle::Normal {
                     String::new()
                 } else {
@@ -150,6 +165,11 @@ impl File {
                 style: ParaStyle {
                     align: align_from(&p.align),
                     quote: p.quote,
+                    cell: p.cell.map(|c| Cell {
+                        table: c.table,
+                        row: c.row,
+                        col: c.col,
+                    }),
                     named: NamedStyle::from_id(&p.style).unwrap_or_default(),
                     list: list_from(&p.list),
                     indent: p.indent.min(8),

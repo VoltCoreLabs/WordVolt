@@ -44,6 +44,7 @@ pub enum Icon {
     LineSpacing,
     WholeWord,
     Replace,
+    Rows,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -97,6 +98,7 @@ impl Icon {
             Icon::LineSpacing => "arrows-vertical",
             Icon::WholeWord => "brackets-square",
             Icon::Replace => "swap",
+            Icon::Rows => "rows",
         }
     }
 }

@@ -96,6 +96,15 @@ pub enum Key {
     GroupEditing,
     TipFind,
     TipReplace,
+    TipTable,
+    TipTableEdit,
+    TblRowAbove,
+    TblRowBelow,
+    TblColLeft,
+    TblColRight,
+    TblDelRow,
+    TblDelCol,
+    TblDelTable,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -192,6 +201,15 @@ fn ru(key: Key) -> &'static str {
         Key::GroupEditing => "Правка",
         Key::TipFind => "Найти (Ctrl+F)",
         Key::TipReplace => "Заменить (Ctrl+H)",
+        Key::TipTable => "Вставить таблицу",
+        Key::TipTableEdit => "Изменить таблицу",
+        Key::TblRowAbove => "Строка выше",
+        Key::TblRowBelow => "Строка ниже",
+        Key::TblColLeft => "Столбец слева",
+        Key::TblColRight => "Столбец справа",
+        Key::TblDelRow => "Удалить строку",
+        Key::TblDelCol => "Удалить столбец",
+        Key::TblDelTable => "Удалить таблицу",
     }
 }
 
@@ -282,6 +300,15 @@ fn en(key: Key) -> &'static str {
         Key::GroupEditing => "Editing",
         Key::TipFind => "Find (Ctrl+F)",
         Key::TipReplace => "Replace (Ctrl+H)",
+        Key::TipTable => "Insert table",
+        Key::TipTableEdit => "Edit table",
+        Key::TblRowAbove => "Row above",
+        Key::TblRowBelow => "Row below",
+        Key::TblColLeft => "Column to the left",
+        Key::TblColRight => "Column to the right",
+        Key::TblDelRow => "Delete row",
+        Key::TblDelCol => "Delete column",
+        Key::TblDelTable => "Delete table",
     }
 }
 
