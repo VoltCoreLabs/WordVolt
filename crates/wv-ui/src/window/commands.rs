@@ -17,6 +17,7 @@ impl MainWindow {
             Command::Save => self.save_document(window, cx),
             Command::SaveAs => self.save_document_as(window, cx),
             Command::ExportPdf => self.export_pdf(window, cx),
+            Command::Print => self.print_document(window, cx),
             Command::Undo => self.edit(cx, |c| _ = c.undo()),
             Command::Redo => self.edit(cx, |c| _ = c.redo()),
             Command::Find => self
