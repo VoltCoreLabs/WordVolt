@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Align, Band, BandVariants};
+use wv_core::{Align, Band, BandStyle, BandVariants};
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::ui_kit::{Icon, LineEdit, Outcome, Tip, icon_button, pop_in};
@@ -24,6 +24,8 @@ pub struct HeaderFooterEditor {
     pub(super) which: usize,
     /// Alignment chosen in the open popover.
     pub(super) aligns: (Align, Align),
+    /// Formatting chosen in the open popover (header, footer).
+    pub(super) styles: (BandStyle, BandStyle),
     pub(super) header: LineEdit,
     pub(super) footer: LineEdit,
     pub(super) header_focus: FocusHandle,
@@ -44,6 +46,7 @@ impl HeaderFooterEditor {
             flags: (false, false),
             which: 0,
             aligns: (Align::Center, Align::Center),
+            styles: Default::default(),
             header: LineEdit::default(),
             footer: LineEdit::default(),
             header_focus: cx.focus_handle(),
@@ -61,8 +64,12 @@ impl HeaderFooterEditor {
     /// Puts the text of the fields into the working copy.
     fn store_fields(&mut self) {
         self.sets[self.which] = (
-            Band::new(self.header.text()).aligned(self.aligns.0),
-            Band::new(self.footer.text()).aligned(self.aligns.1),
+            Band::new(self.header.text())
+                .aligned(self.aligns.0)
+                .styled(self.styles.0),
+            Band::new(self.footer.text())
+                .aligned(self.aligns.1)
+                .styled(self.styles.1),
         );
     }
 
@@ -72,6 +79,23 @@ impl HeaderFooterEditor {
         self.header.set(&header.text, false);
         self.footer.set(&footer.text, false);
         self.aligns = (header.align, footer.align);
+        self.styles = (header.style, footer.style);
+    }
+
+    /// Changes the formatting of the header (`in_header`) or the footer.
+    pub(super) fn restyle(
+        &mut self,
+        in_header: bool,
+        f: impl Fn(BandStyle) -> BandStyle,
+        cx: &mut Context<Self>,
+    ) {
+        let slot = if in_header {
+            &mut self.styles.0
+        } else {
+            &mut self.styles.1
+        };
+        *slot = f(*slot);
+        cx.notify();
     }
 
     pub(super) fn select(&mut self, which: usize, window: &mut Window, cx: &mut Context<Self>) {

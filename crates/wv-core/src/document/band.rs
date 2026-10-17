@@ -1,5 +1,44 @@
 use crate::style::Align;
 
+/// Default size of header and footer text (pt).
+pub const BAND_SIZE_PT: u16 = 10;
+
+/// Formatting of a whole header or footer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BandStyle {
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    /// `None` = [`BAND_SIZE_PT`].
+    pub size_pt: Option<u16>,
+    /// 0xRRGGBB; `None` = the grey of header text.
+    pub color: Option<u32>,
+}
+
+impl BandStyle {
+    pub fn size(&self) -> u16 {
+        self.size_pt.unwrap_or(BAND_SIZE_PT)
+    }
+
+    /// The same formatting as a run style (for layout and drawing).
+    pub fn char_style(&self) -> crate::style::CharStyle {
+        crate::style::CharStyle {
+            bold: self.bold,
+            italic: self.italic,
+            underline: self.underline,
+            size_pt: Some(self.size()),
+            color: self.color,
+            ..Default::default()
+        }
+    }
+
+    /// Size changed by `delta` pt, kept within 6..=72.
+    pub fn resized(mut self, delta: i32) -> Self {
+        self.size_pt = Some((i32::from(self.size()) + delta).clamp(6, 72) as u16);
+        self
+    }
+}
+
 /// Header or footer text, repeated on every page. `{page}` and `{pages}` stand for the page number
 /// and the page count.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -7,6 +46,7 @@ pub struct Band {
     pub text: String,
     /// Left, Center (default) or Right; Justify counts as Left.
     pub align: Align,
+    pub style: BandStyle,
 }
 
 impl Default for Band {
@@ -20,7 +60,13 @@ impl Band {
         Self {
             text: text.into(),
             align: Align::Center,
+            style: BandStyle::default(),
         }
+    }
+
+    pub fn styled(mut self, style: BandStyle) -> Self {
+        self.style = style;
+        self
     }
 
     pub fn aligned(mut self, align: Align) -> Self {
@@ -84,6 +130,16 @@ mod tests {
         let band = Band::new("Стр. {page} из {pages}");
         assert!(band.has_page_number());
         assert_eq!(band.render(2, 5), "Стр. 2 из 5");
+    }
+
+    #[test]
+    fn band_style_resizes_within_bounds() {
+        let s = super::BandStyle::default();
+        assert_eq!(s.size(), 10);
+        assert_eq!(s.resized(2).size(), 12);
+        assert_eq!(s.resized(-100).size(), 6);
+        assert_eq!(s.resized(100).size(), 72);
+        assert!(s.char_style().size_pt == Some(10));
     }
 
     #[test]

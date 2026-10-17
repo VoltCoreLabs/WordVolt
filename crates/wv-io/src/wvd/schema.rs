@@ -6,7 +6,7 @@ use wv_core::{
     PageSpec, ParaStyle, Paragraph, Run, Script,
 };
 
-use super::variants::VariantsDto;
+use super::variants::{StyleDto, VariantsDto};
 use crate::IoError;
 
 const FORMAT: &str = "wvd";
@@ -26,6 +26,10 @@ pub struct File {
     header_align: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     footer_align: String,
+    #[serde(default, skip_serializing_if = "StyleDto::is_default")]
+    header_style: StyleDto,
+    #[serde(default, skip_serializing_if = "StyleDto::is_default")]
+    footer_style: StyleDto,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     images: Vec<ImageDto>,
     /// Page size and margins in px; absent = A4 with 2.54 cm margins.
@@ -211,6 +215,8 @@ impl File {
             footer: doc.footer.text.clone(),
             header_align: band_align_name(doc.header.align),
             footer_align: band_align_name(doc.footer.align),
+            header_style: StyleDto::of(&doc.header.style),
+            footer_style: StyleDto::of(&doc.footer.style),
             band_variants: VariantsDto::of(&doc.variants),
             page: (doc.page != PageSpec::default()).then_some(PageDto {
                 width: doc.page.width,
@@ -334,8 +340,12 @@ impl File {
                 footer_distance: p.footer_distance.max(0.0),
             };
         }
-        doc.header = Band::new(self.header).aligned(band_align_from(&self.header_align));
-        doc.footer = Band::new(self.footer).aligned(band_align_from(&self.footer_align));
+        doc.header = Band::new(self.header)
+            .aligned(band_align_from(&self.header_align))
+            .styled(self.header_style.style());
+        doc.footer = Band::new(self.footer)
+            .aligned(band_align_from(&self.footer_align))
+            .styled(self.footer_style.style());
         doc.variants = self
             .band_variants
             .map(VariantsDto::variants)

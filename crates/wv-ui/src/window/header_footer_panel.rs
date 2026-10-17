@@ -1,11 +1,11 @@
 use gpui_kit::*;
-use wv_core::Align;
+use wv_core::{Align, BandStyle};
 use wv_i18n::{Key, t as tr};
 
 use super::band_controls::check_box;
 use super::header_footer::HeaderFooterEditor;
 use crate::theme::{Theme, radius, space};
-use crate::ui_kit::{ButtonKind, Icon, LineEdit, button, icon_button, track_bounds};
+use crate::ui_kit::{ButtonKind, Icon, LineEdit, Tip, button, icon_button, track_bounds};
 
 const FIELD_WIDTH: f32 = 280.0;
 
@@ -60,6 +60,67 @@ impl HeaderFooterEditor {
                     .cursor_text()
                     .child(edit.view(FIELD_WIDTH - 24.0, window, cx))
             };
+        let styles = self.styles;
+        let format_row = |in_header: bool, cx: &mut Context<Self>| {
+            let s = if in_header { styles.0 } else { styles.1 };
+            let toggles = [
+                ("b", Icon::TextB, s.bold, Key::TipBold),
+                ("i", Icon::TextItalic, s.italic, Key::TipItalic),
+                ("u", Icon::TextUnderline, s.underline, Key::TipUnderline),
+            ]
+            .map(|(id, icon, on, tip)| {
+                icon_button(
+                    ElementId::from(SharedString::from(format!("band-fmt-{in_header}-{id}"))),
+                    icon,
+                    on,
+                    cx,
+                )
+                .tip(tr(lang, tip))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.restyle(
+                        in_header,
+                        |s| match id {
+                            "b" => BandStyle { bold: !s.bold, ..s },
+                            "i" => BandStyle {
+                                italic: !s.italic,
+                                ..s
+                            },
+                            _ => BandStyle {
+                                underline: !s.underline,
+                                ..s
+                            },
+                        },
+                        cx,
+                    )
+                }))
+                .into_any_element()
+            });
+            let sizes = [(-1, "A−", Key::TipSizeDown), (1, "A+", Key::TipSizeUp)].map(
+                |(delta, text, tip)| {
+                    button(
+                        SharedString::from(format!("band-size-{in_header}-{delta}")),
+                        text,
+                        ButtonKind::Default,
+                        cx,
+                    )
+                    .tip(tr(lang, tip))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.restyle(in_header, |s| s.resized(delta), cx)
+                    }))
+                    .into_any_element()
+                },
+            );
+            div()
+                .flex()
+                .items_center()
+                .gap(space::xs())
+                .children(toggles)
+                .child(div().px(px(6.)).text_xs().text_color(muted).child(format!(
+                    "{} pt",
+                    if in_header { styles.0 } else { styles.1 }.size()
+                )))
+                .children(sizes)
+        };
         let aligns = self.aligns;
         let label = |key: Key, in_header: bool, cx: &mut Context<Self>| {
             let current = if in_header { aligns.0 } else { aligns.1 };
@@ -146,8 +207,10 @@ impl HeaderFooterEditor {
             .child(track_bounds(self.panel_bounds.clone()))
             .children(selector)
             .child(label(Key::HeaderLabel, true, cx))
+            .child(format_row(true, cx))
             .child(header)
             .child(label(Key::FooterLabel, false, cx))
+            .child(format_row(false, cx))
             .child(footer)
             .child(
                 check_box("band-first", tr(lang, Key::BandDiffFirst), self.flags.0, cx).on_click(

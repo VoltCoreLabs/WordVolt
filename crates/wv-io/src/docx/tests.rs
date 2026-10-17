@@ -304,3 +304,23 @@ fn switches_off_means_variants_are_not_written() {
     assert!(!back.variants.different_first);
     assert!(back.variants.first.0.is_empty());
 }
+
+#[test]
+fn band_style_round_trips() {
+    let mut doc = Document::from_text("x");
+    let style = wv_core::BandStyle {
+        bold: true,
+        italic: true,
+        underline: true,
+        size_pt: Some(14),
+        color: Some(0x336699),
+    };
+    doc.header = wv_core::Band::new("Head").styled(style);
+    doc.footer = wv_core::Band::new("Стр. {page}").styled(wv_core::BandStyle {
+        bold: true,
+        ..Default::default()
+    });
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert_eq!(back.header, doc.header);
+    assert_eq!(back.footer, doc.footer);
+}
