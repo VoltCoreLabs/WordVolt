@@ -34,6 +34,13 @@ impl EditorView {
         let Some(at) = self.hit(ev.position, window) else {
             return;
         };
+        // Ctrl/Cmd + click on a contents entry goes to its heading.
+        if ev.modifiers.secondary()
+            && let Some(heading) = self.core.toc_target(at.para)
+        {
+            self.apply(cx, |core| core.set_head(Position::new(heading, 0), false));
+            return;
+        }
         // Ctrl/Cmd + click on a link opens it.
         if ev.modifiers.secondary()
             && let Some(url) = self.core.doc.paragraphs[at.para]
