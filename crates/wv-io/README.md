@@ -9,4 +9,4 @@ File formats. One folder per format, each with `decode`/`encode`.
 | Markdown | `.md` | `**bold**`, `*italic*`, `<u>underline</u>`, `# headings` (read as bold); alignment is not kept |
 
 Entry points: `load_file`, `save_file`, `Format::from_path`. Saving is atomic (temp file + rename).
-Planned: docx, rtf, html, odt, pdf (see plan.md).
+PDF: `encode_pdf` (export only). Planned: rtf, html, odt (see plan.md).
