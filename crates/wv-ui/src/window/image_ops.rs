@@ -17,11 +17,29 @@ impl MainWindow {
         cx.spawn_in(window, async move |this, cx| {
             let Some(handle) = picked.await else { return };
             let path = handle.path().to_path_buf();
-            let to_read = path.clone();
-            let bytes = cx
-                .background_executor()
-                .spawn(async move { std::fs::read(&to_read) })
-                .await;
+            this.update_in(cx, |this, window, cx| {
+                this.insert_image_file(path, window, cx)
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Reads the picture file and puts it after the caret's paragraph (an error dialog if it is
+    /// not a picture).
+    pub(super) fn insert_image_file(
+        &mut self,
+        path: std::path::PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let lang = self.lang;
+        let to_read = path.clone();
+        let read = cx
+            .background_executor()
+            .spawn(async move { std::fs::read(&to_read) });
+        cx.spawn_in(window, async move |this, cx| {
+            let bytes = read.await;
             this.update_in(cx, |this, window, cx| {
                 let probed = bytes
                     .as_ref()

@@ -723,3 +723,14 @@ fn dragging_a_picture_size_is_one_undo_step() {
     assert!(e.redo());
     assert_eq!(e.image_at_caret().unwrap().width, 300.0);
 }
+
+#[test]
+fn a_picture_never_gets_wider_than_the_text() {
+    let mut e = Editor::new(Document::default());
+    let text = e.doc.page.width - e.doc.page.margin_left - e.doc.page.margin_right;
+    e.insert_image(crate::ImageFormat::Png, vec![1], 4000.0, 2000.0);
+    assert!(e.doc.paragraphs[0].style.image.unwrap().width <= text);
+    e.set_head(Position::new(0, 0), false);
+    e.set_image_width(5000.0);
+    assert_eq!(e.image_at_caret().unwrap().width, text);
+}

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use wv_core::ImageFormat;
 
 use super::page_paint::PageView;
-use super::resize::{CORNERS, HANDLE};
+use super::resize::{CORNERS, Corner, HANDLE};
 use super::view::EditorView;
 
 impl EditorView {
@@ -100,6 +100,12 @@ fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
             point(px(x) - half, px(y) - half),
             size(px(HANDLE), px(HANDLE)),
         );
+        let hit = window.insert_hitbox(outer.dilate(px(3.0)), HitboxBehavior::Normal);
+        let cursor = match corner {
+            Corner::TopLeft | Corner::BottomRight => CursorStyle::ResizeUpLeftDownRight,
+            Corner::TopRight | Corner::BottomLeft => CursorStyle::ResizeUpRightDownLeft,
+        };
+        window.set_cursor_style(cursor, &hit);
         window.paint_quad(fill(outer, accent));
         window.paint_quad(fill(outer.dilate(px(-2.0)), rgb(0xffffff)));
     }
