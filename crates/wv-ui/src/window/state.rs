@@ -52,6 +52,16 @@ fn style_look(label: &str) -> ItemLook {
     }
 }
 
+/// Table sizes offered when inserting: label, rows, columns.
+const TABLE_SIZES: [(&str, u16, u16); 6] = [
+    ("2 \u{00D7} 2", 2, 2),
+    ("3 \u{00D7} 3", 3, 3),
+    ("4 \u{00D7} 4", 4, 4),
+    ("5 \u{00D7} 5", 5, 5),
+    ("2 \u{00D7} 4", 2, 4),
+    ("4 \u{00D7} 2", 4, 2),
+];
+
 /// Line spacing choices: label and multiplier.
 const SPACINGS: [(&str, f32); 6] = [
     ("1.0", 1.0),
@@ -74,6 +84,8 @@ pub struct MainWindow {
     pub spacing_menu: Entity<MenuButton>,
     pub style_combo: Entity<Combo>,
     pub find_bar: Entity<FindBar>,
+    pub table_menu: Entity<MenuButton>,
+    pub table_edit_menu: Entity<MenuButton>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
@@ -267,12 +279,63 @@ impl MainWindow {
         )
         .detach();
         let find_bar = cx.new(|cx| FindBar::new(editor.clone(), lang, cx));
+        let table_menu = cx.new(|cx| {
+            let items = TABLE_SIZES
+                .iter()
+                .map(|(label, _, _)| MenuItem::Text(label))
+                .collect();
+            MenuButton::new("table", Icon::Table, Key::TipTable, items, lang, cx)
+        });
+        cx.subscribe(
+            &table_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                if let Some((_, rows, cols)) = TABLE_SIZES.get(*index) {
+                    let (rows, cols) = (*rows, *cols);
+                    this.edit(cx, move |c| c.insert_table(rows, cols));
+                }
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
+        let table_edit_menu = cx.new(|cx| {
+            let items = [
+                Key::TblRowAbove,
+                Key::TblRowBelow,
+                Key::TblColLeft,
+                Key::TblColRight,
+                Key::TblDelRow,
+                Key::TblDelCol,
+                Key::TblDelTable,
+            ]
+            .map(MenuItem::Tr)
+            .to_vec();
+            MenuButton::new("table-edit", Icon::Rows, Key::TipTableEdit, items, lang, cx)
+        });
+        cx.subscribe(
+            &table_edit_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                let index = *index;
+                this.edit(cx, move |c| match index {
+                    0 => c.insert_row(false),
+                    1 => c.insert_row(true),
+                    2 => c.insert_col(false),
+                    3 => c.insert_col(true),
+                    4 => c.delete_row(),
+                    5 => c.delete_col(),
+                    _ => c.delete_table(),
+                });
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         Self {
             editor,
             case_menu,
             spacing_menu,
             style_combo,
             find_bar,
+            table_menu,
+            table_edit_menu,
             font_combo,
             size_combo,
             text_color,

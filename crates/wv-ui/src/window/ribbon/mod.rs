@@ -22,7 +22,7 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
     let (open, tab) = (this.ribbon_open, this.tab);
     let groups = match tab {
         Tab::Home => home::groups(this, cx),
-        Tab::Insert => insert::groups(this.lang, cx),
+        Tab::Insert => insert::groups(this, cx),
         Tab::Layout | Tab::View => placeholder::groups(tab, this.lang, cx),
     };
     let row = div()

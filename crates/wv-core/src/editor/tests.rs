@@ -550,3 +550,62 @@ hi всем
     );
     assert_eq!(e.replace_all("нет такого", "x", opts), 0);
 }
+
+#[test]
+fn tables_insert_navigate_grow_shrink_and_protect_cell_borders() {
+    let mut e = typed("intro");
+    e.insert_table(2, 3);
+    assert_eq!(
+        e.doc.paragraphs.len(),
+        1 + 6 + 1,
+        "intro + 6 cells + a paragraph to type after the table"
+    );
+    let info = e.table_info().unwrap();
+    assert_eq!((info.rows, info.cols, info.row, info.col), (2, 3, 0, 0));
+    e.insert_text("A");
+    e.tab_key(false);
+    e.insert_text("B");
+    assert_eq!(e.table_info().map(|i| (i.row, i.col)), Some((0, 1)));
+    e.tab_key(true);
+    assert_eq!(
+        e.selected_text(),
+        "A",
+        "Shift+Tab goes back and selects the cell text"
+    );
+    // Backspace at the start of a cell must not merge it with the previous cell or the text above.
+    let before = e.doc.clone();
+    e.sel = crate::Selection::caret(Position::new(2, 0));
+    e.backspace();
+    assert_eq!(e.doc, before);
+    e.sel = crate::Selection::caret(Position::new(1, 0));
+    e.backspace();
+    assert_eq!(e.doc, before);
+    // Rows and columns.
+    e.insert_row(true);
+    assert_eq!(
+        e.table_info().map(|i| (i.rows, i.cols, i.row)),
+        Some((3, 3, 1))
+    );
+    e.insert_col(false);
+    assert_eq!(
+        e.table_info().map(|i| (i.rows, i.cols, i.col)),
+        Some((3, 4, 0))
+    );
+    e.delete_col();
+    e.delete_row();
+    assert_eq!(e.table_info().map(|i| (i.rows, i.cols)), Some((2, 3)));
+    // Tab in the last cell adds a row.
+    let last = e.table_info().unwrap().last;
+    e.sel = crate::Selection::caret(Position::new(last, 0));
+    e.tab_key(false);
+    assert_eq!(e.table_info().map(|i| i.rows), Some(3));
+    e.delete_table();
+    assert!(e.doc.paragraphs.iter().all(|p| p.style.cell.is_none()));
+    assert_eq!(e.doc.paragraphs[0].text(), "intro");
+    assert!(e.undo());
+    assert_eq!(
+        e.table_info().map(|i| i.rows),
+        Some(3),
+        "deleting a table is one undo step"
+    );
+}

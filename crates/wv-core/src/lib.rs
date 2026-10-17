@@ -8,7 +8,7 @@ pub mod search;
 pub mod style;
 
 pub use document::{Document, Paragraph, Run};
-pub use editor::{CaseKind, Editor};
+pub use editor::{CaseKind, Editor, TableInfo};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;
-pub use style::{Align, CharStyle, ListKind, NamedStyle, ParaStyle, Script};
+pub use style::{Align, Cell, CharStyle, ListKind, NamedStyle, ParaStyle, Script};

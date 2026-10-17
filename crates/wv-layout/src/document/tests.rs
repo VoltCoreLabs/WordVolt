@@ -169,3 +169,70 @@ fn headings_are_bigger_have_space_before_and_it_is_dropped_at_the_page_top() {
         assert_eq!(l.pages[1].slices[0].y, 0.0);
     }
 }
+
+#[test]
+fn table_cells_are_laid_out_side_by_side_and_hit_tested() {
+    use wv_core::Cell;
+    // 2 x 2 table: content 80 px -> columns of 40 px, text 28 px wide inside 6 px padding.
+    let mut doc = Document::from_text("before\nA1\nB1\nA2\nB2\nafter");
+    for (i, (row, col)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
+        doc.paragraphs[i + 1].style.cell = Some(Cell { table: 0, row, col });
+    }
+    let tall = PageSetup {
+        height: 220.0,
+        ..small()
+    };
+    let l = DocLayout::new(&doc, tall, &Fixed);
+    let page = &l.pages[0];
+    assert_eq!(page.tables.len(), 1);
+    let t = &page.tables[0];
+    assert_eq!(t.col_x, [0.0, 40.0, 80.0]);
+    assert_eq!(t.row_y.len(), 3);
+    let cell = |para: usize| page.slices.iter().find(|s| s.para == para).unwrap();
+    assert_eq!(
+        (cell(1).x, cell(2).x),
+        (crate::CELL_PADDING, 40.0 + crate::CELL_PADDING)
+    );
+    assert_eq!(
+        cell(1).y,
+        cell(2).y,
+        "cells of a row start at the same height"
+    );
+    assert!(cell(3).y > cell(1).y, "second row below the first");
+    // Clicking inside the second column picks that cell, not the first one.
+    let c = l.caret(Position::new(2, 1), &Fixed).unwrap();
+    assert_eq!(
+        l.position_at(c.page, c.x, c.y + 2.0, &Fixed),
+        Position::new(2, 1)
+    );
+    assert_eq!(
+        l.position_at(0, 10.0 + 41.0, 10.0 + t.row_y[1] + 3.0, &Fixed)
+            .para,
+        4
+    );
+    // Text after the table starts below it.
+    let after = page.slices.iter().find(|s| s.para == 5).unwrap();
+    assert!(after.y >= *t.row_y.last().unwrap());
+}
+
+#[test]
+fn table_rows_move_to_the_next_page_instead_of_splitting() {
+    use wv_core::Cell;
+    // Rows are 16 + 12 = 28 px high; the page content is 80 px: 2 rows fit, the 3rd starts page 2.
+    let mut doc = Document::from_text("a\nb\nc");
+    for (i, row) in [0u16, 1, 2].into_iter().enumerate() {
+        doc.paragraphs[i].style.cell = Some(Cell {
+            table: 0,
+            row,
+            col: 0,
+        });
+    }
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.pages.len(), 2);
+    assert_eq!(l.pages[0].tables[0].row_y.len(), 3);
+    assert_eq!(
+        l.pages[1].tables[0].row_y.len(),
+        2,
+        "the table continues on page 2"
+    );
+}

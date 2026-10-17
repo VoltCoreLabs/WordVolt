@@ -64,6 +64,9 @@ impl Editor {
 
     /// Tab indents list items and multi-paragraph selections (Shift+Tab outdents); elsewhere it types a tab.
     pub fn tab_key(&mut self, shift: bool) {
+        if self.table_info().is_some() {
+            return self.next_cell(!shift);
+        }
         let (a, b) = self.selected_paras();
         let in_list = self.doc.paragraphs[a..=b]
             .iter()

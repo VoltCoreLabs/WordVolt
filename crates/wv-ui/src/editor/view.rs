@@ -164,6 +164,7 @@ impl Render for EditorView {
                     find_current: self.find_current,
                     find_color: theme.find_match,
                     find_current_color: theme.find_current,
+                    table_color: theme.border_strong,
                 };
                 let bounds_store = self.page_bounds.clone();
                 div()

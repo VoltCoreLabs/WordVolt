@@ -32,6 +32,8 @@ pub struct PageView {
     pub find_current: Option<usize>,
     pub find_color: Rgba,
     pub find_current_color: Rgba,
+    /// Table borders.
+    pub table_color: Rgba,
 }
 
 /// More matches than this are still found and counted, but not all highlighted.
@@ -83,6 +85,31 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             window.paint_quad(fill(
                 Bounds::new(at(r.x, r.y), size(px(r.width), px(r.height))),
                 color,
+            ));
+        }
+    }
+
+    // Table borders: a horizontal line per row boundary and a vertical one per column boundary.
+    let (left, top) = (v.layout.setup.margin_left, v.layout.setup.margin_top);
+    for table in &v.layout.pages[v.page].tables {
+        let (first, last) = (table.row_y[0], table.row_y[table.row_y.len() - 1]);
+        if !visible(top + first, last - first) {
+            continue;
+        }
+        let width = table.col_x[table.col_x.len() - 1];
+        for y in &table.row_y {
+            window.paint_quad(fill(
+                Bounds::new(at(left, top + y - 0.5), size(px(width), px(1.))),
+                v.table_color,
+            ));
+        }
+        for x in &table.col_x {
+            window.paint_quad(fill(
+                Bounds::new(
+                    at(left + x - 0.5, top + first - 0.5),
+                    size(px(1.), px(last - first + 1.)),
+                ),
+                v.table_color,
             ));
         }
     }

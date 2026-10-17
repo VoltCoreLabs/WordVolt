@@ -42,6 +42,11 @@ mod tests {
         e.doc.paragraphs[0].runs[0].style.link = Some("https://example.com/?a=1&b=2".into());
         e.doc.paragraphs[1].style.quote = true;
         e.doc.paragraphs[0].style.named = wv_core::NamedStyle::Heading2;
+        e.doc.paragraphs[1].style.cell = Some(wv_core::Cell {
+            table: 3,
+            row: 1,
+            col: 2,
+        });
         e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
         e.doc.paragraphs[0].style.indent = 2;
         e.doc.paragraphs[0].style.line_spacing = Some(1.5);
