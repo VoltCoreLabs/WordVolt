@@ -232,6 +232,10 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
                 .tip(t(lang, Key::TipOpen))
                 .on_click(cx.listener(|t, _, w, cx| t.open_document(w, cx)))
                 .into_any_element(),
+            icon_button("export-pdf", Icon::FilePdf, false, cx)
+                .tip(t(lang, Key::TipExportPdf))
+                .on_click(cx.listener(|t, _, w, cx| t.export_pdf(w, cx)))
+                .into_any_element(),
             button("save", t(lang, Key::Save), ButtonKind::Primary, cx)
                 .on_click(cx.listener(|t, _, w, cx| t.save_document(w, cx)))
                 .into_any_element(),

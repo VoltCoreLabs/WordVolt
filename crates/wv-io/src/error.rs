@@ -6,4 +6,6 @@ pub enum IoError {
     Parse(String),
     #[error("unsupported file type: .{0}")]
     Unsupported(String),
+    #[error("no font found for the PDF")]
+    NoFont,
 }
