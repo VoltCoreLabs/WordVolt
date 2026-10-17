@@ -41,7 +41,36 @@ impl Rect {
     }
 }
 
+/// The block of cells a mouse selection picked: from the cell where it started to the cell where
+/// it ends (grown to whole merged cells).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellSelection {
+    pub table: u32,
+    pub r0: u16,
+    pub c0: u16,
+    pub r1: u16,
+    pub c1: u16,
+}
+
 impl Editor {
+    /// The selected block of cells, when the selection runs from one cell of a table to another.
+    pub fn cell_selection(&self) -> Option<CellSelection> {
+        let cell_of = |para: usize| self.doc.paragraphs.get(para).and_then(|p| p.style.cell);
+        let (a, b) = (cell_of(self.sel.anchor.para)?, cell_of(self.sel.head.para)?);
+        if a.table != b.table || (a.row, a.col) == (b.row, b.col) {
+            return None;
+        }
+        let info = self.table_info()?;
+        let (_, rect) = self.selected_rect(&info)?;
+        Some(CellSelection {
+            table: a.table,
+            r0: rect.r0,
+            c0: rect.c0,
+            r1: rect.r1,
+            c1: rect.c1,
+        })
+    }
+
     /// The cells (by origin) of the caret's table and the rectangle the selection spans, grown
     /// until it holds whole cells only.
     pub(super) fn selected_rect(&self, info: &TableInfo) -> Option<(CellMap, Rect)> {
@@ -257,6 +286,20 @@ mod tests {
         let info = e.table_info().unwrap();
         assert_eq!(info.cols, 2, "the merged cell gave up one column");
         assert_eq!(info.colspan, 1);
+    }
+
+    #[test]
+    fn dragging_from_cell_to_cell_picks_a_block() {
+        let mut e = table();
+        // Inside one cell: an ordinary text selection.
+        let a = cell_para(&e, 1, 1);
+        e.select_range(Position::new(a, 0), Position::new(a, 1));
+        assert!(e.cell_selection().is_none());
+        // From the top right to the bottom left cell: the block between them, not a row-wise run.
+        let (from, to) = (cell_para(&e, 0, 2), cell_para(&e, 1, 0));
+        e.select_range(Position::new(from, 0), Position::new(to, 1));
+        let sel = e.cell_selection().unwrap();
+        assert_eq!((sel.r0, sel.c0, sel.r1, sel.c1), (0, 0, 1, 2));
     }
 
     #[test]

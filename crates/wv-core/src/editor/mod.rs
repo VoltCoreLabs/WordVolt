@@ -9,6 +9,8 @@ mod search_ops;
 mod style_ops;
 mod table_look;
 mod table_merge;
+
+pub use table_merge::CellSelection;
 mod table_ops;
 mod table_rowcol;
 #[cfg(test)]

@@ -28,6 +28,21 @@ pub fn paint_tables(
                 rgb(shade.color),
             ));
         }
+        // Cells picked with the mouse (a block between two cells) are highlighted as cells.
+        if let Some(sel) = v.cell_selection.filter(|s| s.table == table.table) {
+            for c in &table.cells {
+                let (row, col) = (c.row as u16, c.col as u16);
+                if row >= sel.r0 && row <= sel.r1 && col >= sel.c0 && col <= sel.c1 {
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            at(left + c.x, top + c.y),
+                            size(px(c.width * z), px(c.height * z)),
+                        ),
+                        v.selection_color,
+                    ));
+                }
+            }
+        }
         // Borders go around every cell, so merged cells show no line inside. They stay a pixel
         // thick when zoomed out (a thinner line would vanish).
         let line = (z).max(1.0);

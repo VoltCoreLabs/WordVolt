@@ -93,6 +93,10 @@ pub(crate) fn paginate_table(
             );
             let (y0, y1) = (tops[cell.row - row], tops[last.min(end) - row]);
             page.tables[box_ix].cells.push(CellRect {
+                row: cell.row,
+                col: cell.col,
+                rowspan: cell.rowspan,
+                colspan: cell.colspan,
                 x: x0,
                 y: y0,
                 width: x1 - x0,
