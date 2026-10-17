@@ -6,3 +6,6 @@ publish = false
 
 [dependencies]
 wv-ui = { path = "../crates/wv-ui" }
+
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "3"
