@@ -65,6 +65,8 @@ struct State {
     table: TableState,
     pictures: PictureState,
     page: PageSpec,
+    /// Column widths of the tables read so far, by table id.
+    table_widths: std::collections::BTreeMap<u32, Vec<f32>>,
     /// Picture of the paragraph being read (index into `pictures.rels`).
     image: Option<ImageRef>,
 }
@@ -90,6 +92,8 @@ struct TableState {
     col: u16,
     span: u16,
     cell: Option<Cell>,
+    /// `w:gridCol` widths (twips) of the table being read.
+    grid: Vec<u32>,
 }
 
 impl State {
@@ -116,11 +120,27 @@ impl State {
             }
             b"tc" if self.table.depth == 1 && !empty => {
                 self.table.span = 1;
-                self.table.cell = Some(Cell {
-                    table: self.table.next_id,
-                    row: self.table.row.unwrap_or(0),
-                    col: self.table.col,
-                });
+                self.table.cell = Some(Cell::at(
+                    self.table.next_id,
+                    self.table.row.unwrap_or(0),
+                    self.table.col,
+                ));
+            }
+            b"tblGrid" if self.table.depth == 1 => self.table.grid.clear(),
+            b"gridCol" if self.table.depth == 1 => {
+                let width = attr(e, b"w").and_then(|v| v.parse().ok()).unwrap_or(0);
+                self.table.grid.push(width);
+            }
+            b"shd"
+                if self.table.depth == 1
+                    && !self.in_paragraph_props
+                    && !self.in_run_props
+                    && self.table.cell.is_some() =>
+            {
+                let fill = attr(e, b"fill").and_then(|v| super::table_read::parse_fill(&v));
+                if let Some(cell) = self.table.cell.as_mut() {
+                    cell.shade = fill;
+                }
             }
             b"gridSpan" if self.table.depth == 1 && self.table.cell.is_some() => {
                 self.table.span = attr(e, b"val")
@@ -255,6 +275,15 @@ impl State {
                 if self.table.depth == 0 {
                     let rows = self.paragraphs.split_off(self.table.start);
                     let rows = super::table_read::normalize(rows, self.table.next_id);
+                    let cols = rows
+                        .iter()
+                        .filter_map(|p| p.style.cell)
+                        .map(|c| usize::from(c.col) + 1)
+                        .max()
+                        .unwrap_or(0);
+                    if let Some(f) = super::table_read::fractions(&self.table.grid, cols) {
+                        self.table_widths.insert(self.table.next_id, f);
+                    }
                     self.paragraphs.extend(rows);
                     self.table.next_id += 1;
                     self.table.cell = None;
@@ -370,6 +399,7 @@ impl State {
             }
         };
         doc.page = self.page.snapped();
+        doc.table_widths = self.table_widths;
         doc
     }
 }

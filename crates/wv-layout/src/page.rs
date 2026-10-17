@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::paragraph::ParagraphLayout;
-use crate::table::{Block, CELL_PADDING, MIN_ROW_TEXT, TABLE_GAP, TableBlock, TableBox};
+use crate::table::{Block, CELL_PADDING, MIN_ROW_TEXT, Shade, TABLE_GAP, TableBlock, TableBox};
 
 const EPS: f32 = 0.01;
 
@@ -157,12 +157,14 @@ fn paginate_table(
     y: &mut f32,
 ) {
     let limit = setup.content_height();
-    let col_width = setup.content_width() / table.cols.max(1) as f32;
-    let col_x: Vec<f32> = (0..=table.cols).map(|c| c as f32 * col_width).collect();
-    let inner = (col_width - 2.0 * CELL_PADDING).max(20.0);
+    let content = setup.content_width();
+    let mut col_x = vec![0.0];
+    for f in &table.fractions {
+        col_x.push(col_x[col_x.len() - 1] + f * content);
+    }
     let gap = |p: &ParagraphLayout| p.space_after.unwrap_or(setup.paragraph_spacing);
     let mut open_box: Option<usize> = None;
-    for row in &table.rows {
+    for (row_ix, row) in table.rows.iter().enumerate() {
         let text_height = row
             .iter()
             .map(|cell| {
@@ -184,12 +186,25 @@ fn paginate_table(
         let page = pages.last_mut().expect("at least one page");
         let box_ix = *open_box.get_or_insert_with(|| {
             page.tables.push(TableBox {
+                table: table.table,
+                shades: Vec::new(),
                 col_x: col_x.clone(),
                 row_y: vec![*y],
             });
             page.tables.len() - 1
         });
         page.tables[box_ix].row_y.push(*y + row_height);
+        for (c, shade) in table.shades[row_ix].iter().enumerate() {
+            if let Some(color) = shade {
+                page.tables[box_ix].shades.push(Shade {
+                    x: col_x[c],
+                    y: *y,
+                    width: col_x[c + 1] - col_x[c],
+                    height: row_height,
+                    color: *color,
+                });
+            }
+        }
         for (c, cell) in row.iter().enumerate() {
             let mut cell_y = *y + CELL_PADDING;
             for (k, &para_ix) in cell.iter().enumerate() {
@@ -200,7 +215,7 @@ fn paginate_table(
                     y: cell_y,
                     height: para.height,
                     x: col_x[c] + CELL_PADDING,
-                    width: inner,
+                    width: (col_x[c + 1] - col_x[c] - 2.0 * CELL_PADDING).max(20.0),
                 });
                 cell_y += para.height + if k + 1 < cell.len() { gap(para) } else { 0.0 };
             }

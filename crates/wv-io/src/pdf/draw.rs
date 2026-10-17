@@ -137,6 +137,15 @@ fn draw_tables(c: &mut Canvas, layout: &DocLayout, page: usize) {
     for table in &layout.pages[page].tables {
         let (first, last) = (table.row_y[0], table.row_y[table.row_y.len() - 1]);
         let width = table.col_x[table.col_x.len() - 1];
+        for shade in &table.shades {
+            c.fill(
+                left + shade.x,
+                top + shade.y,
+                shade.width,
+                shade.height,
+                shade.color,
+            );
+        }
         for y in &table.row_y {
             c.fill(left, top + y - 0.5, width, 1.0, TABLE);
         }

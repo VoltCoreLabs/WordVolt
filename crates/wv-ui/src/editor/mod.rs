@@ -11,6 +11,8 @@ mod nav;
 mod page_paint;
 mod resize;
 mod scroll;
+mod table_paint;
+mod table_resize;
 mod toc;
 mod view;
 

@@ -13,8 +13,12 @@ pub const TABLE_GAP: f32 = 8.0;
 
 /// A table of the document: `rows[row][col]` lists the paragraphs of that cell (document order).
 pub struct TableBlock {
-    pub cols: usize,
+    pub table: u32,
+    /// Column widths as fractions of the text width.
+    pub fractions: Vec<f32>,
     pub rows: Vec<Vec<Vec<usize>>>,
+    /// Background of every cell, `shades[row][col]`.
+    pub shades: Vec<Vec<Option<u32>>>,
 }
 
 /// The document as a flow of body paragraphs and tables.
@@ -33,9 +37,24 @@ pub fn column_counts(doc: &Document) -> HashMap<u32, usize> {
     counts
 }
 
-/// Text width inside a cell when the table has `cols` equal columns.
-pub fn inner_width(content_width: f32, cols: usize) -> f32 {
-    (content_width / cols.max(1) as f32 - 2.0 * CELL_PADDING).max(20.0)
+/// Column widths of every table (by table id) as fractions of the text width.
+pub fn column_fractions(doc: &Document) -> HashMap<u32, Vec<f32>> {
+    column_counts(doc)
+        .into_iter()
+        .map(|(table, cols)| {
+            let fractions = match doc.table_widths.get(&table) {
+                Some(w) if w.len() == cols => w.clone(),
+                _ => vec![1.0 / cols.max(1) as f32; cols],
+            };
+            (table, fractions)
+        })
+        .collect()
+}
+
+/// Text width inside a cell of column `col`.
+pub fn inner_width(content_width: f32, fractions: &[f32], col: u16) -> f32 {
+    let fraction = fractions.get(usize::from(col)).copied().unwrap_or(1.0);
+    (content_width * fraction - 2.0 * CELL_PADDING).max(20.0)
 }
 
 /// Splits the document into blocks; consecutive paragraphs with the same table id form one table.
@@ -68,18 +87,47 @@ pub fn blocks(doc: &Document) -> Vec<Block> {
             .max()
             .unwrap_or(0);
         let mut grid = vec![vec![Vec::new(); cols]; rows];
+        let mut shades = vec![vec![None; cols]; rows];
         for ((r, c), paragraphs) in cells {
+            shades[usize::from(r)][usize::from(c)] = doc.paragraphs[paragraphs[0]]
+                .style
+                .cell
+                .and_then(|cell| cell.shade);
             grid[usize::from(r)][usize::from(c)] = paragraphs;
         }
-        out.push(Block::Table(TableBlock { cols, rows: grid }));
+        let fractions = match doc.table_widths.get(&first.table) {
+            Some(w) if w.len() == cols => w.clone(),
+            _ => vec![1.0 / cols.max(1) as f32; cols],
+        };
+        out.push(Block::Table(TableBlock {
+            table: first.table,
+            fractions,
+            rows: grid,
+            shades,
+        }));
         i = j;
     }
     out
 }
 
+/// A cell background, relative to the page's text area.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shade {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    /// 0xRRGGBB.
+    pub color: u32,
+}
+
 /// Geometry of (a page's part of) a table, relative to the page's text area.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableBox {
+    /// Table id (`Cell::table`).
+    pub table: u32,
+    /// Filled cells of this part of the table.
+    pub shades: Vec<Shade>,
     /// Column boundaries, `cols + 1` values starting at 0.
     pub col_x: Vec<f32>,
     /// Row boundaries on this page, `rows + 1` values starting at the table's top.

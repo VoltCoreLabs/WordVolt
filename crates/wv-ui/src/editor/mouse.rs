@@ -28,7 +28,7 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
-        if self.start_resize(ev.position) {
+        if self.start_resize(ev.position) || self.start_col_drag(ev.position) {
             return;
         }
         let Some(at) = self.hit(ev.position, window) else {
@@ -87,6 +87,14 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.col_drag.is_some() {
+            if ev.pressed_button == Some(MouseButton::Left) {
+                self.drag_col(ev.position, cx);
+            } else {
+                self.col_drag = None;
+            }
+            return;
+        }
         if self.resizing.is_some() {
             if ev.pressed_button == Some(MouseButton::Left) {
                 self.drag_resize(ev.position, cx);
@@ -106,5 +114,6 @@ impl EditorView {
     pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
         self.selecting = false;
         self.resizing = None;
+        self.col_drag = None;
     }
 }

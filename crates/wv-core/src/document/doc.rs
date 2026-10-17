@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use super::{Band, BandVariants, ImageData, PageSpec, Paragraph};
 use crate::position::Position;
 use crate::style::CharStyle;
@@ -13,6 +15,8 @@ pub struct Document {
     /// Pictures used by paragraphs (`ParaStyle::image`).
     pub images: Vec<ImageData>,
     pub page: PageSpec,
+    /// Column widths of tables as fractions of the text width, by table id (absent = equal).
+    pub table_widths: BTreeMap<u32, Vec<f32>>,
 }
 
 impl Default for Document {
@@ -24,6 +28,7 @@ impl Default for Document {
             variants: BandVariants::default(),
             images: Vec::new(),
             page: PageSpec::default(),
+            table_widths: BTreeMap::new(),
         }
     }
 }
@@ -35,6 +40,7 @@ pub struct DocSettings {
     pub footer: Band,
     pub variants: BandVariants,
     pub page: PageSpec,
+    pub table_widths: BTreeMap<u32, Vec<f32>>,
 }
 
 impl Document {
@@ -44,6 +50,7 @@ impl Document {
             footer: self.footer.clone(),
             variants: self.variants.clone(),
             page: self.page,
+            table_widths: self.table_widths.clone(),
         }
     }
 
@@ -52,6 +59,7 @@ impl Document {
         self.footer = settings.footer.clone();
         self.variants = settings.variants.clone();
         self.page = settings.page;
+        self.table_widths = settings.table_widths.clone();
     }
 
     /// The (header, footer) shown on page `page` (0-based).

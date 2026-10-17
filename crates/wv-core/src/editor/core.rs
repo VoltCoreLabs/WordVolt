@@ -75,7 +75,7 @@ impl Editor {
         self.change_settings(settings);
     }
 
-    fn change_settings(&mut self, settings: DocSettings) {
+    pub(super) fn change_settings(&mut self, settings: DocSettings) {
         let before = self.doc.settings();
         if before == settings {
             return;
@@ -138,18 +138,44 @@ impl Editor {
         new: Vec<Paragraph>,
         after: Selection,
     ) {
+        self.edit_paragraphs_with(at, count, new, after, None);
+    }
+
+    /// Like `edit_paragraphs`; `settings` (the document settings afterwards) change in the same
+    /// undo step.
+    pub(super) fn edit_paragraphs_with(
+        &mut self,
+        at: usize,
+        count: usize,
+        new: Vec<Paragraph>,
+        after: Selection,
+        settings: Option<DocSettings>,
+    ) {
+        let settings = settings.map(|s| (self.doc.settings(), s));
         let edit = Edit {
             at,
             removed: self.doc.paragraphs[at..at + count].to_vec(),
             inserted: new,
             before: self.sel,
             after,
-            settings: None,
+            settings,
         };
         edit.apply(&mut self.doc);
         self.revision += 1;
         self.sel = after;
         self.history.push(edit);
+    }
+
+    /// Changes the settings of the latest undo step (it must be a settings change) and the
+    /// document, so a drag stays one step.
+    pub(super) fn amend_last_settings(&mut self, f: impl FnOnce(&mut DocSettings)) {
+        if let Some(edit) = self.history.last_mut()
+            && let Some((_, after)) = edit.settings.as_mut()
+        {
+            f(after);
+            self.doc.set_settings(after);
+            self.revision += 1;
+        }
     }
 
     /// Replaces paragraph `at` in the document and in the latest undo step (which must be an edit

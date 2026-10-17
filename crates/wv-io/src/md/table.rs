@@ -90,11 +90,7 @@ pub fn decode(block: &[&str], out: &mut Vec<Paragraph>) {
             let text = row.get(c).map_or("", String::as_str);
             for part in text.split("<br>") {
                 let mut p = paragraph(part);
-                p.style.cell = Some(Cell {
-                    table,
-                    row: r as u16,
-                    col: c as u16,
-                });
+                p.style.cell = Some(Cell::at(table, r as u16, c as u16));
                 out.push(p);
             }
         }

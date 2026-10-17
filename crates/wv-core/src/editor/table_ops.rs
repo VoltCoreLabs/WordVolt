@@ -68,7 +68,7 @@ impl Editor {
         let at = self.sel.head.para + 1;
         let mut paras: Vec<Paragraph> = (0..rows)
             .flat_map(|row| (0..cols).map(move |col| (row, col)))
-            .map(|(row, col)| cell_paragraph(Cell { table, row, col }))
+            .map(|(row, col)| cell_paragraph(Cell::at(table, row, col)))
             .collect();
         // Typing must be possible after the table.
         if at >= self.doc.paragraphs.len() {
@@ -80,9 +80,30 @@ impl Editor {
     /// Rebuilds the caret's table: `f` edits the table's paragraphs and returns the (row, col) of the
     /// cell that gets the caret. If no cells remain the table disappears.
     fn rebuild_table(&mut self, f: impl FnOnce(&mut Vec<Paragraph>, TableInfo) -> (u16, u16)) {
+        self.rebuild_table_with(f, |_, _| None);
+    }
+
+    /// `rebuild_table` that also sets the table's column widths (in the same undo step):
+    /// `widths(info, current)` returns the new fractions, an empty list for "equal" (or none left),
+    /// or `None` to keep them.
+    pub(super) fn rebuild_table_with(
+        &mut self,
+        f: impl FnOnce(&mut Vec<Paragraph>, TableInfo) -> (u16, u16),
+        widths: impl FnOnce(&TableInfo, Vec<f32>) -> Option<Vec<f32>>,
+    ) {
         let Some(info) = self.table_info() else {
             return;
         };
+        let current = self.col_fractions(info.table, usize::from(info.cols));
+        let settings = widths(&info, current).map(|new| {
+            let mut s = self.doc.settings();
+            if new.is_empty() {
+                s.table_widths.remove(&info.table);
+            } else {
+                s.table_widths.insert(info.table, new);
+            }
+            s
+        });
         let mut paras = self.doc.paragraphs[info.first..=info.last].to_vec();
         let (row, col) = f(&mut paras, info);
         paras.sort_by_key(|p| p.style.cell.map(|c| (c.row, c.col)));
@@ -92,7 +113,7 @@ impl Editor {
             .map_or(0, |i| info.first + i);
         let removed = info.last - info.first + 1;
         let sel = Selection::caret(Position::new(caret_para, 0));
-        self.edit_paragraphs(info.first, removed, paras, sel);
+        self.edit_paragraphs_with(info.first, removed, paras, sel, settings);
         // After deleting a whole table the caret may point past the end.
         let last = self.doc.paragraphs.len() - 1;
         if self.sel.head.para > last {
@@ -109,35 +130,35 @@ impl Editor {
                     c.row += 1;
                 }
             }
-            paras.extend((0..info.cols).map(|col| {
-                cell_paragraph(Cell {
-                    table: info.table,
-                    row: at,
-                    col,
-                })
-            }));
+            paras.extend((0..info.cols).map(|col| cell_paragraph(Cell::at(info.table, at, col))));
             (at, info.col)
         });
     }
 
     /// New empty column left or right of the caret's column.
     pub fn insert_col(&mut self, right: bool) {
-        self.rebuild_table(|paras, info| {
-            let at = if right { info.col + 1 } else { info.col };
-            for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                if c.col >= at {
-                    c.col += 1;
+        self.rebuild_table_with(
+            |paras, info| {
+                let at = if right { info.col + 1 } else { info.col };
+                for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
+                    if c.col >= at {
+                        c.col += 1;
+                    }
                 }
-            }
-            paras.extend((0..info.rows).map(|row| {
-                cell_paragraph(Cell {
-                    table: info.table,
-                    row,
-                    col: at,
-                })
-            }));
-            (info.row, at)
-        });
+                paras.extend(
+                    (0..info.rows).map(|row| cell_paragraph(Cell::at(info.table, row, at))),
+                );
+                (info.row, at)
+            },
+            |info, mut widths| {
+                // The new column takes an equal share; the others give way proportionally.
+                let at = usize::from(if right { info.col + 1 } else { info.col });
+                let share = 1.0 / (widths.len() + 1) as f32;
+                widths.iter_mut().for_each(|w| *w *= 1.0 - share);
+                widths.insert(at, share);
+                Some(widths)
+            },
+        );
     }
 
     /// Removes the caret's row (the whole table if it was the last row).
@@ -155,22 +176,31 @@ impl Editor {
 
     /// Removes the caret's column (the whole table if it was the last column).
     pub fn delete_col(&mut self) {
-        self.rebuild_table(|paras, info| {
-            paras.retain(|p| p.style.cell.is_none_or(|c| c.col != info.col));
-            for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                if c.col > info.col {
-                    c.col -= 1;
+        self.rebuild_table_with(
+            |paras, info| {
+                paras.retain(|p| p.style.cell.is_none_or(|c| c.col != info.col));
+                for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
+                    if c.col > info.col {
+                        c.col -= 1;
+                    }
                 }
-            }
-            (info.row, info.col.min(info.cols.saturating_sub(2)))
-        });
+                (info.row, info.col.min(info.cols.saturating_sub(2)))
+            },
+            |info, mut widths| {
+                widths.remove(usize::from(info.col));
+                Some(super::table_widths::normalize(widths))
+            },
+        );
     }
 
     pub fn delete_table(&mut self) {
-        self.rebuild_table(|paras, _| {
-            paras.clear();
-            (0, 0)
-        });
+        self.rebuild_table_with(
+            |paras, _| {
+                paras.clear();
+                (0, 0)
+            },
+            |_, _| Some(Vec::new()),
+        );
     }
 
     /// Tab / Shift+Tab inside a table: next or previous cell (its text gets selected); Tab in the

@@ -323,3 +323,26 @@ fn formatted_band_words_round_trip() {
     assert_eq!(back.header, doc.header);
     assert_eq!(back.footer, doc.footer);
 }
+
+#[test]
+fn table_widths_and_shading_round_trip() {
+    let mut e = wv_core::Editor::new(Document::from_text("x"));
+    e.insert_table(2, 3);
+    let table = e.table_info().unwrap().table;
+    e.set_table_widths(table, vec![0.2, 0.3, 0.5]);
+    e.set_cell_shade(Some(0x99CCFF));
+    let doc = e.doc.clone();
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    let widths = &back.table_widths[&0];
+    for (a, b) in widths.iter().zip([0.2, 0.3, 0.5]) {
+        assert!((a - b).abs() < 0.01, "{widths:?}");
+    }
+    let shaded: Vec<_> = back
+        .paragraphs
+        .iter()
+        .filter_map(|p| p.style.cell)
+        .filter(|c| c.shade == Some(0x99CCFF))
+        .map(|c| (c.row, c.col))
+        .collect();
+    assert_eq!(shaded, vec![(0, 0)]);
+}
