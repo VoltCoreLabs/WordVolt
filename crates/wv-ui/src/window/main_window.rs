@@ -1,5 +1,6 @@
 use gpui_kit::*;
 
+use super::context_menu::context_menu;
 use super::ribbon::{ribbon, tab_bar};
 use super::side_panel::side_panel;
 pub use super::state::MainWindow;
@@ -123,6 +124,7 @@ impl Render for MainWindow {
                         cx,
                     )),
             )
+            .children(self.context_menu.map(|at| context_menu(self, at, cx)))
             .child(tooltip_layer(cx))
     }
 }

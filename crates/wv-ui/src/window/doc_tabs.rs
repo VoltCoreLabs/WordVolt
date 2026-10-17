@@ -29,6 +29,9 @@ impl MainWindow {
             let dirty = editor.read(cx).core.is_modified();
             if editor.entity_id() == this.editor.entity_id() {
                 this.dirty = dirty;
+                if let Some(at) = editor.update(cx, |view, _| view.context_request.take()) {
+                    this.context_menu = Some(at);
+                }
             } else if let Some(slot) = this
                 .docs
                 .iter_mut()

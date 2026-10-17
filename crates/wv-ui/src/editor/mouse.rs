@@ -60,6 +60,26 @@ impl EditorView {
         self.reveal_caret.set(false);
     }
 
+    /// Right click: the caret goes under the pointer unless it is inside the selection, then the
+    /// window is asked for its context menu.
+    pub(super) fn on_right_down(
+        &mut self,
+        ev: &MouseDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        window.focus(&self.focus, cx);
+        if let Some(at) = self.hit(ev.position, window) {
+            let (start, end) = self.core.sel.range();
+            if start == end || at < start || at > end {
+                self.apply(cx, |core| core.set_head(at, false));
+            }
+        }
+        self.reveal_caret.set(false);
+        self.context_request = Some(ev.position);
+        cx.notify();
+    }
+
     /// Drag-selection, handled once for the whole viewport.
     pub(super) fn on_drag_move(
         &mut self,

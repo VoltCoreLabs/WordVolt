@@ -2,6 +2,7 @@ mod band_controls;
 mod color_picker;
 mod combo;
 mod commands;
+mod context_menu;
 mod doc_tabs;
 mod drop_files;
 mod export_pdf;
