@@ -20,6 +20,11 @@ pub struct File {
     header: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     footer: String,
+    /// "left" / "right"; empty = centred.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    header_align: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    footer_align: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     images: Vec<ImageDto>,
 }
@@ -174,6 +179,8 @@ impl File {
             paragraphs,
             header: doc.header.text.clone(),
             footer: doc.footer.text.clone(),
+            header_align: band_align_name(doc.header.align),
+            footer_align: band_align_name(doc.footer.align),
             images: doc
                 .images
                 .iter()
@@ -271,9 +278,24 @@ impl File {
                 p.style.image = None;
             }
         }
-        doc.header = Band::new(self.header);
-        doc.footer = Band::new(self.footer);
+        doc.header = Band::new(self.header).aligned(band_align_from(&self.header_align));
+        doc.footer = Band::new(self.footer).aligned(band_align_from(&self.footer_align));
         Ok(doc)
+    }
+}
+
+fn band_align_name(align: Align) -> String {
+    match align {
+        Align::Center => String::new(),
+        other => align_name(other).to_string(),
+    }
+}
+
+fn band_align_from(name: &str) -> Align {
+    match name {
+        "left" => Align::Left,
+        "right" => Align::Right,
+        _ => Align::Center,
     }
 }
 

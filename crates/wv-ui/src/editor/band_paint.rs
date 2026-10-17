@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Band, CharStyle};
+use wv_core::{Align, Band, CharStyle};
 use wv_layout::Measurer;
 
 use super::measure::GpuiMeasurer;
@@ -32,10 +32,15 @@ pub fn paint_bands(
         if text.is_empty() {
             continue;
         }
-        let x = (setup.width - m.width(&text, &style)) / 2.0;
+        let width = m.width(&text, &style);
+        let x = match band.align {
+            Align::Right => setup.width - setup.margin_right - width,
+            Align::Center => (setup.width - width) / 2.0,
+            _ => setup.margin_left,
+        };
         let shaped = m.shape(&text, &style, v.band_color.into());
         let _ = shaped.paint(
-            at(x.max(setup.margin_left / 2.0), centre - height / 2.0),
+            at(x.max(0.0), centre - height / 2.0),
             px(height),
             TextAlign::Left,
             None,

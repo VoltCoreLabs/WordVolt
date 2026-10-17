@@ -288,7 +288,7 @@ impl MainWindow {
             &band_editor,
             |this, _, HeaderFooterEvent::Set(header, footer): &HeaderFooterEvent, cx| {
                 let (header, footer) = (header.clone(), footer.clone());
-                this.edit(cx, move |c| c.set_header_footer(&header, &footer));
+                this.edit(cx, move |c| c.set_header_footer(header, footer));
                 this.editor.update(cx, |view, cx| view.request_focus(cx));
             },
         )

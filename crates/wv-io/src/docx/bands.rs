@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
-use wv_core::Band;
+use wv_core::{Align, Band};
 
 use super::package::{read_document_xml, read_part};
 
@@ -42,8 +42,13 @@ pub fn part_xml(root: &str, band: &Band) -> String {
         ));
         rest = &rest[rest.find(token).unwrap_or(0) + token.len()..];
     }
+    let jc = match band.align {
+        Align::Left | Align::Justify => "left",
+        Align::Center => "center",
+        Align::Right => "right",
+    };
     format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:{root} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr>{runs}</w:p></w:{root}>"
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:{root} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:jc w:val=\"{jc}\"/></w:pPr>{runs}</w:p></w:{root}>"
     )
 }
 
@@ -78,7 +83,10 @@ pub fn read(bytes: &[u8]) -> (Band, Band) {
             });
         target
             .and_then(|t| read_part(bytes, &format!("word/{}", t.trim_start_matches('/'))))
-            .map(|xml| Band::new(part_text(&xml)))
+            .map(|xml| {
+                let (text, align) = part_text(&xml);
+                Band::new(text).aligned(align)
+            })
             .unwrap_or_default()
     };
     (load(header_id, HEADER_TYPE), load(footer_id, FOOTER_TYPE))
@@ -137,7 +145,8 @@ fn references(bytes: &[u8]) -> (Option<String>, Option<String>) {
 
 /// Text of a header/footer part; PAGE and NUMPAGES fields become `{page}` / `{pages}` and the
 /// cached field result is dropped. Paragraphs are joined with a space.
-fn part_text(xml: &[u8]) -> String {
+fn part_text(xml: &[u8]) -> (String, Align) {
+    let mut align = None;
     let mut reader = Reader::from_reader(xml);
     let mut buf = Vec::new();
     let (mut out, mut instr) = (String::new(), String::new());
@@ -163,6 +172,13 @@ fn part_text(xml: &[u8]) -> String {
                     _ => {}
                 },
                 b"tab" => out.push(' '),
+                b"jc" if align.is_none() => {
+                    align = Some(match attr(&e, b"val").as_deref() {
+                        Some("right" | "end") => Align::Right,
+                        Some("left" | "start" | "both") => Align::Left,
+                        _ => Align::Center,
+                    });
+                }
                 _ => {}
             },
             Event::End(e) => match e.local_name().as_ref() {
@@ -183,7 +199,7 @@ fn part_text(xml: &[u8]) -> String {
         }
         buf.clear();
     }
-    out.trim().to_string()
+    (out.trim().to_string(), align.unwrap_or(Align::Left))
 }
 
 fn field_token(instr: &str) -> String {
