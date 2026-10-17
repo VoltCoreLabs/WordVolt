@@ -187,68 +187,10 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         cx,
     );
 
-    let editing =
-        block_group(
-            t(lang, Key::GroupEditing),
-            vec![
-                icon_button("find", Icon::Search, false, cx)
-                    .tip(t(lang, Key::TipFind))
-                    .on_click(cx.listener(|t, _, w, cx| {
-                        t.find_bar.update(cx, |bar, cx| bar.open(false, w, cx))
-                    }))
-                    .into_any_element(),
-                icon_button("replace", Icon::Replace, false, cx)
-                    .tip(t(lang, Key::TipReplace))
-                    .on_click(cx.listener(|t, _, w, cx| {
-                        t.find_bar.update(cx, |bar, cx| bar.open(true, w, cx))
-                    }))
-                    .into_any_element(),
-            ],
-            cx,
-        );
-
-    let history = block_group(
-        t(lang, Key::GroupHistory),
-        vec![
-            icon_button("undo", Icon::Undo, false, cx)
-                .tip(t(lang, Key::TipUndo))
-                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| _ = c.undo())))
-                .into_any_element(),
-            icon_button("redo", Icon::Redo, false, cx)
-                .tip(t(lang, Key::TipRedo))
-                .on_click(cx.listener(|t, _, _, cx| t.edit(cx, |c| _ = c.redo())))
-                .into_any_element(),
-        ],
-        cx,
-    );
-    let file = block_group(
-        t(lang, Key::GroupFile),
-        vec![
-            icon_button("new", Icon::FilePlus, false, cx)
-                .tip(t(lang, Key::TipNew))
-                .on_click(cx.listener(|t, _, w, cx| t.new_document(w, cx)))
-                .into_any_element(),
-            icon_button("open", Icon::FolderOpen, false, cx)
-                .tip(t(lang, Key::TipOpen))
-                .on_click(cx.listener(|t, _, w, cx| t.open_document(w, cx)))
-                .into_any_element(),
-            icon_button("export-pdf", Icon::FilePdf, false, cx)
-                .tip(t(lang, Key::TipExportPdf))
-                .on_click(cx.listener(|t, _, w, cx| t.export_pdf(w, cx)))
-                .into_any_element(),
-            button("save", t(lang, Key::Save), ButtonKind::Primary, cx)
-                .on_click(cx.listener(|t, _, w, cx| t.save_document(w, cx)))
-                .into_any_element(),
-        ],
-        cx,
-    );
     vec![
         font.into_any_element(),
         text_style.into_any_element(),
         paragraph.into_any_element(),
         styles.into_any_element(),
-        history.into_any_element(),
-        editing.into_any_element(),
-        file.into_any_element(),
     ]
 }

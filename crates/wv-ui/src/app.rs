@@ -29,7 +29,7 @@ pub fn run() {
             ..Default::default()
         };
         gpui_kit::open_window(options, cx, |window, cx| {
-            let view = cx.new(MainWindow::new);
+            let view = cx.new(|cx| MainWindow::new(window, cx));
             // `wordvolt <file>` opens that file.
             if let Some(path) = std::env::args_os().nth(1).map(std::path::PathBuf::from)
                 && let Ok(doc) = wv_io::load_file(&path)
