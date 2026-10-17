@@ -11,7 +11,10 @@ actions!(
         FindInDocument,
         ReplaceInDocument,
         FindNext,
-        FindPrevious
+        FindPrevious,
+        EditorTab,
+        EditorTabBack,
+        FieldNext
     ]
 );
 
@@ -27,5 +30,10 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("secondary-h", ReplaceInDocument, None),
         KeyBinding::new("f3", FindNext, None),
         KeyBinding::new("shift-f3", FindPrevious, None),
+        // Win over the root's focus traversal while the page has focus.
+        KeyBinding::new("tab", FieldNext, Some("TabField")),
+        KeyBinding::new("shift-tab", FieldNext, Some("TabField")),
+        KeyBinding::new("tab", EditorTab, Some("Editor")),
+        KeyBinding::new("shift-tab", EditorTabBack, Some("Editor")),
     ]);
 }

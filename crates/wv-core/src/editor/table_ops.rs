@@ -189,7 +189,12 @@ impl Editor {
             (col, row) = (i32::from(info.cols) - 1, row - 1);
         }
         if row >= i32::from(info.rows) {
-            return self.insert_row(true);
+            self.insert_row(true);
+            // The caret stayed in the last column; move it to the new row's first cell.
+            for _ in 1..info.cols {
+                self.next_cell(false);
+            }
+            return;
         }
         if row < 0 {
             return;
