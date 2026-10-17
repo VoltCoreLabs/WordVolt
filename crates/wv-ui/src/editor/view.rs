@@ -20,6 +20,11 @@ const PAGE_GAP: f32 = 24.0;
 /// Stored picture bytes (cache keys) and the GPUI images built from them.
 pub(super) type PictureCache = (Vec<Arc<Vec<u8>>>, Rc<Vec<Arc<Image>>>);
 
+pub const MIN_ZOOM: f32 = 0.25;
+pub const MAX_ZOOM: f32 = 4.0;
+/// Space reserved at each side of the page when fitting it to the width.
+const FIT_PADDING: f32 = 24.0;
+
 pub struct EditorView {
     pub core: Editor,
     pub(super) focus: FocusHandle,
@@ -41,6 +46,10 @@ pub struct EditorView {
     /// Window bounds of every page, written while painting (used for mouse hit-testing).
     pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
     focused_once: bool,
+    /// Display scale (1.0 = 100%).
+    pub zoom: f32,
+    /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
+    pub(super) scroll_x: f32,
     /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
     pub(super) picture_cache: PictureCache,
 }
@@ -63,8 +72,27 @@ impl EditorView {
             measure_cache: Rc::default(),
             page_bounds: Rc::default(),
             focused_once: false,
+            zoom: 1.0,
+            scroll_x: 0.0,
             picture_cache: Default::default(),
         }
+    }
+
+    /// Sets the display scale (clamped to 25%..400%), keeping the scrolled-to part in view.
+    pub fn set_zoom(&mut self, zoom: f32, cx: &mut Context<Self>) {
+        let zoom = zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+        if (zoom - self.zoom).abs() > f32::EPSILON {
+            self.scroll.rescale(zoom / self.zoom);
+            self.zoom = zoom;
+            self.scroll_x = 0.0;
+            cx.notify();
+        }
+    }
+
+    /// Zoom at which a page exactly fills the viewport width.
+    pub fn fit_width_zoom(&self) -> f32 {
+        let page = self.core.doc.page.width + 2.0 * FIT_PADDING;
+        (self.scroll.viewport_width() / page).clamp(MIN_ZOOM, MAX_ZOOM)
     }
 
     /// Replaces the document (open / new): fresh history, caret at the start, scrolled to the top.
@@ -177,13 +205,14 @@ impl Render for EditorView {
                     bands: bands.clone(),
                     images: images.clone(),
                     band_color: theme.text_muted,
+                    zoom: self.zoom,
                 };
                 let bounds_store = self.page_bounds.clone();
                 div()
                     .relative()
                     .flex_none()
-                    .w(px(layout.setup.width))
-                    .h(px(layout.setup.height))
+                    .w(px(layout.setup.width * self.zoom))
+                    .h(px(layout.setup.height * self.zoom))
                     .bg(page_bg)
                     .border_1()
                     .border_color(border)
@@ -244,9 +273,22 @@ impl Render for EditorView {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_scroll_wheel(cx.listener(|this, ev: &ScrollWheelEvent, _, cx| {
-                this.scroll
-                    .scroll_by(-f32::from(ev.delta.pixel_delta(px(48.)).y));
-                cx.notify();
+                let delta = ev.delta.pixel_delta(px(48.));
+                let (dx, dy) = (f32::from(delta.x), f32::from(delta.y));
+                if ev.modifiers.secondary() {
+                    // Ctrl/Cmd + wheel zooms.
+                    let step = if dy > 0.0 { 1.1 } else { 1.0 / 1.1 };
+                    this.set_zoom(this.zoom * step, cx);
+                } else if ev.modifiers.shift || dx.abs() > dy.abs() {
+                    let content = this.core.doc.page.width * this.zoom + 2.0 * FIT_PADDING;
+                    let max = (content - this.scroll.viewport_width()).max(0.0);
+                    let step = if dx != 0.0 { dx } else { dy };
+                    this.scroll_x = (this.scroll_x - step).clamp(0.0, max);
+                    cx.notify();
+                } else {
+                    this.scroll.scroll_by(-dy);
+                    cx.notify();
+                }
             }))
             .cursor_text()
             .relative()
@@ -256,6 +298,8 @@ impl Render for EditorView {
                 div()
                     .relative()
                     .w_full()
+                    .min_w(px(layout.setup.width * self.zoom + 2.0 * FIT_PADDING))
+                    .ml(px(-self.scroll_x))
                     .flex()
                     .flex_col()
                     .items_center()

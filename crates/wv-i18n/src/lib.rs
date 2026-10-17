@@ -127,6 +127,10 @@ pub enum Key {
     MarginWide,
     TipPortrait,
     TipLandscape,
+    ZoomFit,
+    TipZoomOut,
+    TipZoomIn,
+    TipZoomReset,
 }
 
 pub fn t(lang: Lang, key: Key) -> &'static str {
@@ -253,6 +257,10 @@ fn ru(key: Key) -> &'static str {
         Key::MarginWide => "Широкие",
         Key::TipPortrait => "Книжная ориентация",
         Key::TipLandscape => "Альбомная ориентация",
+        Key::ZoomFit => "По ширине",
+        Key::TipZoomOut => "Уменьшить (Ctrl + колесо)",
+        Key::TipZoomIn => "Увеличить (Ctrl + колесо)",
+        Key::TipZoomReset => "Масштаб 100%",
         Key::ImageBad => "не удалось прочитать изображение (нужен PNG, JPEG, GIF или WebP)",
     }
 }
@@ -374,6 +382,10 @@ fn en(key: Key) -> &'static str {
         Key::MarginWide => "Wide",
         Key::TipPortrait => "Portrait",
         Key::TipLandscape => "Landscape",
+        Key::ZoomFit => "Fit width",
+        Key::TipZoomOut => "Zoom out (Ctrl + wheel)",
+        Key::TipZoomIn => "Zoom in (Ctrl + wheel)",
+        Key::TipZoomReset => "Zoom 100%",
         Key::ImageBad => "cannot read the image (PNG, JPEG, GIF or WebP expected)",
     }
 }

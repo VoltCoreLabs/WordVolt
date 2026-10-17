@@ -22,6 +22,7 @@ pub fn paint_bands(
         ..Default::default()
     };
     let (ascent, descent) = (m.ascent(&style), m.descent(&style));
+    let z = v.zoom;
     let height = ascent + descent;
     let (header, footer): &(Band, Band) = &v.bands;
     for (band, centre) in [
@@ -38,10 +39,10 @@ pub fn paint_bands(
             Align::Center => (setup.width - width) / 2.0,
             _ => setup.margin_left,
         };
-        let shaped = m.shape(&text, &style, v.band_color.into());
+        let shaped = m.shape_zoomed(&text, &style, v.band_color.into(), z);
         let _ = shaped.paint(
             at(x.max(0.0), centre - height / 2.0),
-            px(height),
+            px(height * z),
             TextAlign::Left,
             None,
             window,

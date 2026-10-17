@@ -40,6 +40,8 @@ pub struct PageView {
     /// Pictures of the document by `ImageRef::id`.
     pub images: Rc<Vec<Arc<Image>>>,
     pub band_color: Rgba,
+    /// Display scale (1.0 = 100%).
+    pub zoom: f32,
 }
 
 /// More matches than this are still found and counted, but not all highlighted.
@@ -51,13 +53,15 @@ const CULL: f32 = 80.0;
 pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx: &mut App) {
     let m = GpuiMeasurer::new(window, v.measure.clone());
     let origin = bounds.origin;
-    let at = |x: f32, y: f32| point(origin.x + px(x), origin.y + px(y));
+    let z = v.zoom;
+    let at = |x: f32, y: f32| point(origin.x + px(x * z), origin.y + px(y * z));
+    let sz = |w: f32, h: f32| size(px(w * z), px(h * z));
     // Visible region = clip rectangle of the scroll container (no cross-element bookkeeping).
     let clip = window.content_mask().bounds;
     let (view_top, view_bottom) = (f32::from(clip.top()), f32::from(clip.bottom()));
     let visible = |top: f32, height: f32| {
-        let top = f32::from(origin.y) + top;
-        top + height > view_top - CULL && top < view_bottom + CULL
+        let top = f32::from(origin.y) + top * v.zoom;
+        top + height * v.zoom > view_top - CULL && top < view_bottom + CULL
     };
 
     let (start, end) = v.selection;
@@ -69,7 +73,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             .filter(|r| r.page == v.page && visible(r.y, r.height))
         {
             window.paint_quad(fill(
-                Bounds::new(at(r.x, r.y), size(px(r.width), px(r.height))),
+                Bounds::new(at(r.x, r.y), sz(r.width, r.height)),
                 v.selection_color,
             ));
         }
@@ -89,7 +93,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             .filter(|r| r.page == v.page && visible(r.y, r.height))
         {
             window.paint_quad(fill(
-                Bounds::new(at(r.x, r.y), size(px(r.width), px(r.height))),
+                Bounds::new(at(r.x, r.y), sz(r.width, r.height)),
                 color,
             ));
         }
@@ -105,7 +109,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         let width = table.col_x[table.col_x.len() - 1];
         for y in &table.row_y {
             window.paint_quad(fill(
-                Bounds::new(at(left, top + y - 0.5), size(px(width), px(1.))),
+                Bounds::new(at(left, top + y - 0.5), size(px(width * z), px(1.))),
                 v.table_color,
             ));
         }
@@ -113,7 +117,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
             window.paint_quad(fill(
                 Bounds::new(
                     at(left + x - 0.5, top + first - 0.5),
-                    size(px(1.), px(last - first + 1.)),
+                    size(px(1.), px((last - first + 1.) * z)),
                 ),
                 v.table_color,
             ));
@@ -150,10 +154,10 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                 let (ascent, descent) = (m.ascent(&style), m.descent(&style));
                 let x = setup.margin_left + slice.x + para.indent - 6.0 - m.width(marker, &style);
                 let y = top + line.baseline - ascent;
-                let shaped = m.shape(marker, &style, color);
+                let shaped = m.shape_zoomed(marker, &style, color, z);
                 let _ = shaped.paint(
                     at(x, y),
-                    px(ascent + descent),
+                    px((ascent + descent) * z),
                     TextAlign::Left,
                     None,
                     window,
@@ -167,7 +171,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     setup.margin_left + slice.x + 4.0,
                     setup.margin_top + slice.y,
                 ),
-                size(px(3.), px(slice.height)),
+                sz(3., slice.height),
             );
             window.paint_quad(fill(bar, v.bar_color));
         }
@@ -200,13 +204,12 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     .or(f.style.mono.then_some(v.code_bg));
                 if let Some(background) = background {
                     window.paint_quad(fill(
-                        Bounds::new(at(x, top), size(px(f.width), px(line.height))),
+                        Bounds::new(at(x, top), sz(f.width, line.height)),
                         background,
                     ));
                 }
                 if f.style.spoiler && !revealed(v, slice.para, &f.range) {
-                    let block =
-                        Bounds::new(at(x, top + 2.0), size(px(f.width), px(line.height - 4.0)));
+                    let block = Bounds::new(at(x, top + 2.0), sz(f.width, line.height - 4.0));
                     window.paint_quad(fill(
                         block,
                         Rgba {
@@ -218,10 +221,10 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                 }
                 let paint = |piece: &str, x: f32, window: &mut Window, cx: &mut App| {
                     if !piece.trim().is_empty() || f.style.underline {
-                        let shaped = m.shape(piece, &f.style, color);
+                        let shaped = m.shape_zoomed(piece, &f.style, color, z);
                         let _ = shaped.paint(
                             at(x, y),
-                            px(ascent + descent),
+                            px((ascent + descent) * z),
                             TextAlign::Left,
                             None,
                             window,
@@ -253,11 +256,11 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     {
         let alpha = caret_alpha(v.epoch.get().elapsed().as_secs_f32());
         window.paint_quad(fill(
-            Bounds::new(at(c.x, c.y), size(px(1.5), px(c.height))),
+            Bounds::new(at(c.x, c.y), sz(1.5, c.height)),
             Rgba { a: alpha, ..v.text },
         ));
         if v.reveal.replace(false) {
-            v.scroll.reveal(origin.y + px(c.y), px(c.height));
+            v.scroll.reveal(origin.y + px(c.y * z), px(c.height * z));
         }
         window.request_animation_frame();
     }

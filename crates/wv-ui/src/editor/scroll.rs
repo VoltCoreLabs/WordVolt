@@ -10,6 +10,7 @@ pub struct ScrollState {
     current: Cell<f32>,
     viewport_top: Cell<f32>,
     viewport_h: Cell<f32>,
+    viewport_w: Cell<f32>,
     content_h: Cell<f32>,
     last_frame: Cell<Option<Instant>>,
     last_activity: Cell<Instant>,
@@ -22,6 +23,7 @@ impl Default for ScrollState {
             current: Cell::new(0.),
             viewport_top: Cell::new(0.),
             viewport_h: Cell::new(0.),
+            viewport_w: Cell::new(0.),
             content_h: Cell::new(0.),
             last_frame: Cell::new(None),
             last_activity: Cell::new(Instant::now()),
@@ -37,10 +39,21 @@ impl ScrollState {
     pub fn set_viewport(&self, bounds: Bounds<Pixels>) {
         self.viewport_top.set(f32::from(bounds.top()));
         self.viewport_h.set(f32::from(bounds.size.height));
+        self.viewport_w.set(f32::from(bounds.size.width));
     }
 
     pub fn set_content_height(&self, height: Pixels) {
         self.content_h.set(f32::from(height));
+    }
+
+    pub fn viewport_width(&self) -> f32 {
+        self.viewport_w.get()
+    }
+
+    /// Keeps the same part of the document in view after the content height changed by `factor`.
+    pub fn rescale(&self, factor: f32) {
+        self.target.set(self.target.get() * factor);
+        self.current.set(self.current.get() * factor);
     }
 
     pub fn reset(&self) {

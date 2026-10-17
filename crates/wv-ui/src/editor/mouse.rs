@@ -15,8 +15,8 @@ impl EditorView {
         let b = bounds[page];
         Some(layout.position_at(
             page,
-            f32::from(point.x - b.origin.x),
-            f32::from(point.y - b.origin.y),
+            f32::from(point.x - b.origin.x) / self.zoom,
+            f32::from(point.y - b.origin.y) / self.zoom,
             &self.measurer(window),
         ))
     }

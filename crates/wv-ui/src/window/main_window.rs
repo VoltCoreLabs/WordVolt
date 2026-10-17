@@ -100,7 +100,13 @@ impl Render for MainWindow {
                     .child(ribbon(self, cx))
                     .child(self.find_bar.clone())
                     .child(workspace)
-                    .child(status_bar(self.lang, pages, words, cx)),
+                    .child(status_bar(
+                        self.lang,
+                        pages,
+                        words,
+                        self.editor.read(cx).zoom,
+                        cx,
+                    )),
             )
             .child(tooltip_layer(cx))
     }
