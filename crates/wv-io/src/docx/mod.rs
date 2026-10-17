@@ -6,6 +6,7 @@
 mod bands;
 mod document_xml;
 mod package;
+mod read_util;
 mod table_read;
 mod table_xml;
 mod writer;
