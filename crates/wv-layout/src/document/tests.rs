@@ -308,3 +308,53 @@ fn a_merged_cell_spans_rows() {
     assert!((tall.height - (table.row_y[2] - table.row_y[0])).abs() < 0.01);
     assert_eq!(layout.pages[0].slices.len(), 3);
 }
+
+/// Counts how often text is measured.
+struct Counting(std::cell::Cell<usize>);
+
+impl crate::Measurer for Counting {
+    fn width(&self, text: &str, style: &wv_core::CharStyle) -> f32 {
+        self.0.set(self.0.get() + 1);
+        Fixed.width(text, style)
+    }
+
+    fn ascent(&self, style: &wv_core::CharStyle) -> f32 {
+        Fixed.ascent(style)
+    }
+
+    fn descent(&self, style: &wv_core::CharStyle) -> f32 {
+        Fixed.descent(style)
+    }
+}
+
+#[test]
+fn unchanged_paragraphs_are_not_laid_out_again() {
+    let mut doc = Document::from_text("first paragraph\nsecond one\nthird");
+    let m = Counting(std::cell::Cell::new(0));
+    let mut cache = crate::LayoutCache::default();
+    let first = DocLayout::with_cache(&doc, small(), &m, &mut cache);
+    let cold = m.0.replace(0);
+    assert!(cold > 0);
+    let again = DocLayout::with_cache(&doc, small(), &m, &mut cache);
+    assert_eq!(m.0.replace(0), 0, "nothing changed, nothing measured");
+    assert_eq!(first.pages, again.pages);
+    // Editing the middle paragraph only re-measures that one.
+    doc.paragraphs[1] = wv_core::Paragraph::plain("second one, longer");
+    let edited = DocLayout::with_cache(&doc, small(), &m, &mut cache);
+    let warm = m.0.replace(0);
+    assert!(warm > 0 && warm < cold, "{warm} vs {cold}");
+    assert_eq!(edited.paragraphs[1].text, "second one, longer");
+}
+
+#[test]
+fn selection_rects_per_page_add_up_to_the_whole_selection() {
+    let l = layout(&"line of text\n".repeat(12));
+    assert!(l.pages.len() > 1);
+    let (a, b) = (Position::new(0, 0), Position::new(11, 4));
+    let all = l.selection_rects(a, b, &Fixed);
+    let per_page: usize = (0..l.pages.len())
+        .map(|p| l.selection_rects_on_page(a, b, p, &Fixed).len())
+        .sum();
+    assert_eq!(all.len(), per_page);
+    assert!(all.iter().any(|r| r.page == 1));
+}

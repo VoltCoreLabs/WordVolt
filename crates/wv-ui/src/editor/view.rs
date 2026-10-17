@@ -1,3 +1,4 @@
+use gpui_kit::prelude::FluentBuilder;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -41,6 +42,8 @@ pub struct EditorView {
     /// Caret column (page x) kept while moving up/down.
     pub(super) goal_x: Option<f32>,
     pub(super) layout: Option<Rc<DocLayout>>,
+    /// Laid-out paragraphs reused between layouts.
+    layout_cache: wv_layout::LayoutCache,
     /// Search matches to highlight and the index of the current one.
     find: Rc<Vec<(Position, Position)>>,
     find_current: Option<usize>,
@@ -52,6 +55,8 @@ pub struct EditorView {
     focused_once: bool,
     /// Display scale (1.0 = 100%).
     pub zoom: f32,
+    /// Pages sit side by side while they fit (else always one per row).
+    pub multi_page: bool,
     /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
     pub(super) scroll_x: f32,
     /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
@@ -72,6 +77,7 @@ impl EditorView {
             reveal_caret: Rc::default(),
             goal_x: None,
             layout: None,
+            layout_cache: wv_layout::LayoutCache::default(),
             find: Rc::default(),
             find_current: None,
             layout_key: (0, 0),
@@ -80,6 +86,7 @@ impl EditorView {
             page_bounds: Rc::default(),
             focused_once: false,
             zoom: 1.0,
+            multi_page: crate::settings::load_multi_page(),
             scroll_x: 0.0,
             picture_cache: Default::default(),
         }
@@ -94,6 +101,13 @@ impl EditorView {
             self.scroll_x = 0.0;
             cx.notify();
         }
+    }
+
+    /// Switches between pages side by side and one page per row (remembered).
+    pub fn toggle_multi_page(&mut self, cx: &mut Context<Self>) {
+        self.multi_page = !self.multi_page;
+        crate::settings::save_multi_page(self.multi_page);
+        cx.notify();
     }
 
     /// Zoom at which a page exactly fills the viewport width.
@@ -157,10 +171,12 @@ impl EditorView {
         match &self.layout {
             Some(layout) if key == self.layout_key => layout.clone(),
             _ => {
-                let layout = Rc::new(DocLayout::new(
+                let measurer = self.measurer(window);
+                let layout = Rc::new(DocLayout::with_cache(
                     &self.core.doc,
                     PageSetup::from_spec(&self.core.doc.page),
-                    &self.measurer(window),
+                    &measurer,
+                    &mut self.layout_cache,
                 ));
                 self.layout = Some(layout.clone());
                 self.layout_key = key;
@@ -309,12 +325,13 @@ impl Render for EditorView {
                     .w_full()
                     .min_w(px(layout.setup.width * self.zoom + 2.0 * FIT_PADDING))
                     .ml(px(-self.scroll_x))
-                    // Pages sit side by side while they fit (zoomed out), like in Word.
+                    // Pages sit side by side while they fit (zoomed out), like in Word, or always
+                    // one per row.
                     .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .justify_center()
-                    .items_start()
+                    .when(self.multi_page, |d| {
+                        d.flex_row().flex_wrap().justify_center().items_start()
+                    })
+                    .when(!self.multi_page, |d| d.flex_col().items_center())
                     .gap(px(PAGE_GAP))
                     .py(space::xl())
                     .mt(px(-offset))

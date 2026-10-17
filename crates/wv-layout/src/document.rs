@@ -1,9 +1,10 @@
 use wv_core::{Document, Position};
 
 use crate::Measurer;
+use crate::layout_cache::LayoutCache;
 use crate::numbering::Counters;
 use crate::page::{Page, PageSetup, Slice, paginate};
-use crate::paragraph::{Options, ParagraphLayout, layout_paragraph};
+use crate::paragraph::{Options, ParagraphLayout};
 use crate::table;
 
 /// Caret position in page coordinates (origin = top-left corner of the page, margins included).
@@ -29,6 +30,8 @@ pub struct DocLayout {
     pub setup: PageSetup,
     pub paragraphs: Vec<ParagraphLayout>,
     pub pages: Vec<Page>,
+    /// For every paragraph the (page, slice index) pairs where it is placed, in order.
+    locations: Vec<Vec<(usize, usize)>>,
 }
 
 /// Width of the mark drawn for a selected paragraph break on an empty line.
@@ -36,6 +39,17 @@ const BREAK_MARK: f32 = 6.0;
 
 impl DocLayout {
     pub fn new(doc: &Document, setup: PageSetup, m: &dyn Measurer) -> Self {
+        Self::with_cache(doc, setup, m, &mut LayoutCache::default())
+    }
+
+    /// Like `new`, reusing the layout of paragraphs that did not change since the last time.
+    pub fn with_cache(
+        doc: &Document,
+        setup: PageSetup,
+        m: &dyn Measurer,
+        cache: &mut LayoutCache,
+    ) -> Self {
+        cache.begin();
         let content_width = setup.content_width();
         let fractions = table::column_fractions(doc);
         let mut paragraphs: Vec<_> = doc
@@ -56,8 +70,8 @@ impl DocLayout {
                     line_spacing: setup.line_spacing,
                 };
                 match p.with_named_style() {
-                    Some(resolved) => layout_paragraph(&resolved, &options, m),
-                    None => layout_paragraph(p, &options, m),
+                    Some(resolved) => cache.layout(&resolved, &options, m),
+                    None => cache.layout(p, &options, m),
                 }
             })
             .collect();
@@ -65,27 +79,36 @@ impl DocLayout {
         for (layout, p) in paragraphs.iter_mut().zip(&doc.paragraphs) {
             layout.marker = counters.marker(&p.style);
         }
+        cache.end();
         let pages = paginate(&paragraphs, &table::blocks(doc), &setup);
+        let mut locations = vec![Vec::new(); paragraphs.len()];
+        for (page, p) in pages.iter().enumerate() {
+            for (slice_ix, s) in p.slices.iter().enumerate() {
+                locations[s.para].push((page, slice_ix));
+            }
+        }
         Self {
             setup,
             paragraphs,
             pages,
+            locations,
         }
     }
 
     /// Page index, slice and top of line `line` of paragraph `para` (page coordinates).
     fn locate(&self, para: usize, line: usize) -> Option<(usize, &Slice, f32)> {
         let layout = self.paragraphs.get(para)?;
-        self.pages.iter().enumerate().find_map(|(page, p)| {
-            p.slices
-                .iter()
-                .find(|s| s.para == para && s.lines.contains(&line))
-                .map(|s| {
+        self.locations
+            .get(para)?
+            .iter()
+            .find_map(|&(page, slice_ix)| {
+                let s = &self.pages[page].slices[slice_ix];
+                s.lines.contains(&line).then(|| {
                     let top = self.setup.margin_top + s.y + layout.lines[line].y
                         - layout.lines[s.lines.start].y;
                     (page, s, top)
                 })
-        })
+            })
     }
 
     pub fn caret(&self, pos: Position, m: &dyn Measurer) -> Option<CaretRect> {
@@ -155,8 +178,29 @@ impl DocLayout {
         end: Position,
         m: &dyn Measurer,
     ) -> Vec<SelectionRect> {
+        (0..self.pages.len())
+            .flat_map(|page| self.selection_rects_on_page(start, end, page, m))
+            .collect()
+    }
+
+    /// The part of the selection `start..end` that lies on page `page` (cheap: only that page's
+    /// lines are looked at).
+    pub fn selection_rects_on_page(
+        &self,
+        start: Position,
+        end: Position,
+        page: usize,
+        m: &dyn Measurer,
+    ) -> Vec<SelectionRect> {
         let mut rects = Vec::new();
-        for para_ix in start.para..=end.para.min(self.paragraphs.len() - 1) {
+        let Some(p) = self.pages.get(page) else {
+            return rects;
+        };
+        for slice in &p.slices {
+            let para_ix = slice.para;
+            if para_ix < start.para || para_ix > end.para {
+                continue;
+            }
             let para = &self.paragraphs[para_ix];
             let from = if para_ix == start.para {
                 start.offset
@@ -168,15 +212,15 @@ impl DocLayout {
             } else {
                 para.text.len()
             };
-            for (line_ix, line) in para.lines.iter().enumerate() {
+            let first_y = para.lines[slice.lines.start].y;
+            for line_ix in slice.lines.clone() {
+                let line = &para.lines[line_ix];
                 let (a, b) = (from.max(line.range.start), to.min(line.range.end));
                 let break_selected = line.range.is_empty() && para_ix < end.para;
                 if a >= b && !break_selected {
                     continue;
                 }
-                let Some((page, slice, y)) = self.locate(para_ix, line_ix) else {
-                    continue;
-                };
+                let y = self.setup.margin_top + slice.y + line.y - first_y;
                 let x1 = self.setup.margin_left + slice.x + line.x_at(&para.text, a, m);
                 let width = if a < b {
                     line.x_at(&para.text, b, m) - line.x_at(&para.text, a, m)
