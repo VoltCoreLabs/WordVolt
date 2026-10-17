@@ -142,6 +142,60 @@ impl MainWindow {
         self.confirm_then(window, cx, Box::new(|this, _, cx| this.remove_active(cx)));
     }
 
+    /// Closes the tabs `targets` one by one (each asks about unsaved changes; cancelling stops),
+    /// then shows the tab `keep`.
+    fn close_batch(
+        &mut self,
+        mut targets: Vec<EntityId>,
+        keep: EntityId,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(next) = targets.pop() else {
+            if let Some(i) = self.docs.iter().position(|d| d.editor.entity_id() == keep) {
+                self.switch_to(i, cx);
+            }
+            return;
+        };
+        let Some(index) = self.docs.iter().position(|d| d.editor.entity_id() == next) else {
+            return self.close_batch(targets, keep, window, cx);
+        };
+        self.switch_to(index, cx);
+        self.confirm_then(
+            window,
+            cx,
+            Box::new(move |this, window, cx| {
+                this.remove_active(cx);
+                this.close_batch(targets, keep, window, cx);
+            }),
+        );
+    }
+
+    fn tab_ids(&self, range: impl Iterator<Item = usize>) -> Vec<EntityId> {
+        range.map(|i| self.docs[i].editor.entity_id()).collect()
+    }
+
+    /// Closes every tab except the active one.
+    pub fn close_other_tabs(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let keep = self.editor.entity_id();
+        let targets = self.tab_ids((0..self.docs.len()).filter(|i| *i != self.active));
+        self.close_batch(targets, keep, window, cx);
+    }
+
+    /// Closes the tabs after the active one.
+    pub fn close_tabs_to_the_right(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let keep = self.editor.entity_id();
+        let targets = self.tab_ids(self.active + 1..self.docs.len());
+        self.close_batch(targets, keep, window, cx);
+    }
+
+    /// A copy of the active document in a new tab (without a file).
+    pub fn duplicate_tab(&mut self, cx: &mut Context<Self>) {
+        let doc = self.editor.read(cx).core.doc.clone();
+        self.new_tab(cx);
+        self.editor.update(cx, |view, cx| view.load(doc, cx));
+    }
+
     /// Label and unsaved mark of tab `index`.
     pub fn tab_info(&self, index: usize) -> (String, bool) {
         if index == self.active {

@@ -10,12 +10,13 @@ use crate::ui_kit::{Icon, Tip, icon_button, pop_in};
 
 const WIDTH: f32 = 252.0;
 
-type Action = fn(&mut MainWindow, &mut Window, &mut Context<MainWindow>);
+pub(super) type Action = fn(&mut MainWindow, &mut Window, &mut Context<MainWindow>);
 
 impl MainWindow {
     /// Runs a context-menu command and puts the caret back into the page.
-    fn menu_do(&mut self, f: Action, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn menu_do(&mut self, f: Action, window: &mut Window, cx: &mut Context<Self>) {
         self.context_menu = None;
+        self.tab_menu = None;
         f(self, window, cx);
         self.editor.update(cx, |view, cx| view.request_focus(cx));
         cx.notify();
@@ -23,7 +24,7 @@ impl MainWindow {
 }
 
 /// A command row: label on the left, shortcut on the right; greyed out when not `enabled`.
-fn row(
+pub(super) fn row(
     id: &'static str,
     label: &'static str,
     shortcut: Option<&'static str>,
@@ -61,7 +62,7 @@ fn row(
         )
 }
 
-fn separator(cx: &App) -> Div {
+pub(super) fn separator(cx: &App) -> Div {
     let border = cx.global::<Theme>().border;
     div().h(px(1.)).my(px(4.)).bg(border)
 }
@@ -394,7 +395,24 @@ pub fn context_menu(
         .child(paragraph)
         .child(separator(cx))
         .children(items);
-    // A click anywhere else closes the menu (the page does not get it).
+    popup(
+        at,
+        panel,
+        "context-menu-pop",
+        |this| this.context_menu = None,
+        cx,
+    )
+}
+
+/// Shows `panel` at `at` over everything; a click anywhere else runs `close` (the page does not
+/// get that click).
+pub(super) fn popup(
+    at: Point<Pixels>,
+    panel: Stateful<Div>,
+    key: &'static str,
+    close: fn(&mut MainWindow),
+    cx: &mut Context<MainWindow>,
+) -> impl IntoElement {
     deferred(
         div()
             .absolute()
@@ -404,15 +422,15 @@ pub fn context_menu(
             .occlude()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|this, _, _, cx| {
-                    this.context_menu = None;
+                cx.listener(move |this, _, _, cx| {
+                    close(this);
                     cx.notify();
                 }),
             )
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(|this, _, _, cx| {
-                    this.context_menu = None;
+                cx.listener(move |this, _, _, cx| {
+                    close(this);
                     cx.notify();
                 }),
             )
@@ -421,7 +439,7 @@ pub fn context_menu(
                     .position(at)
                     .anchor(Anchor::TopLeft)
                     .snap_to_window_with_margin(px(8.))
-                    .child(pop_in(panel, "context-menu-pop".to_string())),
+                    .child(pop_in(panel, key.to_string())),
             ),
     )
     .with_priority(20)

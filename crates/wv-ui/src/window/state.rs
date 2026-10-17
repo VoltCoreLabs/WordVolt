@@ -94,6 +94,8 @@ pub struct MainWindow {
     pub active: usize,
     /// Where the right-click menu is open (window coordinates).
     pub context_menu: Option<Point<Pixels>>,
+    /// The tab menu (window coordinates); it belongs to the active tab.
+    pub tab_menu: Option<Point<Pixels>>,
     /// Horizontal scroll of the tab strip.
     pub tab_scroll: ScrollHandle,
     pub lang: Lang,
@@ -426,6 +428,7 @@ impl MainWindow {
             }],
             active: 0,
             context_menu: None,
+            tab_menu: None,
             tab_scroll: ScrollHandle::new(),
             lang,
             applied_title: String::new(),

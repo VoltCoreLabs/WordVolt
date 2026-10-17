@@ -5,6 +5,7 @@ use super::ribbon::{ribbon, tab_bar};
 use super::side_panel::side_panel;
 pub use super::state::MainWindow;
 use super::status_bar::status_bar;
+use super::tab_menu::tab_menu;
 use super::titlebar::titlebar;
 use crate::actions::{
     CloseTab, FindInDocument, FindNext, FindPrevious, InsertLink, NewDocument, NewTab, NextTab,
@@ -125,6 +126,7 @@ impl Render for MainWindow {
                     )),
             )
             .children(self.context_menu.map(|at| context_menu(self, at, cx)))
+            .children(self.tab_menu.map(|at| tab_menu(self, at, cx)))
             .child(tooltip_layer(cx))
     }
 }
