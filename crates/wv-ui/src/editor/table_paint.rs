@@ -30,21 +30,22 @@ pub fn paint_tables(
                 rgb(shade.color),
             ));
         }
-        let width = table.col_x[table.col_x.len() - 1];
-        for y in &table.row_y {
-            window.paint_quad(fill(
-                Bounds::new(at(left, top + y - 0.5), size(px(width * z), px(1.))),
-                v.table_color,
-            ));
+        // Borders go around every cell, so merged cells show no line inside.
+        for c in &table.cells {
+            let (x, y, w, h) = (left + c.x, top + c.y, c.width, c.height);
+            for (lx, ly, lw, lh) in [
+                (x, y - 0.5, w, 1.0),
+                (x, y + h - 0.5, w, 1.0),
+                (x - 0.5, y, 1.0, h),
+                (x + w - 0.5, y, 1.0, h),
+            ] {
+                window.paint_quad(fill(
+                    Bounds::new(at(lx, ly), size(px(lw * z), px(lh * z))),
+                    v.table_color,
+                ));
+            }
         }
         for (i, x) in table.col_x.iter().enumerate() {
-            window.paint_quad(fill(
-                Bounds::new(
-                    at(left + x - 0.5, top + first - 0.5),
-                    size(px(1.), px((last - first + 1.) * z)),
-                ),
-                v.table_color,
-            ));
             // Inner borders can be dragged.
             let inner = i > 0 && i + 1 < table.col_x.len();
             let (bx, top_y) = (at(left + x, top + first), at(left + x, top + last));

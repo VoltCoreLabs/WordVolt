@@ -379,6 +379,8 @@ impl MainWindow {
                 Key::TblDelRow,
                 Key::TblDelCol,
                 Key::TblDelTable,
+                Key::CtxMerge,
+                Key::CtxSplit,
             ]
             .map(MenuItem::Tr)
             .to_vec();
@@ -395,7 +397,9 @@ impl MainWindow {
                     3 => c.insert_col(true),
                     4 => c.delete_row(),
                     5 => c.delete_col(),
-                    _ => c.delete_table(),
+                    6 => c.delete_table(),
+                    7 => c.merge_cells(),
+                    _ => c.split_cell(),
                 });
                 this.editor.update(cx, |view, cx| view.request_focus(cx));
             },

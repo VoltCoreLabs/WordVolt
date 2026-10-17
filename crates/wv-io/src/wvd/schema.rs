@@ -86,6 +86,19 @@ struct CellDto {
     col: u16,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     shade: Option<u32>,
+    /// Merged cells: columns / rows covered (absent = 1).
+    #[serde(default = "one", skip_serializing_if = "is_one")]
+    colspan: u8,
+    #[serde(default = "one", skip_serializing_if = "is_one")]
+    rowspan: u8,
+}
+
+fn one() -> u8 {
+    1
+}
+
+fn is_one(n: &u8) -> bool {
+    *n == 1
 }
 
 #[derive(Serialize, Deserialize)]
@@ -183,6 +196,8 @@ impl File {
                     row: c.row,
                     col: c.col,
                     shade: c.shade,
+                    colspan: c.colspan,
+                    rowspan: c.rowspan,
                 }),
                 style: if p.style.named == NamedStyle::Normal {
                     String::new()
@@ -261,6 +276,8 @@ impl File {
                     }),
                     cell: p.cell.map(|c| Cell {
                         shade: c.shade,
+                        colspan: c.colspan.max(1),
+                        rowspan: c.rowspan.max(1),
                         ..Cell::at(c.table, c.row, c.col)
                     }),
                     named: NamedStyle::from_id(&p.style).unwrap_or_default(),

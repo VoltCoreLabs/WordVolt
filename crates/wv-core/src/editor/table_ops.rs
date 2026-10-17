@@ -11,6 +11,9 @@ pub struct TableInfo {
     pub cols: u16,
     pub row: u16,
     pub col: u16,
+    /// Rows and columns the caret's cell covers.
+    pub rowspan: u16,
+    pub colspan: u16,
     /// Paragraph range of the whole table.
     pub first: usize,
     pub last: usize,
@@ -39,7 +42,7 @@ impl Editor {
             .iter()
             .filter_map(|p| p.style.cell);
         let (rows, cols) = cells.fold((0, 0), |(r, c), cell| {
-            (r.max(cell.row + 1), c.max(cell.col + 1))
+            (r.max(cell.row_end()), c.max(cell.col_end()))
         });
         Some(TableInfo {
             table: cell.table,
@@ -47,6 +50,8 @@ impl Editor {
             cols,
             row: cell.row,
             col: cell.col,
+            rowspan: u16::from(cell.rowspan.max(1)),
+            colspan: u16::from(cell.colspan.max(1)),
             first,
             last,
         })
@@ -79,7 +84,10 @@ impl Editor {
 
     /// Rebuilds the caret's table: `f` edits the table's paragraphs and returns the (row, col) of the
     /// cell that gets the caret. If no cells remain the table disappears.
-    fn rebuild_table(&mut self, f: impl FnOnce(&mut Vec<Paragraph>, TableInfo) -> (u16, u16)) {
+    pub(super) fn rebuild_table(
+        &mut self,
+        f: impl FnOnce(&mut Vec<Paragraph>, TableInfo) -> (u16, u16),
+    ) {
         self.rebuild_table_with(f, |_, _| None);
     }
 
@@ -109,7 +117,7 @@ impl Editor {
         paras.sort_by_key(|p| p.style.cell.map(|c| (c.row, c.col)));
         let caret_para = paras
             .iter()
-            .position(|p| p.style.cell.is_some_and(|c| (c.row, c.col) == (row, col)))
+            .position(|p| p.style.cell.is_some_and(|c| c.covers(row, col)))
             .map_or(0, |i| info.first + i);
         let removed = info.last - info.first + 1;
         let sel = Selection::caret(Position::new(caret_para, 0));
@@ -119,78 +127,6 @@ impl Editor {
         if self.sel.head.para > last {
             self.sel = Selection::caret(Position::new(last, 0));
         }
-    }
-
-    /// New empty row above or below the caret's row.
-    pub fn insert_row(&mut self, below: bool) {
-        self.rebuild_table(|paras, info| {
-            let at = if below { info.row + 1 } else { info.row };
-            for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                if c.row >= at {
-                    c.row += 1;
-                }
-            }
-            paras.extend((0..info.cols).map(|col| cell_paragraph(Cell::at(info.table, at, col))));
-            (at, info.col)
-        });
-    }
-
-    /// New empty column left or right of the caret's column.
-    pub fn insert_col(&mut self, right: bool) {
-        self.rebuild_table_with(
-            |paras, info| {
-                let at = if right { info.col + 1 } else { info.col };
-                for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                    if c.col >= at {
-                        c.col += 1;
-                    }
-                }
-                paras.extend(
-                    (0..info.rows).map(|row| cell_paragraph(Cell::at(info.table, row, at))),
-                );
-                (info.row, at)
-            },
-            |info, mut widths| {
-                // The new column takes an equal share; the others give way proportionally.
-                let at = usize::from(if right { info.col + 1 } else { info.col });
-                let share = 1.0 / (widths.len() + 1) as f32;
-                widths.iter_mut().for_each(|w| *w *= 1.0 - share);
-                widths.insert(at, share);
-                Some(widths)
-            },
-        );
-    }
-
-    /// Removes the caret's row (the whole table if it was the last row).
-    pub fn delete_row(&mut self) {
-        self.rebuild_table(|paras, info| {
-            paras.retain(|p| p.style.cell.is_none_or(|c| c.row != info.row));
-            for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                if c.row > info.row {
-                    c.row -= 1;
-                }
-            }
-            (info.row.min(info.rows.saturating_sub(2)), info.col)
-        });
-    }
-
-    /// Removes the caret's column (the whole table if it was the last column).
-    pub fn delete_col(&mut self) {
-        self.rebuild_table_with(
-            |paras, info| {
-                paras.retain(|p| p.style.cell.is_none_or(|c| c.col != info.col));
-                for c in paras.iter_mut().filter_map(|p| p.style.cell.as_mut()) {
-                    if c.col > info.col {
-                        c.col -= 1;
-                    }
-                }
-                (info.row, info.col.min(info.cols.saturating_sub(2)))
-            },
-            |info, mut widths| {
-                widths.remove(usize::from(info.col));
-                Some(super::table_widths::normalize(widths))
-            },
-        );
     }
 
     pub fn delete_table(&mut self) {
@@ -203,50 +139,49 @@ impl Editor {
         );
     }
 
-    /// Tab / Shift+Tab inside a table: next or previous cell (its text gets selected); Tab in the
-    /// last cell adds a row.
+    /// Tab / Shift+Tab inside a table: next or previous cell in reading order (its text gets
+    /// selected); Tab in the last cell adds a row.
     pub fn next_cell(&mut self, forward: bool) {
         let Some(info) = self.table_info() else {
             return;
         };
-        let (mut row, mut col) = (
-            i32::from(info.row),
-            i32::from(info.col) + if forward { 1 } else { -1 },
-        );
-        if col >= i32::from(info.cols) {
-            (col, row) = (0, row + 1);
-        } else if col < 0 {
-            (col, row) = (i32::from(info.cols) - 1, row - 1);
-        }
-        if row >= i32::from(info.rows) {
-            self.insert_row(true);
-            // The caret stayed in the last column; move it to the new row's first cell.
-            for _ in 1..info.cols {
-                self.next_cell(false);
-            }
-            return;
-        }
-        if row < 0 {
-            return;
-        }
-        let target = self.doc.paragraphs[info.first..=info.last]
+        // First paragraph of every cell, in document order.
+        let mut cells: Vec<(usize, (u16, u16))> = Vec::new();
+        for (i, p) in self.doc.paragraphs[info.first..=info.last]
             .iter()
-            .position(|p| {
-                p.style
-                    .cell
-                    .is_some_and(|c| (i32::from(c.row), i32::from(c.col)) == (row, col))
-            });
-        if let Some(i) = target {
-            let para = info.first + i;
-            self.select_range(
-                Position::new(para, 0),
-                Position::new(para, self.doc.paragraphs[para].len()),
-            );
+            .enumerate()
+        {
+            if let Some(c) = p.style.cell {
+                let key = (c.row, c.col);
+                if cells.last().is_none_or(|(_, last)| *last != key) {
+                    cells.push((info.first + i, key));
+                }
+            }
         }
+        let Some(at) = cells.iter().position(|(_, k)| *k == (info.row, info.col)) else {
+            return;
+        };
+        let target = if forward {
+            if at + 1 == cells.len() {
+                // The caret lands in the new row's first cell.
+                self.insert_row(true);
+                return;
+            }
+            at + 1
+        } else if at == 0 {
+            return;
+        } else {
+            at - 1
+        };
+        let para = cells[target].0;
+        self.select_range(
+            Position::new(para, 0),
+            Position::new(para, self.doc.paragraphs[para].len()),
+        );
     }
 }
 
-fn cell_paragraph(cell: Cell) -> Paragraph {
+pub(super) fn cell_paragraph(cell: Cell) -> Paragraph {
     let mut p = Paragraph::default();
     p.style.cell = Some(cell);
     p
