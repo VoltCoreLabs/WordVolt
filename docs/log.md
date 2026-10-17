@@ -51,3 +51,4 @@
 - `feat/header-footer`: `Band` в ядре (`Document.header/footer`, `set_header_footer`, `toggle_page_number`), отрисовка по центру верхнего/нижнего поля (10 pt, цвет `text_muted`), вкладка «Вставка» → группа «Колонтитулы»: поповер с двумя полями (Tab/Enter) и кнопка «#» (номер страницы). Форматы: .wvd (`header`/`footer`), .docx (`docx/bands.rs`: header1/footer1.xml, поля PAGE/NUMPAGES, чтение Word-овских сложных полей fldChar). Не в истории отмены. Иконки page-header/page-footer/hash нарисованы вручную в стиле Phosphor.
 - Проверено живьём: верхний текст по центру, номер страницы в подвале «… 1», кнопка «#» подсвечивается.
 - `feat/pill-tabs`: вкладки ленты — pill tabs (капсула, активная «таблетка» с плавным появлением; `ui_kit/tab.rs`: `tab`, `pill_tabs`).
+- `fix/pill-slide`: белая «таблетка» вкладок теперь плавно скользит к выбранной вкладке (границы вкладок измеряются пробами `track_bounds`, анимация left/width 260 мс; `PillState` в `ui_kit/tab.rs`).

@@ -24,7 +24,7 @@ pub use icon_button::icon_button;
 pub use line_edit::{LineEdit, Outcome};
 pub use pop::{pop_in, track_bounds};
 pub use recent_colors::RecentColors;
-pub use tab::{pill_tabs, tab};
+pub use tab::{PillState, pill_tabs, tab};
 pub use tooltip::{Tip, layer as tooltip_layer};
 pub use window_controls::{CONTROLS_WIDTH, window_controls};
 
