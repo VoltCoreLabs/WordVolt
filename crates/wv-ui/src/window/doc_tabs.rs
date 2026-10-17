@@ -13,6 +13,22 @@ pub struct DocSlot {
     pub editor: Entity<EditorView>,
     pub file_path: Option<PathBuf>,
     pub dirty: bool,
+    /// Name of the document's recovery copy (see `wv_io::recovery`).
+    pub session: u64,
+    /// Revision of the last recovery copy written.
+    pub autosaved: Option<u64>,
+}
+
+impl DocSlot {
+    pub fn new(editor: Entity<EditorView>) -> Self {
+        Self {
+            editor,
+            file_path: None,
+            dirty: false,
+            session: wv_io::recovery::new_id(),
+            autosaved: None,
+        }
+    }
 }
 
 /// File name, or "New document".
@@ -80,11 +96,7 @@ impl MainWindow {
         self.park_active();
         let editor = cx.new(EditorView::new);
         Self::observe_doc(&editor, cx);
-        self.docs.push(DocSlot {
-            editor,
-            file_path: None,
-            dirty: false,
-        });
+        self.docs.push(DocSlot::new(editor));
         self.activate(self.docs.len() - 1, cx);
     }
 
@@ -122,15 +134,12 @@ impl MainWindow {
     /// Closes the active tab (the document was dealt with); the last one is replaced by an empty
     /// document.
     fn remove_active(&mut self, cx: &mut Context<Self>) {
-        self.docs.remove(self.active);
+        let gone = self.docs.remove(self.active);
+        wv_io::recovery::remove(&self.recovery_dir, gone.session);
         if self.docs.is_empty() {
             let editor = cx.new(EditorView::new);
             Self::observe_doc(&editor, cx);
-            self.docs.push(DocSlot {
-                editor,
-                file_path: None,
-                dirty: false,
-            });
+            self.docs.push(DocSlot::new(editor));
         }
         let next = self.active.min(self.docs.len() - 1);
         self.activate(next, cx);
@@ -189,6 +198,22 @@ impl MainWindow {
         self.close_batch(targets, keep, window, cx);
     }
 
+    /// Opens a document recovered after a crash: the file it came from is its name, and it counts
+    /// as unsaved. Its recovery copy goes on being its copy.
+    pub fn open_recovered(&mut self, rec: wv_io::recovery::Recovered, cx: &mut Context<Self>) {
+        if !self.is_pristine(cx) {
+            self.new_tab(cx);
+        }
+        self.file_path = rec.path;
+        self.docs[self.active].session = rec.session;
+        self.docs[self.active].autosaved = None;
+        self.editor.update(cx, |view, cx| {
+            view.load(rec.doc, cx);
+            view.core.mark_modified();
+        });
+        cx.notify();
+    }
+
     /// A copy of the active document in a new tab (without a file).
     pub fn duplicate_tab(&mut self, cx: &mut Context<Self>) {
         let doc = self.editor.read(cx).core.doc.clone();
@@ -216,6 +241,7 @@ impl MainWindow {
     /// the user cancels).
     pub fn should_close(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
         if self.unsaved_from(0).is_none() {
+            self.finish_session();
             return true;
         }
         self.close_scan(0, window, cx);
@@ -224,6 +250,7 @@ impl MainWindow {
 
     fn close_scan(&mut self, start: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(index) = self.unsaved_from(start) else {
+            self.finish_session();
             window.remove_window();
             return;
         };

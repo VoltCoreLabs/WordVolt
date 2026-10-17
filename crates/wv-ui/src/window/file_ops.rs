@@ -115,6 +115,7 @@ impl MainWindow {
         match wv_io::save_file(path, &doc) {
             Ok(()) => {
                 self.file_path = Some(path.to_path_buf());
+                self.forget_recovery();
                 self.editor.update(cx, |view, cx| {
                     view.core.mark_saved();
                     cx.notify();
