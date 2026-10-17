@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use gpui_kit::*;
-use wv_core::Document;
 use wv_i18n::{Key, Lang, t, unsaved_detail};
 use wv_io::Format;
 
@@ -11,20 +10,14 @@ use super::state::MainWindow;
 type Next = Box<dyn FnOnce(&mut MainWindow, &mut Window, &mut Context<MainWindow>)>;
 
 impl MainWindow {
-    pub fn new_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.confirm_then(
-            window,
-            cx,
-            Box::new(|this, _, cx| this.install(Document::default(), None, cx)),
-        );
+    /// "New": an empty document in a new tab.
+    pub fn new_document(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.new_tab(cx);
     }
 
+    /// "Open": the chosen file opens in its own tab.
     pub fn open_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.confirm_then(
-            window,
-            cx,
-            Box::new(|this, window, cx| this.pick_and_open(window, cx)),
-        );
+        self.pick_and_open(window, cx);
     }
 
     pub fn save_document(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -35,23 +28,8 @@ impl MainWindow {
         self.save_as_then(window, cx, None);
     }
 
-    /// Window close request: with unsaved changes ask first (returns `false` = keep the window open for now).
-    pub fn should_close(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        if !self.dirty {
-            return true;
-        }
-        cx.spawn_in(window, async move |this, cx| {
-            this.update_in(cx, |this, window, cx| {
-                this.confirm_then(window, cx, Box::new(|_, window, _| window.remove_window()));
-            })
-            .ok();
-        })
-        .detach();
-        false
-    }
-
     /// Runs `next` now if there is nothing unsaved; otherwise asks Save / Don't save / Cancel first.
-    fn confirm_then(&mut self, window: &mut Window, cx: &mut Context<Self>, next: Next) {
+    pub(super) fn confirm_then(&mut self, window: &mut Window, cx: &mut Context<Self>, next: Next) {
         if !self.dirty {
             next(self, window, cx);
             return;
@@ -196,13 +174,6 @@ impl MainWindow {
             .ok();
         })
         .detach();
-    }
-
-    /// Makes `doc` the current document.
-    pub(crate) fn install(&mut self, doc: Document, path: Option<PathBuf>, cx: &mut Context<Self>) {
-        self.file_path = path;
-        self.editor.update(cx, |view, cx| view.load(doc, cx));
-        cx.notify();
     }
 
     pub(super) fn show_error(

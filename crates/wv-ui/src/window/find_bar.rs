@@ -10,6 +10,8 @@ use crate::ui_kit::{ButtonKind, Icon, LineEdit, Outcome, Tip, block, button, ico
 /// and replaces one or all (one undo step).
 pub struct FindBar {
     editor: Entity<EditorView>,
+    /// Keeps the matches fresh while the document changes.
+    watch: Subscription,
     lang: Lang,
     open: bool,
     show_replace: bool,
@@ -29,17 +31,9 @@ pub struct FindBar {
 
 impl FindBar {
     pub fn new(editor: Entity<EditorView>, lang: Lang, cx: &mut Context<Self>) -> Self {
-        cx.observe(&editor, |this, editor, cx| {
-            let revision = editor.read(cx).core.revision();
-            if this.open && revision != this.revision {
-                this.revision = revision;
-                // The text changed from outside (typing, undo): an old "replaced N" no longer applies.
-                this.message = None;
-                this.recompute(false, cx);
-            }
-        })
-        .detach();
+        let watch = Self::watch(&editor, cx);
         Self {
+            watch,
             editor,
             lang,
             open: false,
@@ -55,6 +49,33 @@ impl FindBar {
             message: None,
             revision: 0,
         }
+    }
+
+    /// Recomputes the matches when the document changes from outside (typing, undo).
+    fn watch(editor: &Entity<EditorView>, cx: &mut Context<Self>) -> Subscription {
+        cx.observe(editor, |this, editor, cx| {
+            let revision = editor.read(cx).core.revision();
+            if this.open && revision != this.revision {
+                this.revision = revision;
+                // An old "replaced N" no longer applies.
+                this.message = None;
+                this.recompute(false, cx);
+            }
+        })
+    }
+
+    /// Searches another document (the tab changed).
+    pub fn set_editor(&mut self, editor: Entity<EditorView>, cx: &mut Context<Self>) {
+        self.watch = Self::watch(&editor, cx);
+        self.revision = editor.read(cx).core.revision();
+        self.editor = editor;
+        self.matches.clear();
+        self.current = None;
+        self.message = None;
+        if self.open {
+            self.recompute(false, cx);
+        }
+        cx.notify();
     }
 
     pub fn is_open(&self) -> bool {
