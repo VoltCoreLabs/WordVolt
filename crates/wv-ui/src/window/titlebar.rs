@@ -56,6 +56,12 @@ pub fn titlebar(this: &MainWindow, window: &Window, cx: &mut Context<MainWindow>
         .flex()
         .items_center()
         .child(drag().flex_1())
+        .child(
+            div()
+                .flex_none()
+                .px(space::md())
+                .child(this.palette.clone()),
+        )
         .when(!cfg!(target_os = "macos"), |d| {
             d.child(window_controls(window, cx))
         });

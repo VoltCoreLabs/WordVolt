@@ -16,6 +16,7 @@ use super::link_editor::LinkEditor;
 use super::menu_bar::{CommandChosen, MenuBar};
 use super::menu_button::MenuButton;
 use super::page_setup::PageSetupEditor;
+use super::palette::{CommandPalette, Picked};
 use super::paragraph_dialog::ParagraphEditor;
 use super::refs_panel::RefsPanel;
 use super::style_namer::StyleNamer;
@@ -57,6 +58,7 @@ pub struct MainWindow {
     pub comment_editor: Entity<CommentEditor>,
     pub style_namer: Entity<StyleNamer>,
     pub refs_panel: Entity<RefsPanel>,
+    pub palette: Entity<CommandPalette>,
     pub case_menu: Entity<MenuButton>,
     pub spacing_menu: Entity<MenuButton>,
     pub style_combo: Entity<Combo>,
@@ -117,6 +119,13 @@ impl MainWindow {
         let comment_editor = widgets::make_comment_editor(lang, cx);
         let style_namer = widgets::make_style_namer(lang, cx);
         let refs_panel = widgets::make_refs_panel(lang, cx);
+        let palette = cx.new(|cx| CommandPalette::new(lang, cx));
+        cx.subscribe_in(
+            &palette,
+            window,
+            |this, _, Picked(action): &Picked, window, cx| this.run_palette(*action, window, cx),
+        )
+        .detach();
         let case_menu = widgets::make_case_menu(lang, cx);
         let spacing_menu = widgets::make_spacing_menu(lang, cx);
         let style_combo = widgets::make_style_combo(lang, cx);
@@ -166,6 +175,7 @@ impl MainWindow {
             comment_editor,
             style_namer,
             refs_panel,
+            palette,
             file_path: None,
             dirty: false,
             docs: vec![DocSlot::new(editor)],
