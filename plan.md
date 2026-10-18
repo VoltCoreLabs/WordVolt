@@ -55,7 +55,7 @@ wordvolt (bin)
 ### Этап 0 — Фундамент
 - [x] (2026-10-17) Преобразовать в cargo workspace по `docs/structure.md` (crates/* + app/, README.md в каждом крейте, wv-i18n)
 - [ ] Подобрать совместимые версии gpui / gpui-component, окно собирается и запускается на Windows
-- [ ] CI-минимум: fmt + clippy + test (GitHub Actions)
+- [x] (2026-10-18) CI-минимум: fmt + clippy + test (GitHub Actions, Windows; Linux/macOS — отдельно)
 - [~] **Dev-loop (D-009/D-011):** `cargo dev` (cargo-watch) сделан; осталось: быстрый линкер
 - [ ] Hot-reload токенов темы из файла (`notify`), без пересборки
 - [ ] Оценить `subsecond` (hot-patching) — если работает с GPUI, включить
