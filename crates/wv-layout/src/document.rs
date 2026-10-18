@@ -96,7 +96,7 @@ impl DocLayout {
                     width,
                     line_spacing: setup.line_spacing,
                 };
-                let layout = match p.with_named_style() {
+                let layout = match doc.resolve(p) {
                     Some(resolved) => cache.layout(&resolved, &options, marker.clone(), m),
                     None => cache.layout(p, &options, marker.clone(), m),
                 };

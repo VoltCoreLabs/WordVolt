@@ -3,6 +3,7 @@
 mod convert;
 mod dto;
 mod schema;
+mod styles;
 mod variants;
 
 use wv_core::Document;
@@ -184,6 +185,17 @@ mod tests {
         let doc = decode(&encode(&e.doc).unwrap()).unwrap();
         assert_eq!(doc, e.doc);
         assert_eq!(doc.sections.len(), 1);
+    }
+
+    #[test]
+    fn user_styles_round_trip() {
+        let mut e = Editor::new(Document::from_text("Стиль"));
+        e.set_size_pt(18);
+        e.toggle_bold();
+        e.define_style("Мой");
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.styles.len(), 1);
     }
 
     #[test]

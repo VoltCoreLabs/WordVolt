@@ -185,6 +185,7 @@ impl State {
                 let style = attr(e, b"val").unwrap_or_default();
                 self.named = named_from_docx(&style);
                 self.quote = style == "Quote";
+                self.custom = self.user_style_id(&style);
             }
             b"r" => self.run = CharStyle::default(),
             b"rPr" if !self.in_paragraph_props => self.in_run_props = true,

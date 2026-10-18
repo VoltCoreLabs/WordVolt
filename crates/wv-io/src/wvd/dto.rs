@@ -45,6 +45,9 @@ pub(super) struct File {
     /// Page setup of the sections that end with a break.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) sections: Vec<SectionDto>,
+    /// Styles defined by the user.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) styles: Vec<super::styles::UserStyleDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -202,6 +205,9 @@ pub(super) struct Para {
     /// The paragraph ends a section (id into `File::sections`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) section: Option<u32>,
+    /// The paragraph has this user style.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) custom: Option<u32>,
     /// The paragraph is (part of) the footnote with this id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) note: Option<u32>,

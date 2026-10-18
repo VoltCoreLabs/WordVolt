@@ -1292,3 +1292,51 @@ fn enter_in_a_break_paragraph_keeps_one_break_at_the_end() {
     e.remove_section_break();
     assert_eq!(e.section_count(), 1);
 }
+
+#[test]
+fn a_style_defined_from_the_caret_formatting_styles_other_paragraphs() {
+    let mut e = Editor::new(Document::from_text("Заголовок\nПростой текст"));
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, "Заголовок".len()),
+    };
+    e.set_size_pt(18);
+    e.toggle_bold();
+    e.set_align(wv_core_align());
+    e.sel = Selection::caret(Position::new(0, "За".len()));
+    let id = e.define_style("Мой стиль");
+    assert_eq!(e.user_style_here(), Some(id));
+    assert_eq!(e.doc.styles[&id].name, "Мой стиль");
+    assert_eq!(e.doc.styles[&id].size_pt, Some(18));
+    // A plain paragraph gets the look of the style once it has it.
+    e.sel = Selection::caret(Position::new(1, 0));
+    e.set_user_style(id);
+    let resolved = e.doc.resolve(&e.doc.paragraphs[1]).unwrap();
+    assert_eq!(resolved.runs[0].style.size_pt, Some(18));
+    assert!(resolved.runs[0].style.bold);
+    assert_eq!(resolved.style.align, wv_core_align());
+    // Changing the style changes its paragraphs.
+    e.sel = Selection::caret(Position::new(0, 0));
+    e.set_size_pt(30);
+    e.update_style(id);
+    let resolved = e.doc.resolve(&e.doc.paragraphs[1]).unwrap();
+    assert_eq!(resolved.runs[0].style.size_pt, Some(30));
+    // Applying a built-in style takes the user style off; deleting the style frees its paragraphs.
+    e.sel = Selection::caret(Position::new(1, 0));
+    e.set_named_style(wv_core_named());
+    assert_eq!(e.user_style_here(), None);
+    e.delete_style(id);
+    assert!(e.doc.styles.is_empty());
+    assert!(e.doc.paragraphs.iter().all(|p| p.style.custom.is_none()));
+    e.undo();
+    assert_eq!(e.doc.styles.len(), 1);
+    assert_eq!(e.doc.paragraphs[0].style.custom, Some(id));
+}
+
+fn wv_core_align() -> crate::style::Align {
+    crate::style::Align::Center
+}
+
+fn wv_core_named() -> crate::style::NamedStyle {
+    crate::style::NamedStyle::Heading2
+}

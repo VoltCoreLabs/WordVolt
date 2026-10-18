@@ -60,6 +60,78 @@ pub fn styles_panel(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl Int
                 .child(style_label(lang, style))
         })
         .collect();
+    let (user_styles, current_user) = {
+        let core = &this.editor.read(cx).core;
+        let list: Vec<(u32, wv_core::UserStyle)> = core
+            .doc
+            .styles
+            .iter()
+            .map(|(id, s)| (*id, s.clone()))
+            .collect();
+        (list, core.user_style_here())
+    };
+    let user_rows: Vec<_> = user_styles
+        .into_iter()
+        .map(|(id, style)| {
+            let size = style
+                .size_pt
+                .map_or(14.0, |pt| f32::from(pt).clamp(13.0, 22.0));
+            let selected = current_user == Some(id);
+            div()
+                .id(("user-style-row", id as usize))
+                .w_full()
+                .px(space::sm())
+                .py(px(6.))
+                .rounded(radius::sm())
+                .cursor_pointer()
+                .whitespace_nowrap()
+                .overflow_hidden()
+                .text_size(px(size))
+                .text_color(if selected {
+                    accent
+                } else {
+                    style.color.map_or(text, rgb)
+                })
+                .when(style.bold, |d| d.font_weight(FontWeight::BOLD))
+                .when(style.italic, |d| d.italic())
+                .when(selected, |d| d.bg(subtle))
+                .hover(move |s| s.bg(hover))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, _, _, cx| {
+                        this.edit(cx, move |c| c.set_user_style(id));
+                    }),
+                )
+                .child(style.name)
+        })
+        .collect();
+    let action = |id: &'static str, label: Key| {
+        div()
+            .id(id)
+            .h(px(28.))
+            .px(space::sm())
+            .flex()
+            .items_center()
+            .rounded(radius::sm())
+            .text_sm()
+            .text_color(muted)
+            .cursor_pointer()
+            .hover(move |s| s.bg(hover))
+            .child(t(lang, label))
+    };
+    let manage = current_user.map(|id| {
+        div()
+            .flex()
+            .flex_col()
+            .child(action("style-update", Key::UpdateStyle).on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, _, cx| this.edit(cx, move |c| c.update_style(id))),
+            ))
+            .child(action("style-delete", Key::DeleteStyle).on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, _, cx| this.edit(cx, move |c| c.delete_style(id))),
+            ))
+    });
     let content = block(cx)
         .w(px(WIDTH))
         .h_full()
@@ -87,8 +159,11 @@ pub fn styles_panel(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl Int
                 .flex()
                 .flex_col()
                 .overflow_y_scroll()
-                .children(rows),
-        );
+                .children(rows)
+                .children(user_rows),
+        )
+        .children(manage)
+        .child(this.style_namer.clone());
     div()
         .h_full()
         .flex_none()

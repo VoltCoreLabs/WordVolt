@@ -152,6 +152,10 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipSectionBreak => {
             "Section break (next page): every section has its own page size and orientation, margins and columns (they change for the section the caret is in)"
         }
+        Key::NewStyle => "＋ New style",
+        Key::NewStyleHint => "Style name (made from the formatting at the caret), Enter",
+        Key::UpdateStyle => "Update style from selection",
+        Key::DeleteStyle => "Delete style",
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

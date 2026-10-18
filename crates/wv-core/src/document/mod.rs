@@ -1,9 +1,11 @@
+mod annotations;
 mod band;
 mod doc;
 mod image;
 mod page;
 mod paragraph;
 mod run;
+mod styles;
 mod table_look;
 
 pub use band::{BAND_SIZE_PT, Band, BandVariants};

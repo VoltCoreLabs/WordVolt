@@ -152,6 +152,10 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipSectionBreak => {
             "Разрыв раздела со следующей страницы: у каждого раздела свои размер и ориентация страницы, поля и колонки (параметры меняются для раздела, где стоит курсор)"
         }
+        Key::NewStyle => "＋ Новый стиль",
+        Key::NewStyleHint => "Название стиля (по оформлению у курсора), Enter",
+        Key::UpdateStyle => "Обновить стиль по образцу",
+        Key::DeleteStyle => "Удалить стиль",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

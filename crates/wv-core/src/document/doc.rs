@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::{Band, BandVariants, ImageData, PageSpec, Paragraph, TableLook};
 use crate::position::Position;
-use crate::style::CharStyle;
+use crate::style::{CharStyle, UserStyle};
 
 /// A comment on a stretch of text (the text carries `CharStyle::comment = id`).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -38,6 +38,8 @@ pub struct Document {
     pub table_looks: BTreeMap<u32, TableLook>,
     /// Page setup of the sections that end with a break, by `ParaStyle::section` id.
     pub sections: BTreeMap<u32, PageSpec>,
+    /// Styles defined by the user (or read from a file) by `ParaStyle::custom` id.
+    pub styles: BTreeMap<u32, UserStyle>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -55,6 +57,7 @@ impl Default for Document {
             page: PageSpec::default(),
             table_looks: BTreeMap::new(),
             sections: BTreeMap::new(),
+            styles: BTreeMap::new(),
             comments: Vec::new(),
             revisions: Vec::new(),
         }
@@ -70,80 +73,13 @@ pub struct DocSettings {
     pub page: PageSpec,
     pub table_looks: BTreeMap<u32, TableLook>,
     pub sections: BTreeMap<u32, PageSpec>,
+    pub styles: BTreeMap<u32, UserStyle>,
 }
 
 /// The character that stands for a footnote mark in the text (the number is drawn instead).
 pub const NOTE_MARK: char = '\u{FFFC}';
 
 impl Document {
-    /// An id no comment has.
-    pub fn next_comment_id(&self) -> u32 {
-        let anchored = self
-            .paragraphs
-            .iter()
-            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.comment));
-        let known = self.comments.iter().map(|c| c.id);
-        anchored.chain(known).max().map_or(1, |m| m + 1)
-    }
-
-    /// An id no tracked change has.
-    pub fn next_revision_id(&self) -> u32 {
-        let used = self
-            .paragraphs
-            .iter()
-            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.change.map(|c| c.id)));
-        let known = self.revisions.iter().map(|r| r.id);
-        used.chain(known).max().map_or(1, |m| m + 1)
-    }
-
-    /// The tracked changes that still have text, as (id, deleted), in document order.
-    pub fn changes(&self) -> Vec<(u32, bool)> {
-        let mut out: Vec<(u32, bool)> = Vec::new();
-        for c in self
-            .paragraphs
-            .iter()
-            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.change))
-        {
-            if !out.contains(&(c.id, c.deleted)) {
-                out.push((c.id, c.deleted));
-            }
-        }
-        out
-    }
-
-    /// Comments that have text anchored to them, in the order of their anchors in the document.
-    pub fn visible_comments(&self) -> Vec<&Comment> {
-        let mut ids: Vec<u32> = Vec::new();
-        for p in &self.paragraphs {
-            for id in p.runs.iter().filter_map(|r| r.style.comment) {
-                if !ids.contains(&id) {
-                    ids.push(id);
-                }
-            }
-        }
-        ids.iter()
-            .filter_map(|id| self.comments.iter().find(|c| c.id == *id))
-            .collect()
-    }
-
-    /// Where the text of comment `id` starts and ends (the first and last run that carry it).
-    pub fn comment_range(&self, id: u32) -> Option<(Position, Position)> {
-        let mut start = None;
-        let mut end = None;
-        for (i, p) in self.paragraphs.iter().enumerate() {
-            let mut offset = 0;
-            for run in &p.runs {
-                let from = offset;
-                offset += run.text.len();
-                if run.style.comment == Some(id) {
-                    start.get_or_insert(Position::new(i, from));
-                    end = Some(Position::new(i, offset));
-                }
-            }
-        }
-        Some((start?, end?))
-    }
-
     /// Footnote numbers: the marks in the text, counted in order.
     pub fn note_numbers(&self) -> std::collections::HashMap<u32, usize> {
         let mut out = std::collections::HashMap::new();
@@ -194,6 +130,7 @@ impl Document {
             page: self.page,
             table_looks: self.table_looks.clone(),
             sections: self.sections.clone(),
+            styles: self.styles.clone(),
         }
     }
 
@@ -204,28 +141,7 @@ impl Document {
         self.page = settings.page;
         self.table_looks = settings.table_looks.clone();
         self.sections = settings.sections.clone();
-    }
-
-    /// The section break (id) that ends the section paragraph `para` is in; `None` in the last one.
-    pub fn section_end(&self, para: usize) -> Option<u32> {
-        self.paragraphs[para..]
-            .iter()
-            .find_map(|p| p.style.section)
-            .filter(|id| self.sections.contains_key(id))
-    }
-
-    /// Page setup of the section paragraph `para` is in.
-    pub fn page_of(&self, para: usize) -> PageSpec {
-        self.section_end(para)
-            .and_then(|id| self.sections.get(&id).copied())
-            .unwrap_or(self.page)
-    }
-
-    /// An id no section break has.
-    pub fn next_section_id(&self) -> u32 {
-        let used = self.paragraphs.iter().filter_map(|p| p.style.section);
-        let known = self.sections.keys().copied();
-        used.chain(known).max().map_or(1, |m| m + 1)
+        self.styles = settings.styles.clone();
     }
 
     /// The (header, footer) shown on page `page` (0-based).
