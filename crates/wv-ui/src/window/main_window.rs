@@ -135,6 +135,7 @@ impl Render for MainWindow {
                         words,
                         self.editor.read(cx).zoom,
                         self.editor.read(cx).multi_page,
+                        crate::spell::enabled(cx),
                         cx,
                     )),
             )

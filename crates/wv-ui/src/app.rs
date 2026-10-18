@@ -10,6 +10,11 @@ pub fn run() {
         gpui_kit::init(cx);
         register_fonts(cx);
         cx.set_global(Theme::light());
+        cx.set_global(crate::spell::SpellGlobal {
+            speller: None,
+            enabled: crate::settings::load_spellcheck(),
+            loading: false,
+        });
         crate::ui_kit::init(cx);
         crate::actions::bind_keys(cx);
         watch_theme_file(cx);
@@ -34,6 +39,7 @@ pub fn run() {
             view.update(cx, |this, cx| {
                 this.restore_recovered(cx);
                 this.start_autosave(window, cx);
+                this.start_spell(window, cx);
             });
             // `wordvolt <file>` opens that file.
             if let Some(path) = std::env::args_os().nth(1).map(std::path::PathBuf::from)

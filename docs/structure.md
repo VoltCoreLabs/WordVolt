@@ -25,12 +25,14 @@ WordVolt/
 ├─ assets/
 │  ├─ fonts/                 встроенные шрифты (fallback)
 │  ├─ icons/                 SVG иконки ribbon
+│  ├─ dictionaries/{ru,en}/  словари Hunspell (index.aff/.dic + LICENSE) для орфографии
 │  └─ i18n/{en,ru}/*.ftl     строки интерфейса (fluent)
 ├─ tests/fixtures/           примеры .docx/.md/.rtf для тестов io
 ├─ crates/
 │  ├─ wv-core/               модель документа (без GPUI)
 │  ├─ wv-layout/             вёрстка
 │  ├─ wv-io/                 форматы файлов
+│  ├─ wv-spell/              орфография (spellbook, Hunspell)
 │  ├─ wv-i18n/               локализация
 │  └─ wv-ui/                 GPUI-интерфейс
 └─ app/                      бинарник `wordvolt` (main.rs ≤ 50 строк); icon.ico + app.rc + build.rs — иконка exe (ресурс 1, из него GPUI берёт иконку окна/панели задач); логотип — assets/brand/logo.png
@@ -110,6 +112,7 @@ crates/wv-io/src/
 crates/wv-ui/src/
 ├─ lib.rs
 ├─ app.rs                 инициализация, глобальное состояние
+├─ spell.rs               глобальное состояние орфографии (SpellGlobal); window/spell.rs — загрузка, переключатель, «в словарь»
 ├─ window/                main_window.rs, titlebar.rs, status_bar.rs
 ├─ editor/
 │  ├─ mod.rs

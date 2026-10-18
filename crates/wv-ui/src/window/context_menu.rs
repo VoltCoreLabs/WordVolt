@@ -114,6 +114,70 @@ pub fn context_menu(
         )
     };
 
+    // A misspelled word under the caret: corrections first.
+    let spelling = crate::spell::active(cx).and_then(|speller| {
+        let core = &this.editor.read(cx).core;
+        let caret = core.sel.head;
+        let text = core.doc.paragraphs[caret.para].text();
+        let range = speller
+            .misspelled(&text)
+            .iter()
+            .find(|r| r.start <= caret.offset && caret.offset <= r.end)
+            .cloned()?;
+        let word = text[range.clone()].to_string();
+        Some((caret.para, range, speller.suggest(&word, 5), word))
+    });
+    let mut spell_rows: Vec<AnyElement> = Vec::new();
+    if let Some((para, range, suggestions, word)) = spelling {
+        let (accent, border) = {
+            let th = cx.global::<Theme>();
+            (th.accent, th.border)
+        };
+        for (i, suggestion) in suggestions.into_iter().enumerate() {
+            let (start, end) = (range.start, range.end);
+            let replacement = suggestion.clone();
+            spell_rows.push(
+                choice_row(
+                    ("ctx-fix", i),
+                    suggestion,
+                    Some(accent),
+                    cx,
+                    move |this, _, cx| {
+                        let replacement = replacement.clone();
+                        this.edit(cx, move |c| {
+                            c.replace_match(
+                                wv_core::Position::new(para, start),
+                                wv_core::Position::new(para, end),
+                                &replacement,
+                            )
+                        });
+                    },
+                )
+                .into_any_element(),
+            );
+        }
+        for (i, (label, keep)) in [
+            (t(lang, Key::CtxAddWord), true),
+            (t(lang, Key::CtxSkipWord), false),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let word = word.clone();
+            spell_rows.push(
+                choice_row(
+                    ("ctx-dict", i),
+                    label.to_string(),
+                    None,
+                    cx,
+                    move |this, _, cx| this.add_to_dictionary(&word, keep, cx),
+                )
+                .into_any_element(),
+            );
+        }
+        spell_rows.push(div().h(px(1.)).my(px(4.)).bg(border).into_any_element());
+    }
+
     let formats = div()
         .flex()
         .gap(px(4.))
@@ -420,6 +484,7 @@ pub fn context_menu(
         .border_color(border)
         .rounded(radius::md())
         .shadow_lg()
+        .children(spell_rows)
         .child(formats)
         .child(paragraph)
         .child(separator(cx))
@@ -520,4 +585,38 @@ fn shade_row(lang: wv_i18n::Lang, cx: &mut Context<MainWindow>) -> Div {
         .gap(px(6.))
         .child(div().text_sm().child(t(lang, Key::CtxShade)))
         .child(div().flex().gap(px(2.)).children(swatches))
+}
+
+/// A command row built at run time (a spelling correction): `act` runs when it is clicked.
+fn choice_row(
+    id: (&'static str, usize),
+    label: String,
+    color: Option<Rgba>,
+    cx: &mut Context<MainWindow>,
+    act: impl Fn(&mut MainWindow, &mut Window, &mut Context<MainWindow>) + 'static,
+) -> Stateful<Div> {
+    let hover = cx.global::<Theme>().surface_alt;
+    div()
+        .id(id)
+        .h(px(30.))
+        .px(px(10.))
+        .flex()
+        .items_center()
+        .rounded(radius::sm())
+        .text_sm()
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover))
+        .when_some(color, |d, c| {
+            d.text_color(c).font_weight(FontWeight::SEMIBOLD)
+        })
+        .on_mouse_down(
+            MouseButton::Left,
+            cx.listener(move |this, _, window, cx| {
+                this.context_menu = None;
+                act(this, window, cx);
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+                cx.notify();
+            }),
+        )
+        .child(label)
 }

@@ -34,6 +34,8 @@ pub struct PageView {
     pub find_current_color: Rgba,
     /// Table borders.
     pub table_color: Rgba,
+    /// Wavy underline of misspelled words.
+    pub misspell_color: Rgba,
     /// Header and footer text, and their colour.
     pub bands: Rc<(Band, Band, BandVariants)>,
     /// Pictures of the document by `ImageRef::id`.
@@ -127,6 +129,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
+        let marks = spell_marks(v, &para.text, slice.para, cx);
         if slice.lines.start == 0
             && let Some(marker) = &para.marker
         {
@@ -215,33 +218,57 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     ));
                     continue;
                 }
-                let paint = |piece: &str, x: f32, window: &mut Window, cx: &mut App| {
-                    if !piece.trim().is_empty() || f.style.underline {
-                        let shaped = m.shape_zoomed(piece, &f.style, color, z);
-                        let _ = shaped.paint(
-                            at(x, y),
-                            px((ascent + descent) * z),
-                            TextAlign::Left,
-                            None,
-                            window,
-                            cx,
-                        );
-                    }
-                };
+                // `start`: where the piece begins in the paragraph's text (for the spell marks).
+                let paint =
+                    |piece: &str, start: usize, x: f32, window: &mut Window, cx: &mut App| {
+                        if !piece.trim().is_empty() || f.style.underline {
+                            let end = start + piece.len();
+                            let local: Vec<std::ops::Range<usize>> =
+                                if f.style.mono || f.style.caps || f.style.link.is_some() {
+                                    Vec::new()
+                                } else {
+                                    marks
+                                        .iter()
+                                        .filter(|r| r.end > start && r.start < end)
+                                        .map(|r| r.start.max(start) - start..r.end.min(end) - start)
+                                        .collect()
+                                };
+                            let shaped = if local.is_empty() {
+                                m.shape_zoomed(piece, &f.style, color, z)
+                            } else {
+                                m.shape_marked(
+                                    piece,
+                                    &f.style,
+                                    color,
+                                    z,
+                                    &local,
+                                    v.misspell_color.into(),
+                                )
+                            };
+                            let _ = shaped.paint(
+                                at(x, y),
+                                px((ascent + descent) * z),
+                                TextAlign::Left,
+                                None,
+                                window,
+                                cx,
+                            );
+                        }
+                    };
                 if text == "\t" {
                     // A tab (contents entry): dot leader up to the page number.
                     if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, &m) {
-                        paint(&dots, x + offset, window, cx);
+                        paint(&dots, usize::MAX / 2, x + offset, window, cx);
                     }
                     continue;
                 }
                 if line.space_extra == 0.0 {
-                    paint(text, x, window, cx);
+                    paint(text, f.range.start, x, window, cx);
                 } else {
                     // Justified: words are placed one by one so the extra space goes between them.
                     let mut offset = f.range.start;
                     for piece in text.split_inclusive(' ') {
-                        paint(piece.trim_end_matches(' '), x, window, cx);
+                        paint(piece.trim_end_matches(' '), offset, x, window, cx);
                         x += m.width(piece, &f.style);
                         offset += piece.len();
                         if piece.ends_with(' ') && offset <= line.visible_end {
@@ -275,6 +302,30 @@ fn paint_caret(
         ));
         window.request_animation_frame();
     }
+}
+
+/// Byte ranges of the misspelled words of a paragraph (none when spell checking is off). The word
+/// the caret is in is left alone while it is typed (not while a range is selected).
+fn spell_marks(
+    v: &PageView,
+    text: &str,
+    para: usize,
+    cx: &App,
+) -> std::sync::Arc<Vec<std::ops::Range<usize>>> {
+    let Some(speller) = crate::spell::active(cx) else {
+        return Default::default();
+    };
+    let all = speller.misspelled(text);
+    if v.focused && v.head.para == para && v.selection.0 == v.selection.1 {
+        let at = v.head.offset;
+        let kept = all
+            .iter()
+            .filter(|r| !(r.start <= at && at <= r.end))
+            .cloned()
+            .collect();
+        return std::sync::Arc::new(kept);
+    }
+    all
 }
 
 /// A spoiler shows its text while the caret or the selection touches it.
