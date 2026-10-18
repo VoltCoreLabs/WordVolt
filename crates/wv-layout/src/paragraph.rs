@@ -4,6 +4,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use wv_core::{Align, Paragraph};
 
 use crate::Measurer;
+use crate::line::Line;
 use build::build;
 
 const EPS: f32 = 0.01;
