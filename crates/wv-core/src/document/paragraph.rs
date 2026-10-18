@@ -60,10 +60,12 @@ impl Paragraph {
         if style.comment != next {
             style.comment = None;
         }
-        let next = self.style_at_raw(offset).and_then(|s| s.bookmark);
-        if style.bookmark != next {
-            style.bookmark = None;
-        }
+        // Only the bookmarks that go on after the caret take the typed text in.
+        let next = self
+            .style_at_raw(offset)
+            .map(|s| s.bookmarks)
+            .unwrap_or_default();
+        style.bookmarks.retain(|id| next.contains(id));
         style
     }
 

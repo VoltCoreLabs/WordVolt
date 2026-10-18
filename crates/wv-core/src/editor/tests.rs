@@ -1402,8 +1402,8 @@ fn bookmarks_mark_text_and_cross_references_link_to_them() {
     assert!(
         e.doc.paragraphs[1]
             .style_at(e.sel.head.offset)
-            .bookmark
-            .is_none()
+            .bookmarks
+            .is_empty()
     );
     // Adding it again moves it; a caret marks the character after it.
     e.sel = Selection::caret(Position::new(0, 0));
@@ -1427,4 +1427,27 @@ fn bookmarks_mark_text_and_cross_references_link_to_them() {
         e.doc.visible_bookmarks().is_empty(),
         "hidden ones are not listed"
     );
+}
+
+#[test]
+fn a_character_can_have_several_bookmarks() {
+    let mut e = Editor::new(Document::from_text("Введение\nТекст"));
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, "Введение".len()),
+    };
+    e.add_bookmark("первая").unwrap();
+    e.add_bookmark("вторая").unwrap();
+    assert_eq!(e.doc.visible_bookmarks().len(), 2);
+    assert_eq!(e.bookmark_position("первая"), Some(Position::new(0, 0)));
+    assert_eq!(e.bookmark_position("вторая"), Some(Position::new(0, 0)));
+    // A reference to the heading gets a hidden bookmark of its own; the others stay.
+    e.sel = Selection::caret(Position::new(1, "Текст".len()));
+    e.insert_heading_reference(0);
+    assert_eq!(e.doc.visible_bookmarks().len(), 2);
+    let link = e.doc.paragraphs[1].runs.last().unwrap().style.link.clone();
+    assert!(link.unwrap().starts_with("#_Ref"));
+    e.delete_bookmark(e.doc.visible_bookmarks()[0].id);
+    assert_eq!(e.doc.visible_bookmarks().len(), 1);
+    assert!(e.bookmark_position("вторая").is_some());
 }

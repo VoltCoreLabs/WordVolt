@@ -41,7 +41,12 @@ impl Editor {
             anchor: range.0,
             head: range.1,
         };
-        self.apply_char_style(|s| s.bookmark = Some(id));
+        self.apply_char_style(|s| {
+            if !s.bookmarks.contains(&id) {
+                s.bookmarks.push(id);
+                s.bookmarks.sort_unstable();
+            }
+        });
         self.sel = before;
     }
 
@@ -57,7 +62,7 @@ impl Editor {
                 self.doc
                     .paragraphs
                     .iter()
-                    .any(|p| p.runs.iter().any(|r| r.style.bookmark == Some(*id)))
+                    .any(|p| p.runs.iter().any(|r| r.style.bookmarks.contains(id)))
             })
     }
 
@@ -69,7 +74,7 @@ impl Editor {
             .paragraphs
             .iter()
             .flat_map(|p| p.runs.iter())
-            .filter(|r| r.style.bookmark == Some(id))
+            .filter(|r| r.style.bookmarks.contains(&id))
             .map(|r| r.text.as_str())
             .collect();
         Some(text)
@@ -81,7 +86,7 @@ impl Editor {
         for (i, p) in self.doc.paragraphs.iter().enumerate() {
             let mut offset = 0;
             for run in &p.runs {
-                if run.style.bookmark == Some(id) {
+                if run.style.bookmarks.contains(&id) {
                     return Some(Position::new(i, offset));
                 }
                 offset += run.text.len();
@@ -97,7 +102,7 @@ impl Editor {
             .paragraphs
             .iter()
             .enumerate()
-            .filter(|(_, p)| p.runs.iter().any(|r| r.style.bookmark == Some(id)))
+            .filter(|(_, p)| p.runs.iter().any(|r| r.style.bookmarks.contains(&id)))
             .map(|(i, _)| i)
             .collect();
         let (Some(&first), Some(&last)) = (hit.first(), hit.last()) else {
@@ -106,9 +111,7 @@ impl Editor {
         let mut paras = self.doc.paragraphs[first..=last].to_vec();
         for p in &mut paras {
             for run in &mut p.runs {
-                if run.style.bookmark == Some(id) {
-                    run.style.bookmark = None;
-                }
+                run.style.bookmarks.retain(|b| *b != id);
             }
             p.normalize();
         }
@@ -123,12 +126,13 @@ impl Editor {
         if p.is_empty() {
             return None;
         }
-        // A character has one bookmark: a heading that has one already is referred to by it.
+        // A heading that has a hidden bookmark already is referred to by it.
         let existing = p
             .runs
             .iter()
-            .find_map(|r| r.style.bookmark)
-            .and_then(|id| self.doc.bookmarks.iter().find(|b| b.id == id));
+            .flat_map(|r| r.style.bookmarks.iter())
+            .filter_map(|id| self.doc.bookmarks.iter().find(|b| b.id == *id))
+            .find(|b| b.name.starts_with('_'));
         if let Some(b) = existing {
             return Some(b.name.clone());
         }

@@ -803,5 +803,5 @@ fn bookmarks_and_internal_links_round_trip_through_docx() {
     assert_eq!(back.bookmarks[0].name, "my_mark");
     let link = back.paragraphs[1].runs.last().unwrap().style.link.clone();
     assert_eq!(link.as_deref(), Some("#my_mark"));
-    assert!(back.paragraphs[0].runs[0].style.bookmark.is_some());
+    assert!(!back.paragraphs[0].runs[0].style.bookmarks.is_empty());
 }
