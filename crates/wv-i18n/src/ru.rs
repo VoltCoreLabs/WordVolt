@@ -168,6 +168,7 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipPageNumbering => {
             "Нумерация страниц раздела под курсором: продолжить или начать с 1, вид номера"
         }
+        Key::TipUpdateFields => "Обновить поля: номера страниц в ссылках «№» по текущей вёрстке",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

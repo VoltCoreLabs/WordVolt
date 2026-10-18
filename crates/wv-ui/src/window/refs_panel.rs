@@ -14,6 +14,9 @@ pub enum RefEvent {
     Bookmark(String),
     /// A cross-reference to the heading paragraph.
     Heading(usize),
+    /// The page number of the bookmark / of the heading paragraph, as a field.
+    PageBookmark(String),
+    PageHeading(usize),
 }
 
 /// What the popover lists: the bookmarks (id, name) and the headings (paragraph, level, text).
@@ -115,6 +118,28 @@ impl RefsPanel {
     }
 }
 
+/// The small "№" button after a row: types the page number of its target instead of its text.
+fn page_button(
+    id: (&'static str, usize),
+    hover: Rgba,
+    on_down: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .w(px(24.))
+        .h(px(24.))
+        .flex()
+        .flex_none()
+        .items_center()
+        .justify_center()
+        .rounded(radius::sm())
+        .text_sm()
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover))
+        .child("№")
+        .on_mouse_down(MouseButton::Left, on_down)
+}
+
 impl Render for RefsPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.global::<Theme>();
@@ -161,6 +186,7 @@ impl Render for RefsPanel {
                 .into_iter()
                 .map(|(id, name)| {
                     let target = name.clone();
+                    let page_target = name.clone();
                     let delete = div()
                         .id(("refs-del", id as usize))
                         .w(px(24.))
@@ -194,6 +220,14 @@ impl Render for RefsPanel {
                                     }),
                                 ),
                         )
+                        .child(page_button(
+                            ("refs-page-bm", id as usize),
+                            hover,
+                            cx.listener(move |this, _, _, cx| {
+                                this.choose(RefEvent::PageBookmark(page_target.clone()), cx);
+                                cx.stop_propagation();
+                            }),
+                        ))
                         .child(delete)
                 })
                 .collect();
@@ -203,13 +237,27 @@ impl Render for RefsPanel {
                 .clone()
                 .into_iter()
                 .map(|(para, level, text)| {
-                    self.row(("refs-h", para), text, level.saturating_sub(1), cx)
-                        .on_mouse_down(
-                            MouseButton::Left,
-                            cx.listener(move |this, _, _, cx| {
-                                this.choose(RefEvent::Heading(para), cx)
-                            }),
+                    div()
+                        .flex()
+                        .items_center()
+                        .child(
+                            self.row(("refs-h", para), text, level.saturating_sub(1), cx)
+                                .flex_1()
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.choose(RefEvent::Heading(para), cx)
+                                    }),
+                                ),
                         )
+                        .child(page_button(
+                            ("refs-page-h", para),
+                            hover,
+                            cx.listener(move |this, _, _, cx| {
+                                this.choose(RefEvent::PageHeading(para), cx);
+                                cx.stop_propagation();
+                            }),
+                        ))
                 })
                 .collect();
             let caption = |key: Key| div().text_xs().text_color(muted).child(tr(lang, key));

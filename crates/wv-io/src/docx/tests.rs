@@ -832,3 +832,44 @@ fn page_numbering_is_written_in_pgnumtype_and_read_back() {
     assert_eq!(spec.number_format, wv_core::NumberFormat::LowerRoman);
     assert_eq!(back.page.page_start, None);
 }
+
+#[test]
+fn page_number_fields_are_pageref_fields_in_docx() {
+    let mut e = Editor::new(Document::from_text("Target\nSee page "));
+    e.sel = wv_core::Selection {
+        anchor: wv_core::Position::new(0, 0),
+        head: wv_core::Position::new(0, 6),
+    };
+    e.add_bookmark("target");
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(1, "See page ".len()));
+    e.insert_page_reference("target", "4");
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut body = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/document.xml").unwrap(), &mut body).unwrap();
+    assert!(body.contains(r#"w:instr=" PAGEREF target \h ""#));
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs[1].text(), "See page 4");
+    let id = back.bookmarks[0].id;
+    assert_eq!(
+        back.paragraphs[1].runs.last().unwrap().style.page_ref,
+        Some(id)
+    );
+}
+
+#[test]
+fn reads_word_ref_and_pageref_complex_fields() {
+    let body = r#"<?xml version="1.0"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:t xml:space="preserve">See </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> REF _Ref1 \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Intro</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:t xml:space="preserve"> on page </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> PAGEREF _Ref1 \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>9</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
+<w:p><w:bookmarkStart w:id="0" w:name="_Ref1"/><w:r><w:t>Intro</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>
+<w:sectPr/></w:body></w:document>"#;
+    let doc = decode(&docx_with(body)).unwrap();
+    assert_eq!(doc.paragraphs[0].text(), "See Intro on page 9");
+    let runs = &doc.paragraphs[0].runs;
+    // "Intro" is a link to the bookmark, "9" a page-number field of it.
+    let intro = runs.iter().find(|r| r.text == "Intro").unwrap();
+    assert_eq!(intro.style.link.as_deref(), Some("#_Ref1"));
+    let nine = runs.iter().find(|r| r.text == "9").unwrap();
+    assert_eq!(nine.style.page_ref, Some(doc.bookmarks[0].id));
+}

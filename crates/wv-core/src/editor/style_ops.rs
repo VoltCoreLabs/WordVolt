@@ -30,10 +30,11 @@ impl Editor {
     /// the format painter.
     pub fn paint_char_style(&mut self, style: &CharStyle) {
         self.apply_char_style(|s| {
-            let (link, note, comment) = (s.link.take(), s.note, s.comment);
+            let (link, note, comment, page_ref) = (s.link.take(), s.note, s.comment, s.page_ref);
             let bookmarks = std::mem::take(&mut s.bookmarks);
             *s = style.clone();
-            (s.link, s.note, s.comment, s.bookmarks) = (link, note, comment, bookmarks);
+            (s.link, s.note, s.comment, s.bookmarks, s.page_ref) =
+                (link, note, comment, bookmarks, page_ref);
         });
     }
 
@@ -92,6 +93,7 @@ impl Editor {
             comment: None,
             change: None,
             bookmarks: Vec::new(),
+            page_ref: None,
         }
     }
 
@@ -185,10 +187,10 @@ impl Editor {
     /// Removes all character formatting from the selection (or the next typed text).
     pub fn clear_formatting(&mut self) {
         self.apply_char_style(|s| {
-            let (note, comment) = (s.note, s.comment);
+            let (note, comment, page_ref) = (s.note, s.comment, s.page_ref);
             let bookmarks = std::mem::take(&mut s.bookmarks);
             *s = CharStyle::default();
-            (s.note, s.comment, s.bookmarks) = (note, comment, bookmarks);
+            (s.note, s.comment, s.bookmarks, s.page_ref) = (note, comment, bookmarks, page_ref);
         });
     }
 

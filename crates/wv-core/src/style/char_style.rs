@@ -47,4 +47,6 @@ pub struct CharStyle {
     pub change: Option<Change>,
     /// The text is the anchor of these bookmarks (see `Document::bookmarks`), sorted.
     pub bookmarks: Vec<u32>,
+    /// The text is the page number of bookmark `id` (a field: `Editor::update_fields`).
+    pub page_ref: Option<u32>,
 }

@@ -108,6 +108,12 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
                 .into_any_element(),
             this.comment_editor.clone().into_any_element(),
             this.refs_panel.clone().into_any_element(),
+            button("ins-update-fields", "⟳", ButtonKind::Default, cx)
+                .tip(t(this.lang, Key::TipUpdateFields))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.editor.update(cx, |view, cx| view.update_fields(cx));
+                }))
+                .into_any_element(),
         ],
         cx,
     );

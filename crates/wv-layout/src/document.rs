@@ -138,6 +138,11 @@ impl DocLayout {
         }
     }
 
+    /// The page (0-based) paragraph `para` starts on.
+    pub fn page_of_paragraph(&self, para: usize) -> Option<usize> {
+        self.locations.get(para)?.first().map(|(page, _)| *page)
+    }
+
     /// Page index, slice and top of line `line` of paragraph `para` (page coordinates).
     fn locate(&self, para: usize, line: usize) -> Option<(usize, &Slice, f32)> {
         let layout = self.paragraphs.get(para)?;
@@ -147,7 +152,7 @@ impl DocLayout {
             .find_map(|&(page, slice_ix)| {
                 let s = &self.pages[page].slices[slice_ix];
                 s.lines.contains(&line).then(|| {
-                    let top = self.setup.margin_top + s.y + layout.lines[line].y
+                    let top = self.pages[page].setup.margin_top + s.y + layout.lines[line].y
                         - layout.lines[s.lines.start].y;
                     (page, s, top)
                 })
@@ -161,7 +166,7 @@ impl DocLayout {
         let (page, slice, y) = self.locate(pos.para, line_ix)?;
         Some(CaretRect {
             page,
-            x: self.setup.margin_left + slice.x + line.x_at(&para.text, pos.offset, m),
+            x: self.pages[page].setup.margin_left + slice.x + line.x_at(&para.text, pos.offset, m),
             y,
             height: line.height,
         })
@@ -170,7 +175,7 @@ impl DocLayout {
     /// Document position nearest to a point on `page` (page coordinates).
     pub fn position_at(&self, page: usize, x: f32, y: f32, m: &dyn Measurer) -> Position {
         let page = &self.pages[page.min(self.pages.len() - 1)];
-        let (x, y) = (x - self.setup.margin_left, y - self.setup.margin_top);
+        let (x, y) = (x - page.setup.margin_left, y - page.setup.margin_top);
         // The text box under the point, or the nearest one (cells sit side by side at the same height).
         let distance = |from: f32, size: f32, at: f32| {
             if at < from {
@@ -263,8 +268,8 @@ impl DocLayout {
                 if a >= b && !break_selected {
                     continue;
                 }
-                let y = self.setup.margin_top + slice.y + line.y - first_y;
-                let x1 = self.setup.margin_left + slice.x + line.x_at(&para.text, a, m);
+                let y = p.setup.margin_top + slice.y + line.y - first_y;
+                let x1 = p.setup.margin_left + slice.x + line.x_at(&para.text, a, m);
                 let width = if a < b {
                     line.x_at(&para.text, b, m) - line.x_at(&para.text, a, m)
                 } else {

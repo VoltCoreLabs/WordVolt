@@ -141,7 +141,7 @@ impl Paragraph {
     }
 
     /// Merges neighbouring runs with equal style and drops empty ones.
-    pub(crate) fn normalize(&mut self) {
+    pub fn normalize(&mut self) {
         self.runs.retain(|r| !r.text.is_empty());
         let mut out: Vec<Run> = Vec::with_capacity(self.runs.len());
         for run in self.runs.drain(..) {
@@ -271,6 +271,7 @@ fn typed(style: &CharStyle) -> CharStyle {
     CharStyle {
         note: None,
         change: None,
+        page_ref: None,
         ..style.clone()
     }
 }

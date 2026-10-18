@@ -291,7 +291,22 @@ pub fn write_paragraph(
             }
             open_link = link;
         }
-        write_run(xml, run, &lists.revisions);
+        match run
+            .style
+            .page_ref
+            .and_then(|id| lists.bookmarks.iter().find(|b| b.id == id))
+        {
+            // A page number is a field: Word can update it.
+            Some(target) => {
+                xml.push_str(&format!(
+                    "<w:fldSimple w:instr=\" PAGEREF {} \\h \">",
+                    escape_attr(&bookmark_name(&target.name))
+                ));
+                write_run(xml, run, &lists.revisions);
+                xml.push_str("</w:fldSimple>");
+            }
+            None => write_run(xml, run, &lists.revisions),
+        }
     }
     if open_link.is_some() {
         xml.push_str("</w:hyperlink>");

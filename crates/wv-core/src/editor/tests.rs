@@ -1464,3 +1464,38 @@ fn a_character_can_have_several_bookmarks() {
     assert_eq!(e.doc.visible_bookmarks().len(), 1);
     assert!(e.bookmark_position("вторая").is_some());
 }
+
+#[test]
+fn page_number_fields_follow_their_bookmark() {
+    let mut e = Editor::new(Document::from_text("Цель\nСм. стр. "));
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, "Цель".len()),
+    };
+    e.add_bookmark("цель").unwrap();
+    e.sel = Selection::caret(Position::new(1, "См. стр. ".len()));
+    e.insert_page_reference("цель", "1");
+    assert_eq!(e.doc.paragraphs[1].text(), "См. стр. 1");
+    let run = e.doc.paragraphs[1].runs.last().unwrap();
+    assert_eq!(run.style.link.as_deref(), Some("#цель"));
+    assert!(run.style.page_ref.is_some());
+    // The bookmark moved to page 12: updating changes the number, once, in one undo step.
+    let page = |p: Position| (p.para == 0).then(|| "12".to_string());
+    assert_eq!(e.update_fields(&page), 1);
+    assert_eq!(e.doc.paragraphs[1].text(), "См. стр. 12");
+    assert_eq!(e.update_fields(&page), 0);
+    e.undo();
+    assert_eq!(e.doc.paragraphs[1].text(), "См. стр. 1");
+    // Text typed after the field is not part of it.
+    e.sel = Selection::caret(Position::new(1, e.doc.paragraphs[1].len()));
+    e.insert_text("!");
+    assert!(
+        e.doc.paragraphs[1]
+            .runs
+            .last()
+            .unwrap()
+            .style
+            .page_ref
+            .is_none()
+    );
+}

@@ -766,3 +766,25 @@ fn page_numbers_restart_and_change_format_per_section() {
     let numbers: Vec<&str> = l.pages.iter().map(|p| p.number.as_str()).collect();
     assert_eq!(numbers, ["1", "2", "v", "vi"]);
 }
+
+#[test]
+fn caret_and_hit_testing_use_the_margins_of_the_page_they_are_on() {
+    let mut doc = Document::from_text("a\nb");
+    let mut spec = wv_core::PageSpec::default();
+    (spec.width, spec.height) = (100.0, 100.0);
+    (spec.margin_top, spec.margin_bottom) = (10.0, 10.0);
+    (spec.margin_left, spec.margin_right) = (30.0, 10.0);
+    doc.sections.insert(1, spec);
+    doc.paragraphs[0].style.section = Some(1);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let first = l.caret(Position::new(0, 0), &Fixed).unwrap();
+    let second = l.caret(Position::new(1, 0), &Fixed).unwrap();
+    assert_eq!(
+        (first.page, first.x),
+        (0, 30.0),
+        "the section's own left margin"
+    );
+    assert_eq!((second.page, second.x), (1, 10.0));
+    assert_eq!(l.position_at(0, 31.0, 12.0, &Fixed), Position::new(0, 0));
+    assert_eq!(l.page_of_paragraph(1), Some(1));
+}

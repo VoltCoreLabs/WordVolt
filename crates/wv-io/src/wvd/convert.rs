@@ -36,6 +36,9 @@ pub(super) struct RunDto {
     /// Files of an earlier version had one bookmark per character.
     #[serde(default, skip_serializing)]
     bookmark: Option<u32>,
+    /// The text is the page number of this bookmark.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    page_ref: Option<u32>,
     /// Tracked change: its id, and whether the text was deleted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     change: Option<u32>,
@@ -139,6 +142,7 @@ pub(super) fn run_dto(r: &Run) -> RunDto {
         comment: r.style.comment,
         bookmarks: r.style.bookmarks.clone(),
         bookmark: None,
+        page_ref: r.style.page_ref,
         change: r.style.change.map(|c| c.id),
         deleted: r.style.change.is_some_and(|c| c.deleted),
         size_pt: r.style.size_pt,
@@ -161,6 +165,7 @@ pub(super) fn run_of(r: RunDto) -> Run {
         link: r.link,
         note: r.note,
         comment: r.comment,
+        page_ref: r.page_ref,
         bookmarks: {
             let mut ids = r.bookmarks;
             ids.extend(r.bookmark);

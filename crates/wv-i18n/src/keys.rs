@@ -113,6 +113,7 @@ pub enum Key {
     GroupNotes,
     TipFootnote,
     TipComment,
+    TipUpdateFields,
     PageNumContinue,
     PageNumRestart,
     TipPageNumbering,
