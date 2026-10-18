@@ -255,6 +255,17 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     }
                 }
             }
+            if v.show_marks {
+                let left = setup.margin_left + slice.x + line.x;
+                super::format_marks::paint_line_marks(
+                    v,
+                    &m,
+                    (line, &para.text),
+                    (left, top),
+                    &at,
+                    (window, cx),
+                );
+            }
         }
     }
 

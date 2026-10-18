@@ -86,6 +86,7 @@ impl Render for EditorView {
                 images: images.clone(),
                 band_color: theme.text_muted,
                 zoom: self.zoom,
+                show_marks: self.show_marks,
             };
             let bounds_store = self.page_bounds.clone();
             div()

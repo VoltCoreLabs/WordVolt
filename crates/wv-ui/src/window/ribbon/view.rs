@@ -47,7 +47,30 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
-    vec![group.into_any_element()]
+    let marks_on = this.editor.read(cx).show_marks;
+    let show = block_group(
+        t(this.lang, Key::GroupShow),
+        vec![
+            button(
+                "show-marks",
+                "¶",
+                if marks_on {
+                    ButtonKind::Primary
+                } else {
+                    ButtonKind::Default
+                },
+                cx,
+            )
+            .tip(t(this.lang, Key::TipShowMarks))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.editor.update(cx, |view, cx| view.toggle_marks(cx));
+                cx.notify();
+            }))
+            .into_any_element(),
+        ],
+        cx,
+    );
+    vec![group.into_any_element(), show.into_any_element()]
 }
 
 pub(crate) fn zoom_to(

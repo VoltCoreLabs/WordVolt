@@ -3,6 +3,7 @@
 mod band_paint;
 mod caret;
 mod clip;
+mod format_marks;
 mod image_crop;
 mod image_drag;
 mod image_handles;

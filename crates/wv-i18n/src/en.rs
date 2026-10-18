@@ -131,6 +131,8 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::AboutFormatsValue => ".wvd, .docx, .md, .txt, PDF",
         Key::AboutRepo => "Source code",
         Key::AboutClose => "Close",
+        Key::GroupShow => "Show",
+        Key::TipShowMarks => "Formatting marks: ¶ paragraph end, · space, → tab",
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

@@ -131,6 +131,8 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::AboutFormatsValue => ".wvd, .docx, .md, .txt, PDF",
         Key::AboutRepo => "Исходный код",
         Key::AboutClose => "Закрыть",
+        Key::GroupShow => "Показать",
+        Key::TipShowMarks => "Непечатаемые символы: ¶ конец абзаца, · пробел, → табуляция",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {
