@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use wv_core::{Band, BandVariants, CharStyle};
 
-use super::schema::{RunDto, band_align_from, band_align_name, run_dto, run_of};
+use super::convert::{RunDto, band_align_from, band_align_name, run_dto, run_of};
 
 /// The runs of a band when it has any formatting; empty for plain text (the text field is enough).
 pub fn styled_runs(band: &Band) -> Vec<RunDto> {

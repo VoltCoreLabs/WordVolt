@@ -11,6 +11,7 @@ mod measure;
 mod mouse;
 mod nav;
 mod page_paint;
+mod paint_parts;
 mod resize;
 mod scroll;
 mod table_paint;

@@ -1,5 +1,7 @@
 //! Native format: JSON with a version header.
 
+mod convert;
+mod dto;
 mod schema;
 mod variants;
 
@@ -8,13 +10,13 @@ use wv_core::Document;
 use crate::IoError;
 
 pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
-    let file: schema::File =
+    let file: dto::File =
         serde_json::from_slice(bytes).map_err(|e| IoError::Parse(e.to_string()))?;
     file.into_document()
 }
 
 pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
-    serde_json::to_vec_pretty(&schema::File::from_document(doc))
+    serde_json::to_vec_pretty(&dto::File::from_document(doc))
         .map_err(|e| IoError::Parse(e.to_string()))
 }
 

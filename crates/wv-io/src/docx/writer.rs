@@ -1,4 +1,6 @@
-use wv_core::{Align, CharStyle, Document, ListKind, NamedStyle, Paragraph, Run, Script};
+use wv_core::{Align, Document, ListKind, NamedStyle, Paragraph};
+
+use super::run_xml::write_run;
 
 const NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const REL_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -223,87 +225,8 @@ pub fn write_paragraph(
     xml.push_str("</w:p>");
 }
 
-fn write_run(xml: &mut String, run: &Run) {
-    xml.push_str("<w:r>");
-    write_properties(xml, &run.style);
-    for (i, piece) in run.text.split('\t').enumerate() {
-        if i > 0 {
-            xml.push_str("<w:tab/>");
-        }
-        if !piece.is_empty() {
-            xml.push_str(&format!(
-                "<w:t xml:space=\"preserve\">{}</w:t>",
-                escape(piece)
-            ));
-        }
-    }
-    xml.push_str("</w:r>");
-}
-
-/// Child order follows the schema: rStyle, rFonts, b, i, caps, strike, color, sz, u, shd, vertAlign.
-fn write_properties(xml: &mut String, s: &CharStyle) {
-    let font = s.font.as_deref().or(s.mono.then_some("Consolas"));
-    if !(s.bold
-        || s.italic
-        || s.caps
-        || s.strike
-        || s.underline
-        || s.color.is_some()
-        || s.size_pt.is_some()
-        || s.highlight.is_some()
-        || s.script != Script::Normal
-        || s.link.is_some()
-        || font.is_some())
-    {
-        return;
-    }
-    xml.push_str("<w:rPr>");
-    if s.link.is_some() {
-        xml.push_str("<w:rStyle w:val=\"Hyperlink\"/>");
-    }
-    if let Some(font) = font {
-        let name = escape_attr(font);
-        xml.push_str(&format!(
-            "<w:rFonts w:ascii=\"{name}\" w:hAnsi=\"{name}\" w:cs=\"{name}\"/>"
-        ));
-    }
-    if s.bold {
-        xml.push_str("<w:b/>");
-    }
-    if s.italic {
-        xml.push_str("<w:i/>");
-    }
-    if s.caps {
-        xml.push_str("<w:caps/>");
-    }
-    if s.strike {
-        xml.push_str("<w:strike/>");
-    }
-    if let Some(color) = s.color {
-        xml.push_str(&format!("<w:color w:val=\"{:06X}\"/>", color & 0xFF_FFFF));
-    }
-    if let Some(size) = s.size_pt {
-        xml.push_str(&format!("<w:sz w:val=\"{}\"/>", u32::from(size) * 2));
-    }
-    if s.underline {
-        xml.push_str("<w:u w:val=\"single\"/>");
-    }
-    if let Some(fill) = s.highlight {
-        xml.push_str(&format!(
-            "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"{:06X}\"/>",
-            fill & 0xFF_FFFF
-        ));
-    }
-    match s.script {
-        Script::Normal => {}
-        Script::Super => xml.push_str("<w:vertAlign w:val=\"superscript\"/>"),
-        Script::Sub => xml.push_str("<w:vertAlign w:val=\"subscript\"/>"),
-    }
-    xml.push_str("</w:rPr>");
-}
-
 /// XML-escapes text and drops characters XML 1.0 forbids.
-fn escape(text: &str) -> String {
+pub(super) fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for ch in text.chars() {
         match ch {
@@ -317,7 +240,7 @@ fn escape(text: &str) -> String {
     out
 }
 
-fn escape_attr(text: &str) -> String {
+pub(super) fn escape_attr(text: &str) -> String {
     escape(text).replace('"', "&quot;")
 }
 

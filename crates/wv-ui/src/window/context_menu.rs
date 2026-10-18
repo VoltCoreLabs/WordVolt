@@ -1,14 +1,16 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use wv_core::{Align, ListKind};
 use wv_i18n::{Key, t};
 
+use super::context_objects::{image_items, table_items};
+use super::context_parts::popup;
+use super::context_sections::{format_tools, paragraph_tools, spelling_rows};
 use super::menu_bar::MOD;
 use super::state::MainWindow;
 use crate::theme::{Theme, radius};
-use crate::ui_kit::{Icon, Tip, icon_button, pop_in};
+use crate::ui_kit::{Icon, Tip, icon_button};
 
-const WIDTH: f32 = 252.0;
+pub(super) const WIDTH: f32 = 252.0;
 
 pub(super) type Action = fn(&mut MainWindow, &mut Window, &mut Context<MainWindow>);
 
@@ -68,7 +70,7 @@ pub(super) fn separator(cx: &App) -> Div {
 }
 
 /// One toggle of the mini toolbar at the top of the menu.
-fn tool(
+pub(super) fn tool(
     id: &'static str,
     glyph: Icon,
     on: bool,
@@ -114,193 +116,10 @@ pub fn context_menu(
         )
     };
 
-    // A misspelled word under the caret: corrections first.
-    let spelling = crate::spell::active(cx).and_then(|speller| {
-        let core = &this.editor.read(cx).core;
-        let caret = core.sel.head;
-        let text = core.doc.paragraphs[caret.para].text();
-        let range = speller
-            .misspelled(&text)
-            .iter()
-            .find(|r| r.start <= caret.offset && caret.offset <= r.end)
-            .cloned()?;
-        let word = text[range.clone()].to_string();
-        Some((caret.para, range, speller.suggest(&word, 5), word))
-    });
-    let mut spell_rows: Vec<AnyElement> = Vec::new();
-    if let Some((para, range, suggestions, word)) = spelling {
-        let (accent, border) = {
-            let th = cx.global::<Theme>();
-            (th.accent, th.border)
-        };
-        for (i, suggestion) in suggestions.into_iter().enumerate() {
-            let (start, end) = (range.start, range.end);
-            let replacement = suggestion.clone();
-            spell_rows.push(
-                choice_row(
-                    ("ctx-fix", i),
-                    suggestion,
-                    Some(accent),
-                    cx,
-                    move |this, _, cx| {
-                        let replacement = replacement.clone();
-                        this.edit(cx, move |c| {
-                            c.replace_match(
-                                wv_core::Position::new(para, start),
-                                wv_core::Position::new(para, end),
-                                &replacement,
-                            )
-                        });
-                    },
-                )
-                .into_any_element(),
-            );
-        }
-        for (i, (label, keep)) in [
-            (t(lang, Key::CtxAddWord), true),
-            (t(lang, Key::CtxSkipWord), false),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let word = word.clone();
-            spell_rows.push(
-                choice_row(
-                    ("ctx-dict", i),
-                    label.to_string(),
-                    None,
-                    cx,
-                    move |this, _, cx| this.add_to_dictionary(&word, keep, cx),
-                )
-                .into_any_element(),
-            );
-        }
-        spell_rows.push(div().h(px(1.)).my(px(4.)).bg(border).into_any_element());
-    }
+    let spell_rows = spelling_rows(this, lang, cx);
 
-    let formats = div()
-        .flex()
-        .gap(px(4.))
-        .child(tool(
-            "ctx-bold",
-            Icon::TextB,
-            style.bold,
-            Key::TipBold,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_bold()),
-            cx,
-        ))
-        .child(tool(
-            "ctx-italic",
-            Icon::TextItalic,
-            style.italic,
-            Key::TipItalic,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_italic()),
-            cx,
-        ))
-        .child(tool(
-            "ctx-underline",
-            Icon::TextUnderline,
-            style.underline,
-            Key::TipUnderline,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_underline()),
-            cx,
-        ))
-        .child(tool(
-            "ctx-strike",
-            Icon::Strikethrough,
-            style.strike,
-            Key::TipStrike,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_strike()),
-            cx,
-        ))
-        .child(tool(
-            "ctx-code",
-            Icon::Code,
-            style.mono,
-            Key::TipCode,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_mono()),
-            cx,
-        ))
-        .child(tool(
-            "ctx-spoiler",
-            Icon::EyeSlash,
-            style.spoiler,
-            Key::TipSpoiler,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_spoiler()),
-            cx,
-        ));
-    let paragraph = div()
-        .flex()
-        .gap(px(4.))
-        .child(tool(
-            "ctx-left",
-            Icon::AlignLeft,
-            align == Align::Left,
-            Key::TipAlignLeft,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.set_align(Align::Left)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-center",
-            Icon::AlignCenter,
-            align == Align::Center,
-            Key::TipAlignCenter,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.set_align(Align::Center)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-right",
-            Icon::AlignRight,
-            align == Align::Right,
-            Key::TipAlignRight,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.set_align(Align::Right)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-justify",
-            Icon::AlignJustify,
-            align == Align::Justify,
-            Key::TipAlignJustify,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.set_align(Align::Justify)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-bullets",
-            Icon::ListBullets,
-            list == Some(ListKind::Bullet),
-            Key::TipBullets,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_list(ListKind::Bullet)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-numbers",
-            Icon::ListNumbers,
-            list == Some(ListKind::Number),
-            Key::TipNumbers,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_list(ListKind::Number)),
-            cx,
-        ))
-        .child(tool(
-            "ctx-quote",
-            Icon::Quotes,
-            quote,
-            Key::TipQuote,
-            lang,
-            |t, _, cx| t.edit(cx, |c| c.toggle_quote()),
-            cx,
-        ));
+    let formats = format_tools(&style, lang, cx);
+    let paragraph = paragraph_tools(align, list, quote, lang, cx);
 
     let cut: Action = |t, _, cx| {
         t.editor.update(cx, |view, cx| view.cut_selection(cx));
@@ -384,79 +203,10 @@ pub fn context_menu(
         .into_any_element(),
     );
     if in_table {
-        items.push(separator(cx).into_any_element());
-        let table: [(&'static str, Key, Action); 7] = [
-            ("ctx-row-up", Key::TblRowAbove, |t, _, cx| {
-                t.edit(cx, |c| c.insert_row(false))
-            }),
-            ("ctx-row-down", Key::TblRowBelow, |t, _, cx| {
-                t.edit(cx, |c| c.insert_row(true))
-            }),
-            ("ctx-col-left", Key::TblColLeft, |t, _, cx| {
-                t.edit(cx, |c| c.insert_col(false))
-            }),
-            ("ctx-col-right", Key::TblColRight, |t, _, cx| {
-                t.edit(cx, |c| c.insert_col(true))
-            }),
-            ("ctx-del-row", Key::TblDelRow, |t, _, cx| {
-                t.edit(cx, |c| c.delete_row())
-            }),
-            ("ctx-del-col", Key::TblDelCol, |t, _, cx| {
-                t.edit(cx, |c| c.delete_col())
-            }),
-            ("ctx-del-table", Key::TblDelTable, |t, _, cx| {
-                t.edit(cx, |c| c.delete_table())
-            }),
-        ];
-        for (id, key, action) in table {
-            items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());
-        }
-        let (can_merge, can_split) = {
-            let core = &this.editor.read(cx).core;
-            (core.can_merge(), core.can_split())
-        };
-        let merge: Action = |t, _, cx| t.edit(cx, |c| c.merge_cells());
-        let split: Action = |t, _, cx| t.edit(cx, |c| c.split_cell());
-        items.push(
-            row(
-                "ctx-merge",
-                t(lang, Key::CtxMerge),
-                None,
-                can_merge,
-                merge,
-                cx,
-            )
-            .into_any_element(),
-        );
-        items.push(
-            row(
-                "ctx-split",
-                t(lang, Key::CtxSplit),
-                None,
-                can_split,
-                split,
-                cx,
-            )
-            .into_any_element(),
-        );
-        items.push(shade_row(lang, cx).into_any_element());
+        table_items(this, lang, cx, &mut items);
     }
     if image {
-        items.push(separator(cx).into_any_element());
-        let pictures: [(&'static str, Key, Action); 3] = [
-            ("ctx-pic-smaller", Key::CtxPicSmaller, |t, _, cx| {
-                t.edit(cx, |c| c.scale_image(0.8))
-            }),
-            ("ctx-pic-larger", Key::CtxPicLarger, |t, _, cx| {
-                t.edit(cx, |c| c.scale_image(1.25))
-            }),
-            ("ctx-pic-fit", Key::CtxPicFit, |t, _, cx| {
-                t.edit(cx, |c| c.set_image_width(f32::MAX))
-            }),
-        ];
-        for (id, key, action) in pictures {
-            items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());
-        }
+        image_items(lang, cx, &mut items);
     }
     items.push(separator(cx).into_any_element());
     items.push(
@@ -496,127 +246,4 @@ pub fn context_menu(
         |this| this.context_menu = None,
         cx,
     )
-}
-
-/// Shows `panel` at `at` over everything; a click anywhere else runs `close` (the page does not
-/// get that click).
-pub(super) fn popup(
-    at: Point<Pixels>,
-    panel: Stateful<Div>,
-    key: &'static str,
-    close: fn(&mut MainWindow),
-    cx: &mut Context<MainWindow>,
-) -> impl IntoElement {
-    deferred(
-        div()
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-            .occlude()
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(move |this, _, _, cx| {
-                    close(this);
-                    cx.notify();
-                }),
-            )
-            .on_mouse_down(
-                MouseButton::Right,
-                cx.listener(move |this, _, _, cx| {
-                    close(this);
-                    cx.notify();
-                }),
-            )
-            .child(
-                anchored()
-                    .position(at)
-                    .anchor(Anchor::TopLeft)
-                    .snap_to_window_with_margin(px(8.))
-                    .child(pop_in(panel, key.to_string())),
-            ),
-    )
-    .with_priority(20)
-}
-
-/// Light backgrounds offered for table cells (document content, not theme colours).
-const SHADES: [u32; 10] = [
-    0xFFF2CC, 0xFCE5CD, 0xF4CCCC, 0xD9EAD3, 0xCFE2F3, 0xD9D2E9, 0xEEEEEE, 0xFFE599, 0xB6D7A8,
-    0x9FC5E8,
-];
-
-/// "Cell background": a row of swatches, the first one clears the background.
-fn shade_row(lang: wv_i18n::Lang, cx: &mut Context<MainWindow>) -> Div {
-    let th = cx.global::<Theme>();
-    let (border, muted, surface) = (th.border, th.text_muted, th.surface);
-    let swatches = std::iter::once(None)
-        .chain(SHADES.map(Some))
-        .enumerate()
-        .map(|(i, color)| {
-            div()
-                .id(("ctx-shade", i))
-                .size(px(18.))
-                .flex_none()
-                .rounded(radius::sm())
-                .border_1()
-                .border_color(border)
-                .bg(color.map_or(surface, rgb))
-                .cursor_pointer()
-                .flex()
-                .items_center()
-                .justify_center()
-                .text_xs()
-                .text_color(muted)
-                .child(if color.is_none() { "×" } else { "" })
-                .on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(move |this, _, _, cx| {
-                        this.context_menu = None;
-                        this.edit(cx, move |c| c.set_cell_shade(color));
-                        this.editor.update(cx, |view, cx| view.request_focus(cx));
-                    }),
-                )
-        });
-    div()
-        .px(px(10.))
-        .py(px(6.))
-        .flex()
-        .flex_col()
-        .gap(px(6.))
-        .child(div().text_sm().child(t(lang, Key::CtxShade)))
-        .child(div().flex().gap(px(2.)).children(swatches))
-}
-
-/// A command row built at run time (a spelling correction): `act` runs when it is clicked.
-fn choice_row(
-    id: (&'static str, usize),
-    label: String,
-    color: Option<Rgba>,
-    cx: &mut Context<MainWindow>,
-    act: impl Fn(&mut MainWindow, &mut Window, &mut Context<MainWindow>) + 'static,
-) -> Stateful<Div> {
-    let hover = cx.global::<Theme>().surface_alt;
-    div()
-        .id(id)
-        .h(px(30.))
-        .px(px(10.))
-        .flex()
-        .items_center()
-        .rounded(radius::sm())
-        .text_sm()
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover))
-        .when_some(color, |d, c| {
-            d.text_color(c).font_weight(FontWeight::SEMIBOLD)
-        })
-        .on_mouse_down(
-            MouseButton::Left,
-            cx.listener(move |this, _, window, cx| {
-                this.context_menu = None;
-                act(this, window, cx);
-                this.editor.update(cx, |view, cx| view.request_focus(cx));
-                cx.notify();
-            }),
-        )
-        .child(label)
 }
