@@ -129,7 +129,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
-        let marks = spell_marks(v, &para.text, slice.para, cx);
+        let marks = spell_marks(&para.text, cx);
         if slice.lines.start == 0
             && let Some(marker) = &para.marker
         {
@@ -304,28 +304,11 @@ fn paint_caret(
     }
 }
 
-/// Byte ranges of the misspelled words of a paragraph (none when spell checking is off). The word
-/// the caret is in is left alone while it is typed (not while a range is selected).
-fn spell_marks(
-    v: &PageView,
-    text: &str,
-    para: usize,
-    cx: &App,
-) -> std::sync::Arc<Vec<std::ops::Range<usize>>> {
-    let Some(speller) = crate::spell::active(cx) else {
-        return Default::default();
-    };
-    let all = speller.misspelled(text);
-    if v.focused && v.head.para == para && v.selection.0 == v.selection.1 {
-        let at = v.head.offset;
-        let kept = all
-            .iter()
-            .filter(|r| !(r.start <= at && at <= r.end))
-            .cloned()
-            .collect();
-        return std::sync::Arc::new(kept);
-    }
-    all
+/// Byte ranges of the misspelled words of a paragraph (none when spell checking is off).
+fn spell_marks(text: &str, cx: &App) -> std::sync::Arc<Vec<std::ops::Range<usize>>> {
+    crate::spell::active(cx)
+        .map(|speller| speller.misspelled(text))
+        .unwrap_or_default()
 }
 
 /// A spoiler shows its text while the caret or the selection touches it.
