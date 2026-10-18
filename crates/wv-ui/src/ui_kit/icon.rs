@@ -59,6 +59,7 @@ pub enum Icon {
     PageBreak,
     PaintBrush,
     Columns,
+    ChatText,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -127,6 +128,7 @@ impl Icon {
             Icon::PageBreak => "page-break",
             Icon::PaintBrush => "paint-brush",
             Icon::Columns => "columns",
+            Icon::ChatText => "chat-text",
         }
     }
 }
