@@ -723,3 +723,24 @@ fn reads_word_styles_with_based_on() {
     assert_eq!((style.space_before, style.space_after), (Some(12), Some(6)));
     assert!(doc.paragraphs[0].style.custom.is_some());
 }
+
+#[test]
+fn section_headers_are_written_per_section_and_read_back() {
+    let mut e = Editor::new(Document::from_text("Alpha beta"));
+    e.set_header_footer(
+        wv_core::Band::new("First head"),
+        wv_core::Band::new("{page}"),
+    );
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 5));
+    e.insert_section_break();
+    e.set_header_footer(
+        wv_core::Band::new("Second head"),
+        wv_core::Band::new("{page}"),
+    );
+    let bytes = encode(&e.doc).unwrap();
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.sections.len(), 1);
+    assert_eq!(back.section_bands[&1].0.text(), "First head");
+    assert_eq!(back.header.text(), "Second head");
+    assert!(back.section_bands[&1].1.has_page_number());
+}

@@ -40,6 +40,9 @@ pub struct Document {
     pub sections: BTreeMap<u32, PageSpec>,
     /// Styles defined by the user (or read from a file) by `ParaStyle::custom` id.
     pub styles: BTreeMap<u32, UserStyle>,
+    /// Header and footer of the sections that end with a break (the last section uses `header` and
+    /// `footer`), by `ParaStyle::section` id.
+    pub section_bands: BTreeMap<u32, (Band, Band)>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -58,6 +61,7 @@ impl Default for Document {
             table_looks: BTreeMap::new(),
             sections: BTreeMap::new(),
             styles: BTreeMap::new(),
+            section_bands: BTreeMap::new(),
             comments: Vec::new(),
             revisions: Vec::new(),
         }
@@ -74,6 +78,7 @@ pub struct DocSettings {
     pub table_looks: BTreeMap<u32, TableLook>,
     pub sections: BTreeMap<u32, PageSpec>,
     pub styles: BTreeMap<u32, UserStyle>,
+    pub section_bands: BTreeMap<u32, (Band, Band)>,
 }
 
 /// The character that stands for a footnote mark in the text (the number is drawn instead).
@@ -131,6 +136,7 @@ impl Document {
             table_looks: self.table_looks.clone(),
             sections: self.sections.clone(),
             styles: self.styles.clone(),
+            section_bands: self.section_bands.clone(),
         }
     }
 
@@ -142,11 +148,27 @@ impl Document {
         self.table_looks = settings.table_looks.clone();
         self.sections = settings.sections.clone();
         self.styles = settings.styles.clone();
+        self.section_bands = settings.section_bands.clone();
     }
 
-    /// The (header, footer) shown on page `page` (0-based).
-    pub fn bands_for(&self, page: usize) -> (&Band, &Band) {
-        self.variants.pick(page, &self.header, &self.footer)
+    /// The (header, footer) shown on page `page` (0-based), which belongs to the section that ends
+    /// with break `section` (`None` = the last one).
+    pub fn bands_for(&self, section: Option<u32>, page: usize) -> (&Band, &Band) {
+        match section.and_then(|id| self.section_bands.get(&id)) {
+            Some((header, footer)) => self.variants.pick(page, header, footer),
+            None => self.variants.pick(page, &self.header, &self.footer),
+        }
+    }
+
+    /// The main (header, footer) of the section paragraph `para` is in.
+    pub fn bands_of(&self, para: usize) -> (&Band, &Band) {
+        match self
+            .section_end(para)
+            .and_then(|id| self.section_bands.get(&id))
+        {
+            Some((header, footer)) => (header, footer),
+            None => (&self.header, &self.footer),
+        }
     }
 
     pub fn from_text(text: &str) -> Self {

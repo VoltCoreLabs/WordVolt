@@ -775,8 +775,8 @@ fn band_variants_are_one_undo_step() {
         crate::Band::new("{page}"),
         variants,
     );
-    assert_eq!(e.doc.bands_for(0).0.text(), "Title page");
-    assert_eq!(e.doc.bands_for(1).0.text(), "Main");
+    assert_eq!(e.doc.bands_for(None, 0).0.text(), "Title page");
+    assert_eq!(e.doc.bands_for(None, 1).0.text(), "Main");
     assert!(e.undo());
     assert!(e.doc.header.is_empty() && !e.doc.variants.different_first);
 }
@@ -1339,4 +1339,30 @@ fn wv_core_align() -> crate::style::Align {
 
 fn wv_core_named() -> crate::style::NamedStyle {
     crate::style::NamedStyle::Heading2
+}
+
+#[test]
+fn sections_have_their_own_headers_and_footers() {
+    let mut e = Editor::new(Document::from_text("one two"));
+    e.set_header_footer(wv_core_band("Шапка"), wv_core_band("{page}"));
+    e.sel = Selection::caret(Position::new(0, 3));
+    e.insert_section_break();
+    // Both sections start with the same bands.
+    assert_eq!(e.bands_here().0.text(), "Шапка");
+    // Change the header of the second section only.
+    e.set_header_footer(wv_core_band("Вторая"), wv_core_band("{page}"));
+    assert_eq!(e.bands_here().0.text(), "Вторая");
+    assert_eq!(e.doc.bands_for(Some(1), 0).0.text(), "Шапка");
+    assert_eq!(e.doc.bands_for(None, 1).0.text(), "Вторая");
+    // Back in the first section it is the first section's header that changes.
+    e.sel = Selection::caret(Position::new(0, 0));
+    e.toggle_page_number();
+    assert!(!e.doc.bands_for(Some(1), 0).1.has_page_number());
+    assert!(e.doc.bands_for(None, 1).1.has_page_number());
+    e.remove_section_break();
+    assert!(e.doc.section_bands.is_empty());
+}
+
+fn wv_core_band(text: &str) -> crate::document::Band {
+    crate::document::Band::new(text)
 }

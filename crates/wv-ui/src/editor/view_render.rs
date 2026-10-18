@@ -18,7 +18,12 @@ impl Render for EditorView {
         let focused = self.focus.is_focused(window);
         let images = self.picture_sources();
         let doc = &self.core.doc;
-        let bands = Rc::new((doc.header.clone(), doc.footer.clone(), doc.variants.clone()));
+        let bands = Rc::new(super::page_view::Bands {
+            header: doc.header.clone(),
+            footer: doc.footer.clone(),
+            variants: doc.variants.clone(),
+            sections: doc.section_bands.clone(),
+        });
         // Only the rows of pages near the viewport become elements; the rest is two spacers of the
         // exact height (so a document of thousands of pages costs no more than a screenful).
         // Pages of different sections may differ in size: the grid is as big as the biggest.

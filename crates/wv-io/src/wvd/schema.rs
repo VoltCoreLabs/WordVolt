@@ -109,6 +109,11 @@ impl File {
                 })
                 .collect(),
             page: (doc.page != PageSpec::default()).then(|| PageDto::of(&doc.page)),
+            section_bands: doc
+                .section_bands
+                .iter()
+                .map(|(id, bands)| super::variants::SectionBandsDto::of(*id, bands))
+                .collect(),
             styles: doc
                 .styles
                 .iter()
@@ -227,6 +232,11 @@ impl File {
         if let Some(spec) = self.page.and_then(PageDto::spec) {
             doc.page = spec;
         }
+        doc.section_bands = self
+            .section_bands
+            .into_iter()
+            .map(super::variants::SectionBandsDto::bands)
+            .collect();
         doc.styles = self
             .styles
             .into_iter()

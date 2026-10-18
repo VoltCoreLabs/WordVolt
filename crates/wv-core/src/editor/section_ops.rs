@@ -21,6 +21,9 @@ impl Editor {
         let after = Selection::caret(Position::new(at.para + 1, 0));
         let mut settings = self.doc.settings();
         settings.sections.insert(id, page);
+        // The new section starts with the same header and footer as the one it is cut from.
+        let (header, footer) = self.bands_here();
+        settings.section_bands.insert(id, (header, footer));
         self.edit_paragraphs_with(at.para, 1, vec![first, rest], after, Some(settings));
     }
 
@@ -36,6 +39,7 @@ impl Editor {
         p.style.section = None;
         let mut settings = self.doc.settings();
         settings.sections.remove(&id);
+        settings.section_bands.remove(&id);
         let after = self.sel;
         self.edit_paragraphs_with(para, 1, vec![p], after, Some(settings));
     }

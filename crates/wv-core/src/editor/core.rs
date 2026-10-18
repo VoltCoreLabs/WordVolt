@@ -68,18 +68,33 @@ impl Editor {
         self.history.can_redo()
     }
 
-    /// Sets the header and footer (one undo step).
+    /// Sets the header and footer of the section the caret is in (one undo step).
     pub fn set_header_footer(&mut self, header: Band, footer: Band) {
         let mut settings = self.doc.settings();
-        (settings.header, settings.footer) = (header, footer);
+        self.put_bands(&mut settings, header, footer);
         self.change_settings(settings);
     }
 
-    /// Sets the main header and footer together with the first/even-page variants (one undo step).
+    /// Sets the main header and footer of the section the caret is in together with the
+    /// first/even-page variants (one undo step).
     pub fn set_bands(&mut self, header: Band, footer: Band, variants: BandVariants) {
         let mut settings = self.doc.settings();
-        (settings.header, settings.footer, settings.variants) = (header, footer, variants);
+        self.put_bands(&mut settings, header, footer);
+        settings.variants = variants;
         self.change_settings(settings);
+    }
+
+    fn put_bands(&self, settings: &mut DocSettings, header: Band, footer: Band) {
+        match self.doc.section_end(self.sel.head.para) {
+            Some(id) => _ = settings.section_bands.insert(id, (header, footer)),
+            None => (settings.header, settings.footer) = (header, footer),
+        }
+    }
+
+    /// Main header and footer of the section the caret is in.
+    pub fn bands_here(&self) -> (Band, Band) {
+        let (header, footer) = self.doc.bands_of(self.sel.head.para);
+        (header.clone(), footer.clone())
     }
 
     /// Sets page size and margins of the section the caret is in (one undo step).
@@ -117,7 +132,7 @@ impl Editor {
 
     /// Adds `{page}` to the footer, or removes it when it is already there.
     pub fn toggle_page_number(&mut self) {
-        let mut footer = self.doc.footer.clone();
+        let (header, mut footer) = self.bands_here();
         let text = footer.text();
         let new = if footer.has_page_number() {
             text.replace("{page}", "").trim().to_string()
@@ -127,7 +142,7 @@ impl Editor {
             format!("{text} {{page}}")
         };
         footer.set_text(&new);
-        self.set_header_footer(self.doc.header.clone(), footer);
+        self.set_header_footer(header, footer);
     }
 
     pub fn undo(&mut self) -> bool {

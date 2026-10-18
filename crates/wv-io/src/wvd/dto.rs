@@ -48,6 +48,9 @@ pub(super) struct File {
     /// Styles defined by the user.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) styles: Vec<super::styles::UserStyleDto>,
+    /// Headers and footers of the sections that end with a break.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) section_bands: Vec<super::variants::SectionBandsDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

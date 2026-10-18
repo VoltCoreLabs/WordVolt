@@ -98,6 +98,8 @@ pub struct Slice {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Page {
+    /// The section break that ends the section of the page (`None` = the last section).
+    pub section: Option<u32>,
     /// Page size and margins of the section the page belongs to.
     pub setup: PageSetup,
     pub slices: Vec<Slice>,
