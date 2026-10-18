@@ -102,6 +102,8 @@ pub struct Page {
     pub tables: Vec<TableBox>,
     /// Floating pictures of the page (their paragraphs take no room in the text).
     pub floats: Vec<PlacedFloat>,
+    /// Where the footnotes of the page start (the separator line), from the top of the text area.
+    pub note_top: Option<f32>,
 }
 
 impl Page {

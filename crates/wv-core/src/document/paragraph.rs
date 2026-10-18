@@ -1,6 +1,9 @@
 use super::Run;
 use crate::style::{CharStyle, ParaStyle};
 
+/// Size (pt) of the text of a footnote unless it says otherwise.
+pub const NOTE_SIZE_PT: u16 = 10;
+
 /// A paragraph: runs of text plus paragraph style. Offsets are UTF-8 bytes.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Paragraph {
@@ -41,26 +44,43 @@ impl Paragraph {
         for run in &self.runs {
             pos += run.text.len();
             if pos >= offset && !run.text.is_empty() {
-                return run.style.clone();
+                return typed(&run.style);
             }
         }
         self.runs
             .last()
-            .map(|r| r.style.clone())
+            .map(|r| typed(&r.style))
             .unwrap_or_default()
     }
 
     /// The paragraph with its named style's defaults written into the runs (what is drawn);
     /// `None` for Normal paragraphs, which need no change. Text and offsets stay the same.
     pub fn with_named_style(&self) -> Option<Paragraph> {
-        if self.style.named == crate::style::NamedStyle::Normal {
+        let note = self.style.note.is_some();
+        if self.style.named == crate::style::NamedStyle::Normal && !note {
             return None;
         }
         let mut resolved = self.clone();
         for run in &mut resolved.runs {
             self.style.named.apply(&mut run.style);
+            // The text of a footnote is smaller than the text.
+            if note && run.style.size_pt.is_none() {
+                run.style.size_pt = Some(NOTE_SIZE_PT);
+            }
         }
         Some(resolved)
+    }
+
+    /// Style of the run that holds the character right after `offset`, footnote mark included.
+    pub fn style_at_raw(&self, offset: usize) -> Option<CharStyle> {
+        let mut pos = 0;
+        for run in &self.runs {
+            pos += run.text.len();
+            if pos > offset {
+                return Some(run.style.clone());
+            }
+        }
+        None
     }
 
     /// Style of the character right after `offset` (`None` at the end of the paragraph).
@@ -69,7 +89,7 @@ impl Paragraph {
         for run in &self.runs {
             pos += run.text.len();
             if pos > offset {
-                return Some(run.style.clone());
+                return Some(typed(&run.style));
             }
         }
         None
@@ -184,5 +204,13 @@ impl Paragraph {
             }
         }
         true
+    }
+}
+
+/// The style of text typed next to a run with `style` (it is not a footnote mark itself).
+fn typed(style: &CharStyle) -> CharStyle {
+    CharStyle {
+        note: None,
+        ..style.clone()
     }
 }

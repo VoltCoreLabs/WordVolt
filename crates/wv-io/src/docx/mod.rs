@@ -7,7 +7,9 @@ mod band_parts;
 mod band_write;
 mod bands;
 mod document_xml;
+mod footnotes;
 mod package;
+mod parts;
 mod picture;
 mod read_util;
 mod run_xml;
@@ -29,8 +31,32 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
         &package::read_numbering(bytes),
     )?;
     attach_images(&mut doc, &rels, &links, bytes);
+    attach_footnotes(&mut doc, &links, bytes);
     (doc.header, doc.footer, doc.variants) = bands::read(bytes);
     Ok(doc)
+}
+
+/// Reads word/footnotes.xml: the paragraphs of the notes go to the end of the document, as
+/// footnote paragraphs (the marks in the text have been read with the body).
+fn attach_footnotes(doc: &mut Document, links: &HashMap<String, String>, bytes: &[u8]) {
+    let Some(xml) = package::read_part(bytes, "word/footnotes.xml") else {
+        return;
+    };
+    let Ok((notes, _)) = document_xml::parse(&xml, links, &HashMap::new()) else {
+        return;
+    };
+    let mut previous = None;
+    for mut p in notes
+        .paragraphs
+        .into_iter()
+        .filter(|p| p.style.note.is_some())
+    {
+        if previous != p.style.note {
+            footnotes::trim_start(&mut p);
+        }
+        previous = p.style.note;
+        doc.paragraphs.push(p);
+    }
 }
 
 /// Loads the pictures the body refers to (`rels[i]` = relationship id of picture `i`) into
@@ -80,6 +106,7 @@ pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
         &band_parts::parts(doc),
         doc.variants.odd_even,
         &doc.images,
+        footnotes::xml(doc).as_deref(),
     )
 }
 

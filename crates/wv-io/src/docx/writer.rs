@@ -21,6 +21,11 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         .max(1500.0) as usize;
     let mut i = 0;
     while i < paras.len() {
+        // Footnotes go to their own part (`footnotes.xml`).
+        if paras[i].style.note.is_some() {
+            i += 1;
+            continue;
+        }
         let Some(first) = paras[i].style.cell else {
             write_paragraph(&mut xml, &paras[i], &mut links, &mut lists);
             i += 1;

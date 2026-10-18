@@ -52,6 +52,10 @@ pub fn parse(
 
 #[derive(Default)]
 struct State {
+    /// Inside `w:footnote` with this id (its paragraphs belong to the note).
+    note: Option<u32>,
+    /// Inside a separator note: its paragraphs are not read.
+    skip_note: bool,
     numbering: HashMap<String, ListKind>,
     list: Option<ListKind>,
     indent: u8,
@@ -105,6 +109,10 @@ impl State {
     fn end(&mut self, name: &[u8]) {
         match name {
             b"p" => self.end_paragraph(),
+            b"footnote" => {
+                self.note = None;
+                self.skip_note = false;
+            }
             b"drawing" => self.end_drawing(),
             b"posOffset" => self.pictures.in_offset = false,
             b"positionH" | b"positionV" => self.pictures.axis = None,
@@ -148,6 +156,10 @@ impl State {
 
     fn end_paragraph(&mut self) {
         if let Some(mut p) = self.current.take() {
+            if self.skip_note {
+                return;
+            }
+            p.style.note = self.note;
             if std::mem::take(&mut self.pictures.after) && p.is_empty() && self.image.is_none() {
                 return;
             }
@@ -211,6 +223,14 @@ impl State {
             self.named = named;
             self.page_break = page;
         }
+    }
+
+    /// A `w:footnoteReference`: the mark of footnote `id` goes into the text.
+    fn note_mark(&mut self, id: u32) {
+        let saved = std::mem::take(&mut self.run);
+        self.run.note = Some(id);
+        self.text(&wv_core::NOTE_MARK.to_string());
+        self.run = saved;
     }
 
     fn text(&mut self, text: &str) {

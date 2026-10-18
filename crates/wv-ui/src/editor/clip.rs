@@ -22,6 +22,8 @@ impl EditorView {
         let text = self.core.selected_text();
         if !text.is_empty() {
             let paras = self.core.copy_fragment();
+            // The footnote mark characters are not text.
+            let text = text.replace(wv_core::NOTE_MARK, "");
             cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
             cx.set_global(ClipFragment { plain: text, paras });
         }

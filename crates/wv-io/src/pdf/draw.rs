@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use pdf_writer::{Content, Name, Str};
-use wv_core::{Align, Band, CharStyle, Document};
+use wv_core::{Align, Band, CharStyle, Document, Script};
 use wv_layout::{DocLayout, Measurer, script_shift};
 
 use super::fonts::FontSet;
@@ -163,6 +163,16 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
         layout,
     );
     pictures::place_floats(&mut c, &mut images, layout, page, true);
+    // The line above the footnotes of the page.
+    if let Some(top) = layout.pages[page].note_top {
+        c.fill(
+            setup.margin_left,
+            setup.margin_top + top + wv_layout::NOTES_GAP / 2.0,
+            setup.content_width() / 3.0,
+            0.75,
+            QUOTE_BAR,
+        );
+    }
     for slice in &layout.pages[page].slices {
         let para = &layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
@@ -222,6 +232,19 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
                     .style
                     .color
                     .unwrap_or(if f.style.link.is_some() { LINK } else { TEXT });
+                // A footnote mark: its number, raised, instead of the character.
+                if let Some(id) = f.style.note {
+                    if let Some(n) = layout.note_numbers.get(&id) {
+                        let raised = CharStyle {
+                            note: None,
+                            script: Script::Super,
+                            ..f.style.clone()
+                        };
+                        let raised_baseline = top + line.baseline + script_shift(&raised);
+                        c.text(&n.to_string(), &raised, x, raised_baseline, rgb);
+                    }
+                    continue;
+                }
                 if text == "\t" {
                     if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, fonts) {
                         c.text(&dots, &f.style, x + offset, baseline, rgb);

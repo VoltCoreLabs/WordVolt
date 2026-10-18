@@ -136,6 +136,17 @@ mod tests {
     }
 
     #[test]
+    fn footnotes_round_trip() {
+        let mut e = Editor::new(Document::from_text("Text with a note"));
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 4));
+        e.insert_footnote();
+        e.insert_text("The note");
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.note_numbers().len(), 1);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

@@ -31,4 +31,6 @@ pub struct CharStyle {
     pub spoiler: bool,
     /// Hyperlink target.
     pub link: Option<String>,
+    /// The run is the mark of footnote `id` (one `NOTE_MARK` character).
+    pub note: Option<u32>,
 }

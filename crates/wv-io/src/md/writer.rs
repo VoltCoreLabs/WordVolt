@@ -3,6 +3,9 @@ use wv_core::{CharStyle, Document, ListKind, NamedStyle, Run};
 /// Paragraphs are separated by a blank line (list items by a single newline); an empty paragraph is
 /// written as `&nbsp;`. List nesting is two spaces per level.
 pub fn encode(doc: &Document) -> String {
+    if let Some(plain) = doc.with_inline_notes() {
+        return encode(&plain);
+    }
     let mut out = String::new();
     let mut counters = [0u32; 9];
     let mut previous_was_item = false;

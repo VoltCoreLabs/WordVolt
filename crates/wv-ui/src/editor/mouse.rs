@@ -55,6 +55,13 @@ impl EditorView {
         let Some(at) = self.hit(ev.position, window) else {
             return;
         };
+        // Ctrl/Cmd + click on a footnote mark goes to its note, on a note back to its mark.
+        if ev.modifiers.secondary()
+            && let Some(target) = self.core.note_target(at)
+        {
+            self.apply(cx, |core| core.set_head(target, false));
+            return;
+        }
         // Ctrl/Cmd + click on a contents entry goes to its heading.
         if ev.modifiers.secondary()
             && let Some(heading) = self.core.toc_target(at.para)

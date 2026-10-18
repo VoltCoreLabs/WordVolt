@@ -2,11 +2,13 @@ use quick_xml::events::BytesStart;
 use wv_core::{Align, Cell, CharStyle, Script};
 
 use super::State;
-use super::picture_state::PictureAnchor;
 use crate::docx::read_util::{attr, flag, named_from_docx, named_highlight};
 
 impl State {
     pub(super) fn start(&mut self, e: &BytesStart, empty: bool) {
+        if self.start_picture(e, empty) {
+            return;
+        }
         let name = e.local_name();
         match name.as_ref() {
             b"p" => {
@@ -75,83 +77,17 @@ impl State {
             b"vMerge" if self.table.depth == 1 && self.table.cell.is_some() => {
                 self.table.continues = attr(e, b"val").as_deref() != Some("restart");
             }
-            b"drawing" if !empty => {
-                self.pictures.in_drawing = true;
-                self.pictures.embed = None;
-                self.pictures.size = (0.0, 0.0);
-                self.pictures.anchor = None;
-                self.pictures.angle = 0.0;
-                self.pictures.frame = None;
-                self.pictures.crop = wv_core::Crop::default();
+            b"footnote" => {
+                let id = attr(e, b"id").and_then(|v| v.parse::<i64>().ok());
+                let separator = attr(e, b"type").is_some_and(|t| t != "normal");
+                self.skip_note = separator || id.is_none_or(|i| i <= 0);
+                self.note = id.filter(|i| *i > 0).map(|i| i as u32);
             }
-            b"xfrm" if self.pictures.in_drawing => {
-                let rot = attr(e, b"rot")
-                    .and_then(|v| v.parse::<f32>().ok())
-                    .unwrap_or(0.0);
-                self.pictures.angle = (rot / 60_000.0).rem_euclid(360.0);
-            }
-            b"ext" if self.pictures.in_drawing => {
-                let px = |name: &[u8]| {
-                    attr(e, name).map_or(0.0, |v| crate::docx::picture::emu_to_px(&v))
-                };
-                let (w, h) = (px(b"cx"), px(b"cy"));
-                if w >= 1.0 && h >= 1.0 {
-                    self.pictures.frame = Some((w, h));
+            b"footnoteReference" => {
+                if let Some(id) = attr(e, b"id").and_then(|v| v.parse::<u32>().ok()) {
+                    self.note_mark(id);
                 }
             }
-            b"srcRect" if self.pictures.in_drawing => {
-                let part = |name: &[u8]| {
-                    attr(e, name)
-                        .and_then(|v| v.parse::<f32>().ok())
-                        .map_or(0.0, |v| (v / 100_000.0).clamp(0.0, 0.9))
-                };
-                self.pictures.crop = wv_core::Crop {
-                    left: part(b"l"),
-                    top: part(b"t"),
-                    right: part(b"r"),
-                    bottom: part(b"b"),
-                };
-            }
-            b"anchor" if self.pictures.in_drawing => {
-                self.pictures.anchor = Some(PictureAnchor {
-                    behind: attr(e, b"behindDoc").is_some_and(|v| v == "1" || v == "true"),
-                    ..PictureAnchor::default()
-                });
-            }
-            b"positionH" | b"positionV" if self.pictures.anchor.is_some() && !empty => {
-                self.pictures.axis = Some(name.as_ref() == b"positionV");
-                self.pictures.relative_page = attr(e, b"relativeFrom").as_deref() == Some("page");
-            }
-            b"posOffset" if self.pictures.axis.is_some() && !empty => {
-                self.pictures.in_offset = true
-            }
-            b"wrapNone" if self.pictures.anchor.is_some() => {
-                if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(wv_core::Wrap::Front);
-                }
-            }
-            b"wrapTopAndBottom" if self.pictures.anchor.is_some() => {
-                if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(wv_core::Wrap::TopBottom);
-                }
-            }
-            b"wrapSquare" if self.pictures.anchor.is_some() => {
-                if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(wv_core::Wrap::Square);
-                }
-            }
-            b"wrapTight" | b"wrapThrough" if self.pictures.anchor.is_some() => {
-                if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(wv_core::Wrap::Tight);
-                }
-            }
-            b"extent" if self.pictures.in_drawing && self.pictures.size.0 == 0.0 => {
-                let px = |name: &[u8]| {
-                    attr(e, name).map_or(0.0, |v| crate::docx::picture::emu_to_px(&v))
-                };
-                self.pictures.size = (px(b"cx"), px(b"cy"));
-            }
-            b"blip" if self.pictures.in_drawing => self.pictures.embed = attr(e, b"embed"),
             b"pgSz" => {
                 let px = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
                 if let (Some(w), Some(h)) = (px(b"w"), px(b"h"))

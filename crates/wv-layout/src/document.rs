@@ -1,15 +1,17 @@
 use wv_core::{Document, Position};
 
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::Measurer;
-use crate::around::{Source, wrap_around};
+use crate::around::{Around, Source, wrap_around};
 use crate::layout_cache::LayoutCache;
+use crate::notes::NoteSet;
 use crate::numbering::Counters;
 use crate::page::{Page, PageSetup, Slice};
 use crate::paginate::paginate;
 use crate::paragraph::{Options, ParagraphLayout};
-use crate::table;
+use crate::table::{self, Block};
 
 /// Caret position in page coordinates (origin = top-left corner of the page, margins included).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -34,6 +36,8 @@ pub struct DocLayout {
     pub setup: PageSetup,
     pub paragraphs: Vec<Rc<ParagraphLayout>>,
     pub pages: Vec<Page>,
+    /// Number of every footnote (by id) that has a mark in the text.
+    pub note_numbers: HashMap<u32, usize>,
     /// For every paragraph the (page, slice index) pairs where it is placed, in order.
     locations: Vec<Vec<(usize, usize)>>,
 }
@@ -57,13 +61,22 @@ impl DocLayout {
         // Text is laid out for one column; tables and paragraphs in cells likewise.
         let content_width = setup.column_width();
         let fractions = table::column_fractions(doc);
+        let note_numbers = doc.note_numbers();
         let mut counters = Counters::default();
+        let mut previous_note: Option<u32> = None;
         let mut sources: Vec<Source> = Vec::with_capacity(doc.paragraphs.len());
         let mut paragraphs: Vec<Rc<ParagraphLayout>> = doc
             .paragraphs
             .iter()
             .map(|p| {
-                let marker = counters.marker(&p.style);
+                // A footnote starts with its number; other paragraphs may be list items.
+                let marker = match p.style.note {
+                    Some(id) => (previous_note != Some(id))
+                        .then(|| note_numbers.get(&id).map(|n| n.to_string()))
+                        .flatten(),
+                    None => counters.marker(&p.style),
+                };
+                previous_note = p.style.note;
                 let width = match p.style.cell {
                     Some(cell) => table::inner_width(
                         content_width,
@@ -86,21 +99,29 @@ impl DocLayout {
             })
             .collect();
         cache.end();
-        let blocks = table::blocks(doc);
-        let mut pages = paginate(&paragraphs, &blocks, &setup);
+        // Footnotes are not part of the text: they go to the bottom of the pages.
+        let blocks: Vec<Block> = table::blocks(doc)
+            .into_iter()
+            .filter(|b| !matches!(b, Block::Para(i) if doc.paragraphs[*i].style.note.is_some()))
+            .collect();
+        let notes = NoteSet::new(
+            &paragraphs,
+            |i| doc.paragraphs[i].style.note,
+            |id| note_numbers.contains_key(&id),
+        );
+        let mut pages = paginate(&paragraphs, &blocks, &setup, &notes);
         if pages
             .iter()
             .any(|p| p.floats.iter().any(|f| crate::around::beside(f.wrap)))
         {
-            wrap_around(
+            let around = Around {
                 doc,
-                &setup,
-                &blocks,
-                &sources,
-                &mut paragraphs,
-                &mut pages,
-                m,
-            );
+                setup: &setup,
+                blocks: &blocks,
+                sources: &sources,
+                notes: &notes,
+            };
+            wrap_around(&around, &mut paragraphs, &mut pages, m);
         }
         let mut locations = vec![Vec::new(); paragraphs.len()];
         for (page, p) in pages.iter().enumerate() {
@@ -112,6 +133,7 @@ impl DocLayout {
             setup,
             paragraphs,
             pages,
+            note_numbers,
             locations,
         }
     }

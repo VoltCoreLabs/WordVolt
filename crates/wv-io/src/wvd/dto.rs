@@ -150,6 +150,9 @@ pub(super) struct Para {
     pub(super) image: Option<ImageRefDto>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) toc: bool,
+    /// The paragraph is (part of) the footnote with this id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) note: Option<u32>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub(super) indent: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]

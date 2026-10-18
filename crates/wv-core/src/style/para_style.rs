@@ -190,6 +190,9 @@ pub struct ParaStyle {
     pub cell: Option<Cell>,
     /// Set for picture paragraphs.
     pub image: Option<ImageRef>,
+    /// The paragraph belongs to the footnote with this id (it is drawn at the bottom of the page of
+    /// the footnote's mark, not in the text).
+    pub note: Option<u32>,
     /// Line of the table of contents (replaced when the contents are updated).
     pub toc: bool,
 }
@@ -230,5 +233,6 @@ impl std::hash::Hash for ParaStyle {
         self.cell.hash(state);
         self.image.hash(state);
         self.toc.hash(state);
+        self.note.hash(state);
     }
 }

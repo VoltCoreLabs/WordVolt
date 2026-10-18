@@ -30,9 +30,9 @@ impl Editor {
     /// the format painter.
     pub fn paint_char_style(&mut self, style: &CharStyle) {
         self.apply_char_style(|s| {
-            let link = s.link.take();
+            let (link, note) = (s.link.take(), s.note);
             *s = style.clone();
-            s.link = link;
+            (s.link, s.note) = (link, note);
         });
     }
 
@@ -87,6 +87,7 @@ impl Editor {
             mono: self.doc.all_chars(s, e, |c| c.mono),
             spoiler: self.doc.all_chars(s, e, |c| c.spoiler),
             link: self.uniform(|c| c.link.clone()).flatten(),
+            note: None,
         }
     }
 
@@ -179,7 +180,11 @@ impl Editor {
 
     /// Removes all character formatting from the selection (or the next typed text).
     pub fn clear_formatting(&mut self) {
-        self.apply_char_style(|s| *s = CharStyle::default());
+        self.apply_char_style(|s| {
+            let note = s.note;
+            *s = CharStyle::default();
+            s.note = note;
+        });
     }
 
     /// Sets the font family; `None` = back to the default font.

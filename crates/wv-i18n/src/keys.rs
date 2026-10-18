@@ -110,6 +110,8 @@ pub enum Key {
     TipIndent,
     TipOutdent,
     TipLineSpacing,
+    GroupNotes,
+    TipFootnote,
     WrapSquare,
     WrapTight,
     CtxRotateRight,
