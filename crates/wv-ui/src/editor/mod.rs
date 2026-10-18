@@ -17,5 +17,6 @@ mod table_paint;
 mod table_resize;
 mod toc;
 mod view;
+mod view_render;
 
 pub use view::EditorView;

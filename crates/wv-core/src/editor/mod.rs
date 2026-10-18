@@ -4,6 +4,7 @@ mod case_ops;
 mod clipboard_ops;
 mod core;
 mod image_ops;
+mod ime_ops;
 mod movement;
 mod para_ops;
 mod search_ops;

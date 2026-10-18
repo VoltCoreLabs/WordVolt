@@ -1,30 +1,13 @@
 use std::ops::Range;
 
 use gpui_kit::*;
-use wv_core::Position;
 
 use super::measure::GpuiMeasurer;
 use super::view::EditorView;
 
-/// Byte offset in `text` of a UTF-16 offset (what the platform text input speaks).
-fn byte_of(text: &str, utf16: usize) -> usize {
-    let mut units = 0;
-    for (i, c) in text.char_indices() {
-        if units >= utf16 {
-            return i;
-        }
-        units += c.len_utf16();
-    }
-    text.len()
-}
-
-fn utf16_of(text: &str, byte: usize) -> usize {
-    let byte = byte.min(text.len());
-    text[..byte].encode_utf16().count()
-}
-
 /// Typed and composed text arrives here (the platform text input: layouts, dead keys, IME of
-/// Chinese/Japanese/Korean, emoji picker). Offsets are UTF-16 inside the paragraph of the caret.
+/// Chinese/Japanese/Korean, emoji picker). Offsets are UTF-16 inside the paragraph of the caret;
+/// the logic itself lives in `wv_core::Editor` (`ime_*`).
 impl EntityInputHandler for EditorView {
     fn text_for_range(
         &mut self,
@@ -33,10 +16,9 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<String> {
-        let text = self.core.doc.paragraphs[self.core.sel.head.para].text();
-        let (a, b) = (byte_of(&text, range.start), byte_of(&text, range.end));
-        *adjusted = Some(utf16_of(&text, a)..utf16_of(&text, b));
-        Some(text[a..b.max(a)].to_string())
+        let (text, clamped) = self.core.ime_text(range);
+        *adjusted = Some(clamped);
+        Some(text)
     }
 
     fn selected_text_range(
@@ -45,28 +27,16 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
-        let sel = self.core.sel;
-        let text = self.core.doc.paragraphs[sel.head.para].text();
-        let anchor = if sel.anchor.para == sel.head.para {
-            sel.anchor.offset
-        } else {
-            sel.head.offset
-        };
-        let (a, b) = (utf16_of(&text, anchor), utf16_of(&text, sel.head.offset));
-        Some(UTF16Selection {
-            range: a.min(b)..a.max(b),
-            reversed: b < a,
-        })
+        let (range, reversed) = self.core.ime_selection();
+        Some(UTF16Selection { range, reversed })
     }
 
     fn marked_text_range(&self, _: &mut Window, _: &mut Context<Self>) -> Option<Range<usize>> {
-        let (para, range) = self.marked.clone()?;
-        let text = self.core.doc.paragraphs.get(para)?.text();
-        Some(utf16_of(&text, range.start)..utf16_of(&text, range.end))
+        self.core.ime_marked()
     }
 
     fn unmark_text(&mut self, _: &mut Window, _: &mut Context<Self>) {
-        self.marked = None;
+        self.core.ime_unmark();
     }
 
     fn replace_text_in_range(
@@ -76,8 +46,7 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.replace(range, text, cx);
-        self.marked = None;
+        self.apply(cx, |c| c.ime_replace(range, text, false));
     }
 
     fn replace_and_mark_text_in_range(
@@ -88,11 +57,7 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (start, end) = self.ime_target(range);
-        let text: String = new_text.chars().filter(|c| !c.is_control()).collect();
-        self.apply(cx, |c| c.replace_range(start, end, &text));
-        self.marked =
-            (!text.is_empty()).then(|| (start.para, start.offset..start.offset + text.len()));
+        self.apply(cx, |c| c.ime_replace(range, new_text, true));
     }
 
     fn bounds_for_range(
@@ -102,9 +67,7 @@ impl EntityInputHandler for EditorView {
         window: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        let para = self.core.sel.head.para;
-        let text = self.core.doc.paragraphs[para].text();
-        let at = Position::new(para, byte_of(&text, range.start));
+        let at = self.core.ime_position(range.start);
         let layout = self.layout.clone()?;
         let m = GpuiMeasurer::new(window, self.measure_cache.clone());
         let caret = layout.caret(at, &m)?;
@@ -125,37 +88,5 @@ impl EntityInputHandler for EditorView {
         _: &mut Context<Self>,
     ) -> Option<usize> {
         None
-    }
-}
-
-impl EditorView {
-    /// What a text input edit replaces: the given UTF-16 range of the caret's paragraph, else the
-    /// composition being typed, else the selection.
-    fn ime_target(&self, range: Option<Range<usize>>) -> (Position, Position) {
-        let para = self.core.sel.head.para;
-        if let Some(r) = range {
-            let text = self.core.doc.paragraphs[para].text();
-            return (
-                Position::new(para, byte_of(&text, r.start)),
-                Position::new(para, byte_of(&text, r.end)),
-            );
-        }
-        match &self.marked {
-            Some((p, r)) if *p < self.core.doc.paragraphs.len() => (
-                Position::new(*p, r.start),
-                Position::new(*p, r.end.min(self.core.doc.paragraphs[*p].len())),
-            ),
-            _ => self.core.sel.range(),
-        }
-    }
-
-    /// Types `text` over the target of the edit.
-    fn replace(&mut self, range: Option<Range<usize>>, text: &str, cx: &mut Context<Self>) {
-        let (start, end) = self.ime_target(range);
-        let text: String = text.chars().filter(|c| !c.is_control()).collect();
-        if text.is_empty() && start == end {
-            return;
-        }
-        self.apply(cx, |c| c.replace_range(start, end, &text));
     }
 }
