@@ -172,12 +172,13 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
         layout.pages.len(),
         layout,
     );
+    place_floats(&mut c, &mut images, layout, page, true);
     for slice in &layout.pages[page].slices {
         let para = &layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
         let slice_top = setup.margin_top + slice.y;
         if slice.lines.start == 0 {
-            if let Some(image) = para.image {
+            if let Some(image) = para.image.filter(|i| i.float.is_none()) {
                 let x = setup.margin_left + slice.x + para.lines[0].x;
                 c.picture(image.id, x, slice_top, image.width, image.height);
                 images.insert(image.id);
@@ -247,8 +248,34 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
             }
         }
     }
+    place_floats(&mut c, &mut images, layout, page, false);
     PageContent {
         data: c.content.finish().to_vec(),
         images,
+    }
+}
+
+/// Floating pictures of the page: those behind the text first, the others on top of it.
+fn place_floats(
+    c: &mut Canvas,
+    images: &mut BTreeSet<u32>,
+    layout: &DocLayout,
+    page: usize,
+    behind: bool,
+) {
+    let setup = &layout.setup;
+    for f in layout.pages[page]
+        .floats
+        .iter()
+        .filter(|f| (f.wrap == wv_core::Wrap::Behind) == behind)
+    {
+        c.picture(
+            f.id,
+            setup.margin_left + f.x,
+            setup.margin_top + f.y,
+            f.width,
+            f.height,
+        );
+        images.insert(f.id);
     }
 }

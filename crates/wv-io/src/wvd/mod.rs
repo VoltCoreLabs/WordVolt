@@ -100,6 +100,23 @@ mod tests {
     }
 
     #[test]
+    fn floating_pictures_round_trip() {
+        use wv_core::{Float, ImageFormat, Wrap};
+        let mut e = Editor::default();
+        e.insert_image(ImageFormat::Png, vec![1, 2, 3], 100.0, 50.0);
+        let float = Float {
+            x: 12.5,
+            y: 30.0,
+            wrap: Wrap::Behind,
+        };
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+        e.set_image_geometry(80.0, 40.0, Some(float));
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.paragraphs[0].style.image.unwrap().float, Some(float));
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

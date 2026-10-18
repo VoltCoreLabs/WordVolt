@@ -2,6 +2,7 @@ use quick_xml::events::BytesStart;
 use wv_core::{Align, Cell, CharStyle, Script};
 
 use super::State;
+use super::picture_state::PictureAnchor;
 use crate::docx::read_util::{attr, flag, named_from_docx, named_highlight};
 
 impl State {
@@ -78,6 +79,32 @@ impl State {
                 self.pictures.in_drawing = true;
                 self.pictures.embed = None;
                 self.pictures.size = (0.0, 0.0);
+                self.pictures.anchor = None;
+            }
+            b"anchor" if self.pictures.in_drawing => {
+                self.pictures.anchor = Some(PictureAnchor {
+                    behind: attr(e, b"behindDoc").is_some_and(|v| v == "1" || v == "true"),
+                    ..PictureAnchor::default()
+                });
+            }
+            b"positionH" | b"positionV" if self.pictures.anchor.is_some() && !empty => {
+                self.pictures.axis = Some(name.as_ref() == b"positionV");
+                self.pictures.relative_page = attr(e, b"relativeFrom").as_deref() == Some("page");
+            }
+            b"posOffset" if self.pictures.axis.is_some() && !empty => {
+                self.pictures.in_offset = true
+            }
+            b"wrapNone" if self.pictures.anchor.is_some() => {
+                if let Some(a) = self.pictures.anchor.as_mut() {
+                    a.wrap = Some(false);
+                }
+            }
+            b"wrapTopAndBottom" | b"wrapSquare" | b"wrapTight" | b"wrapThrough"
+                if self.pictures.anchor.is_some() =>
+            {
+                if let Some(a) = self.pictures.anchor.as_mut() {
+                    a.wrap = Some(true);
+                }
             }
             b"extent" if self.pictures.in_drawing && self.pictures.size.0 == 0.0 => {
                 let px = |name: &[u8]| {

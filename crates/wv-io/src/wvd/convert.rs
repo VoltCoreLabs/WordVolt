@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use wv_core::{Align, CharStyle, ListKind, Run, Script};
+use wv_core::{Align, CharStyle, ListKind, Run, Script, Wrap};
 
 #[derive(Serialize, Deserialize)]
 pub(super) struct RunDto {
@@ -141,4 +141,20 @@ pub(super) fn run_of(r: RunDto) -> Run {
         font: r.font,
     };
     Run::new(r.text, style)
+}
+
+pub(super) fn wrap_name(w: Wrap) -> &'static str {
+    match w {
+        Wrap::TopBottom => "topbottom",
+        Wrap::Front => "front",
+        Wrap::Behind => "behind",
+    }
+}
+
+pub(super) fn wrap_from(name: &str) -> Wrap {
+    match name {
+        "front" => Wrap::Front,
+        "behind" => Wrap::Behind,
+        _ => Wrap::TopBottom,
+    }
 }

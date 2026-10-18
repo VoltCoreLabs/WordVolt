@@ -25,6 +25,11 @@ impl File {
                     id: i.id,
                     width: i.width,
                     height: i.height,
+                    float: i.float.map(|f| FloatDto {
+                        x: f.x,
+                        y: f.y,
+                        wrap: wrap_name(f.wrap).to_string(),
+                    }),
                 }),
                 cell: p.style.cell.map(|c| CellDto {
                     table: c.table,
@@ -121,6 +126,11 @@ impl File {
                         id: i.id,
                         width: i.width,
                         height: i.height,
+                        float: i.float.map(|f| wv_core::Float {
+                            x: f.x,
+                            y: f.y,
+                            wrap: wrap_from(&f.wrap),
+                        }),
                     }),
                     cell: p.cell.map(|c| Cell {
                         shade: c.shade,

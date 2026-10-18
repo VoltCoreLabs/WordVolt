@@ -29,7 +29,7 @@ pub struct EditorView {
     pub(super) selecting: bool,
     /// Set by a right click: the window asks for its context menu at this point.
     pub context_request: Option<Point<Pixels>>,
-    pub(super) resizing: Option<super::resize::Resize>,
+    pub(super) resizing: Option<super::image_drag::ImageDrag>,
     pub(super) border_drag: Option<super::table_resize::BorderDrag>,
     /// Time of the last edit/caret move; drives the caret fade/blink animation.
     pub(super) caret_epoch: Rc<Cell<Instant>>,

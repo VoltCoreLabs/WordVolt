@@ -4,6 +4,21 @@ use wv_i18n::{Key, t};
 use super::state::MainWindow;
 
 impl MainWindow {
+    /// Puts the selected picture in the line of text (`None`) or lets it float.
+    pub(super) fn set_picture_wrap(&mut self, wrap: Option<wv_core::Wrap>, cx: &mut Context<Self>) {
+        self.editor
+            .update(cx, |view, cx| view.set_picture_wrap(wrap, cx));
+    }
+
+    /// Opens "size and position" for the selected picture where the context menu was.
+    pub(super) fn open_image_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(settings) = self.editor.read(cx).picture_settings() else {
+            return;
+        };
+        let at = self.last_menu_at.unwrap_or_default();
+        self.image_dialog
+            .update(cx, |dialog, cx| dialog.open(at, settings, window, cx));
+    }
     /// "Insert picture": pick a PNG/JPEG/GIF/WebP file and put it after the caret's paragraph.
     pub fn pick_and_insert_image(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let lang = self.lang;

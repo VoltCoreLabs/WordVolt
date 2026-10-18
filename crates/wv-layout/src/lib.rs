@@ -8,6 +8,7 @@ mod line;
 mod measure;
 mod numbering;
 mod page;
+mod paginate;
 mod paragraph;
 mod table;
 mod table_page;
@@ -18,7 +19,7 @@ pub use layout_cache::LayoutCache;
 pub use leader::leader;
 pub use line::{Fragment, Line};
 pub use measure::{DEFAULT_SIZE_PT, Measurer, base_px, font_px, script_shift};
-pub use page::{Page, PageSetup, Slice};
+pub use page::{Page, PageSetup, PlacedFloat, Slice};
 pub use paragraph::{
     INDENT_STEP, ImageBox, LIST_HANGING, Options, ParagraphLayout, QUOTE_INDENT, layout_paragraph,
 };

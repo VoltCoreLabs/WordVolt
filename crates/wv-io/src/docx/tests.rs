@@ -434,3 +434,39 @@ fn columns_round_trip() {
     doc.page = doc.page.with_columns(3);
     assert_eq!(decode(&encode(&doc).unwrap()).unwrap().page.columns, 3);
 }
+
+#[test]
+fn floating_pictures_round_trip_with_their_wrapping() {
+    let png: Vec<u8> = vec![
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
+        0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00,
+        0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+        0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+    for wrap in [
+        wv_core::Wrap::TopBottom,
+        wv_core::Wrap::Front,
+        wv_core::Wrap::Behind,
+    ] {
+        let mut e = Editor::default();
+        e.insert_text("before");
+        e.insert_image(wv_core::ImageFormat::Png, png.clone(), 320.0, 240.0);
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(1, 0));
+        e.set_image_geometry(
+            200.0,
+            100.0,
+            Some(wv_core::Float {
+                x: 48.0,
+                y: 96.0,
+                wrap,
+            }),
+        );
+        let back = decode(&encode(&e.doc).unwrap()).unwrap();
+        let image = back.paragraphs[1].style.image.unwrap();
+        let float = image.float.expect("the picture stays floating");
+        assert_eq!(float.wrap, wrap);
+        assert!((float.x - 48.0).abs() < 0.1 && (float.y - 96.0).abs() < 0.1);
+        assert!((image.width - 200.0).abs() < 0.1 && (image.height - 100.0).abs() < 0.1);
+    }
+}

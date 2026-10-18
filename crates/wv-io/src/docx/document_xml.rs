@@ -30,6 +30,12 @@ pub fn parse(
             Event::Start(e) => state.start(&e, false),
             Event::Empty(e) => state.start(&e, true),
             Event::End(e) => state.end(e.local_name().as_ref()),
+            Event::Text(t) if state.pictures.in_offset => {
+                let text = t
+                    .unescape()
+                    .map_err(|e| IoError::Parse(format!("document.xml: {e}")))?;
+                state.picture_offset(&text);
+            }
             Event::Text(t) if state.in_text => {
                 let text = t
                     .unescape()
@@ -68,7 +74,7 @@ struct State {
     in_run_props: bool,
     in_text: bool,
     table: TableState,
-    pictures: PictureState,
+    pictures: picture_state::PictureState,
     page: PageSpec,
     /// What the file says about the size of the tables read so far, by table id.
     table_raw: std::collections::BTreeMap<u32, super::table_read::RawTable>,
@@ -77,16 +83,6 @@ struct State {
 }
 
 /// Pictures found in the body: relationship ids in order of appearance (`ImageRef::id` indexes them).
-#[derive(Default)]
-struct PictureState {
-    rels: Vec<String>,
-    in_drawing: bool,
-    embed: Option<String>,
-    size: (f32, f32),
-    /// The paragraph that follows a picture inside one `w:p`; dropped if it stays empty.
-    after: bool,
-}
-
 /// Position inside the outermost table being read (nested tables are flattened into their cell).
 #[derive(Default)]
 struct TableState {
@@ -110,6 +106,8 @@ impl State {
         match name {
             b"p" => self.end_paragraph(),
             b"drawing" => self.end_drawing(),
+            b"posOffset" => self.pictures.in_offset = false,
+            b"positionH" | b"positionV" => self.pictures.axis = None,
             b"tc" if self.table.depth == 1 => self.end_cell(),
             b"tbl" if self.table.depth > 0 => {
                 self.table.depth -= 1;
@@ -171,31 +169,6 @@ impl State {
             p.style.image = self.image.take();
             self.paragraphs.push(p);
         }
-    }
-
-    /// A picture ends the text paragraph before it and becomes a paragraph of its own.
-    fn end_drawing(&mut self) {
-        let pictures = &mut self.pictures;
-        pictures.in_drawing = false;
-        let Some(rid) = pictures.embed.take() else {
-            return;
-        };
-        let (mut width, mut height) = pictures.size;
-        if width < 1.0 || height < 1.0 {
-            (width, height) = (200.0, 150.0);
-        }
-        let id = pictures.rels.len() as u32;
-        pictures.rels.push(rid);
-        if self.current.as_ref().is_some_and(|p| !p.is_empty()) {
-            self.line_break(false);
-        }
-        self.image = Some(ImageRef { id, width, height });
-        let (align, named) = (self.align, self.named);
-        self.end_paragraph();
-        self.current = Some(Paragraph::default());
-        self.align = align;
-        self.named = named;
-        self.pictures.after = true;
     }
 
     /// Closes a cell. One that continues the cell above (`w:vMerge`) is dropped and makes that
@@ -285,4 +258,5 @@ impl State {
     }
 }
 
+mod picture_state;
 mod start;

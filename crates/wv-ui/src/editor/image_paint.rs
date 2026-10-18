@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use wv_core::ImageFormat;
 
+use super::image_handles::{CORNERS, HANDLE, HANDLES, Handle};
 use super::page_paint::PageView;
-use super::resize::{CORNERS, Corner, HANDLE};
 use super::view::EditorView;
 
 impl EditorView {
@@ -40,7 +40,17 @@ impl EditorView {
     }
 }
 
-/// Paints the pictures of the picture paragraphs on this page.
+/// Paints one picture at `bounds`.
+fn paint_picture(v: &PageView, id: u32, bounds: Bounds<Pixels>, window: &mut Window, cx: &mut App) {
+    let Some(source) = v.images.get(id as usize) else {
+        return;
+    };
+    if let Some(data) = source.clone().use_render_image(window, cx) {
+        let _ = window.paint_image(bounds, bounds, Corners::default(), data, 0, false);
+    }
+}
+
+/// Paints the pictures that are in the line of text on this page.
 pub fn paint_images(
     v: &PageView,
     at: &dyn Fn(f32, f32) -> Point<Pixels>,
@@ -51,32 +61,62 @@ pub fn paint_images(
     let setup = &v.layout.setup;
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
-        let (Some(image), true) = (para.image, slice.lines.start == 0) else {
+        let (Some(image), true) = (
+            para.image.filter(|i| i.float.is_none()),
+            slice.lines.start == 0,
+        ) else {
             continue;
         };
         let top = setup.margin_top + slice.y;
         if !visible(top, image.height) {
             continue;
         }
-        let Some(source) = v.images.get(image.id as usize) else {
-            continue;
-        };
         let x = setup.margin_left + slice.x + para.lines[0].x;
         let bounds = Bounds::new(
             at(x, top),
             size(px(image.width * v.zoom), px(image.height * v.zoom)),
         );
-        if let Some(data) = source.clone().use_render_image(window, cx) {
-            let _ = window.paint_image(bounds, bounds, Corners::default(), data, 0, false);
-        }
+        paint_picture(v, image.id, bounds, window, cx);
         if v.head.para == slice.para {
-            paint_handles(v, bounds, window);
+            paint_handles(v, bounds, &CORNERS, window);
         }
     }
 }
 
-/// Outline and corner handles of the selected picture.
-fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
+/// Paints the floating pictures of this page: `behind` the ones under the text (before it), else
+/// the others over the text, with the outline and handles of the selected one.
+pub fn paint_floats(
+    v: &PageView,
+    at: &dyn Fn(f32, f32) -> Point<Pixels>,
+    behind: bool,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let setup = &v.layout.setup;
+    for f in &v.layout.pages[v.page].floats {
+        let is_behind = f.wrap == wv_core::Wrap::Behind;
+        let bounds = Bounds::new(
+            at(setup.margin_left + f.x, setup.margin_top + f.y),
+            size(px(f.width * v.zoom), px(f.height * v.zoom)),
+        );
+        if behind {
+            if is_behind {
+                paint_picture(v, f.id, bounds, window, cx);
+            }
+            continue;
+        }
+        if !is_behind {
+            paint_picture(v, f.id, bounds, window, cx);
+        }
+        // The handles go over everything, also over the text in front of a "behind" picture.
+        if v.head.para == f.para {
+            paint_handles(v, bounds, &HANDLES, window);
+        }
+    }
+}
+
+/// Outline and handles of the selected picture.
+fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, handles: &[Handle], window: &mut Window) {
     let accent = v.link_color;
     let line = px(1.5);
     let (o, s) = (bounds.origin, bounds.size);
@@ -89,8 +129,8 @@ fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
         window.paint_quad(fill(edge, accent));
     }
     let half = px(HANDLE / 2.0);
-    for corner in CORNERS {
-        let (x, y) = corner.of(
+    for handle in handles.iter().copied() {
+        let (x, y) = handle.of(
             f32::from(o.x),
             f32::from(o.y),
             f32::from(s.width),
@@ -100,12 +140,8 @@ fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window) {
             point(px(x) - half, px(y) - half),
             size(px(HANDLE), px(HANDLE)),
         );
-        let cursor = match corner {
-            Corner::TopLeft | Corner::BottomRight => CursorStyle::ResizeUpLeftDownRight,
-            Corner::TopRight | Corner::BottomLeft => CursorStyle::ResizeUpRightDownLeft,
-        };
         if outer.dilate(px(3.0)).contains(&window.mouse_position()) {
-            window.set_window_cursor_style(cursor);
+            window.set_window_cursor_style(handle.cursor());
         }
         window.paint_quad(fill(outer, accent));
         window.paint_quad(fill(outer.dilate(px(-2.0)), rgb(0xffffff)));

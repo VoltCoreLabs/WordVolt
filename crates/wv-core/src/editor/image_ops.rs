@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::Editor;
 use crate::document::{ImageData, ImageFormat, Paragraph};
 use crate::position::{Position, Selection};
-use crate::style::ImageRef;
+use crate::style::{Float, ImageRef};
 
 /// Widest picture inserted at its natural size (px); larger ones are scaled down to this.
 pub const MAX_IMAGE_WIDTH: f32 = 600.0;
@@ -27,11 +27,7 @@ impl Editor {
         };
         let scale = (MAX_IMAGE_WIDTH.min(self.max_image_width()) / width).min(1.0);
         let mut picture = Paragraph::default();
-        picture.style.image = Some(ImageRef {
-            id: id as u32,
-            width: width * scale,
-            height: height * scale,
-        });
+        picture.style.image = Some(ImageRef::inline(id as u32, width * scale, height * scale));
         let at = self.sel.head.para;
         let current = &self.doc.paragraphs[at];
         let replace = current.is_empty() && current.style.cell.is_none();
@@ -91,6 +87,95 @@ impl Editor {
             ..image
         });
         self.amend_last_edit(para, changed);
+    }
+
+    /// Sets the size and placement of the caret's picture (one undo step): `float` `None` puts it
+    /// back into the line of text.
+    pub fn set_image_geometry(&mut self, width: f32, height: f32, float: Option<Float>) {
+        let Some(image) = self.image_at_caret() else {
+            return;
+        };
+        let (width, height) = self.clamp_image(width, height);
+        let para = self.sel.head.para;
+        self.edit_para_styles(para, para, |s| {
+            s.image = Some(ImageRef {
+                width,
+                height,
+                float,
+                ..image
+            })
+        });
+    }
+
+    /// `set_image_geometry` for a drag: the first call (`first`) starts an undo step, the following
+    /// ones change that step.
+    pub fn drag_image_geometry(
+        &mut self,
+        width: f32,
+        height: f32,
+        float: Option<Float>,
+        first: bool,
+    ) {
+        if first {
+            return self.set_image_geometry(width, height, float);
+        }
+        let Some(image) = self.image_at_caret() else {
+            return;
+        };
+        let (width, height) = self.clamp_image(width, height);
+        let para = self.sel.head.para;
+        let mut changed = self.doc.paragraphs[para].clone();
+        changed.style.image = Some(ImageRef {
+            width,
+            height,
+            float,
+            ..image
+        });
+        self.amend_last_edit(para, changed);
+    }
+
+    /// Picture sizes stay between 16 px and the text area of the page.
+    fn clamp_image(&self, width: f32, height: f32) -> (f32, f32) {
+        let p = &self.doc.page;
+        let max_h = p.height - p.margin_top - p.margin_bottom;
+        (
+            width.clamp(16.0, self.max_image_width().max(16.0)),
+            height.clamp(16.0, max_h.max(16.0)),
+        )
+    }
+
+    /// Moves the caret's picture paragraph in front of paragraph `before` (so it is on that
+    /// paragraph's page) and sets its placement. Not across tables. One undo step.
+    pub fn move_image_to(&mut self, before: usize, float: Option<Float>) -> bool {
+        let from = self.sel.head.para;
+        let Some(image) = self.image_at_caret() else {
+            return false;
+        };
+        let before = before.min(self.doc.paragraphs.len());
+        let mut picture = self.doc.paragraphs[from].clone();
+        picture.style.image = Some(ImageRef { float, ..image });
+        if before == from || before == from + 1 {
+            self.edit_para_styles(from, from, |s| s.image = picture.style.image);
+            return true;
+        }
+        let (lo, hi) = (from.min(before), (from + 1).max(before));
+        if self.doc.paragraphs[lo..hi]
+            .iter()
+            .any(|p| p.style.cell.is_some())
+        {
+            return false;
+        }
+        let mut paras: Vec<Paragraph> = self.doc.paragraphs[lo..hi].to_vec();
+        paras.remove(from - lo);
+        let at = if before > from {
+            before - 1 - lo
+        } else {
+            before - lo
+        };
+        paras.insert(at, picture);
+        let caret = Position::new(lo + at, 0);
+        self.edit_paragraphs(lo, hi - lo, paras, Selection::caret(caret));
+        true
     }
 
     /// Scales the caret's picture by `factor`, keeping its proportions.

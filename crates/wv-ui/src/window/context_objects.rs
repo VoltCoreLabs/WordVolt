@@ -2,6 +2,7 @@ use super::context_menu::{Action, row, separator};
 use super::context_parts::shade_row;
 use super::state::MainWindow;
 use gpui_kit::*;
+use wv_core::Wrap;
 use wv_i18n::Lang;
 use wv_i18n::{Key, t};
 
@@ -70,10 +71,49 @@ pub(super) fn table_items(
     items.push(shade_row(lang, cx).into_any_element());
 }
 
-/// Picture size and fit.
-pub(super) fn image_items(lang: Lang, cx: &mut Context<MainWindow>, items: &mut Vec<AnyElement>) {
+/// Picture wrapping, size and fit.
+pub(super) fn image_items(
+    this: &MainWindow,
+    lang: Lang,
+    cx: &mut Context<MainWindow>,
+    items: &mut Vec<AnyElement>,
+) {
     items.push(separator(cx).into_any_element());
-    let pictures: [(&'static str, Key, Action); 3] = [
+    let current = this
+        .editor
+        .read(cx)
+        .core
+        .image_at_caret()
+        .map(|i| i.float.map(|f| f.wrap));
+    let wraps: [(&'static str, Key, Option<Wrap>, Action); 4] = [
+        ("ctx-wrap-inline", Key::WrapInline, None, |t, _, cx| {
+            t.set_picture_wrap(None, cx)
+        }),
+        (
+            "ctx-wrap-tb",
+            Key::WrapTopBottom,
+            Some(Wrap::TopBottom),
+            |t, _, cx| t.set_picture_wrap(Some(Wrap::TopBottom), cx),
+        ),
+        (
+            "ctx-wrap-front",
+            Key::WrapFront,
+            Some(Wrap::Front),
+            |t, _, cx| t.set_picture_wrap(Some(Wrap::Front), cx),
+        ),
+        (
+            "ctx-wrap-behind",
+            Key::WrapBehind,
+            Some(Wrap::Behind),
+            |t, _, cx| t.set_picture_wrap(Some(Wrap::Behind), cx),
+        ),
+    ];
+    for (id, key, wrap, action) in wraps {
+        let mark = (current == Some(wrap)).then_some("✓");
+        items.push(row(id, t(lang, key), mark, true, action, cx).into_any_element());
+    }
+    items.push(separator(cx).into_any_element());
+    let pictures: [(&'static str, Key, Action); 4] = [
         ("ctx-pic-smaller", Key::CtxPicSmaller, |t, _, cx| {
             t.edit(cx, |c| c.scale_image(0.8))
         }),
@@ -83,6 +123,11 @@ pub(super) fn image_items(lang: Lang, cx: &mut Context<MainWindow>, items: &mut 
         ("ctx-pic-fit", Key::CtxPicFit, |t, _, cx| {
             t.edit(cx, |c| c.set_image_width(f32::MAX))
         }),
+        (
+            "ctx-pic-settings",
+            Key::CtxImageSettings,
+            |t, window, cx| t.open_image_dialog(window, cx),
+        ),
     ];
     for (id, key, action) in pictures {
         items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());

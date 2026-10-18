@@ -17,10 +17,13 @@ pub(super) type Action = fn(&mut MainWindow, &mut Window, &mut Context<MainWindo
 impl MainWindow {
     /// Runs a context-menu command and puts the caret back into the page.
     pub(super) fn menu_do(&mut self, f: Action, window: &mut Window, cx: &mut Context<Self>) {
-        self.context_menu = None;
+        self.last_menu_at = self.context_menu.take().or(self.last_menu_at);
         self.tab_menu = None;
         f(self, window, cx);
-        self.editor.update(cx, |view, cx| view.request_focus(cx));
+        // The size dialog keeps the focus for its fields.
+        if !self.image_dialog.read(cx).is_open() {
+            self.editor.update(cx, |view, cx| view.request_focus(cx));
+        }
         cx.notify();
     }
 }
@@ -57,10 +60,17 @@ pub(super) fn row(
         })
         .child(label)
         .child(
-            div()
-                .text_xs()
-                .text_color(muted)
-                .child(shortcut.map(|s| format!("{MOD}{s}")).unwrap_or_default()),
+            div().text_xs().text_color(muted).child(
+                shortcut
+                    .map(|s| {
+                        if s == "✓" {
+                            s.to_string()
+                        } else {
+                            format!("{MOD}{s}")
+                        }
+                    })
+                    .unwrap_or_default(),
+            ),
         )
 }
 
@@ -206,7 +216,7 @@ pub fn context_menu(
         table_items(this, lang, cx, &mut items);
     }
     if image {
-        image_items(lang, cx, &mut items);
+        image_items(this, lang, cx, &mut items);
     }
     items.push(separator(cx).into_any_element());
     items.push(

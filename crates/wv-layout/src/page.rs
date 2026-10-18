@@ -1,9 +1,7 @@
 use std::ops::Range;
 
-use std::rc::Rc;
-
-use crate::paragraph::ParagraphLayout;
-use crate::table::{Block, TABLE_GAP, TableBox};
+use crate::table::TableBox;
+use wv_core::Wrap;
 
 pub(crate) const EPS: f32 = 0.01;
 
@@ -102,6 +100,8 @@ pub struct Slice {
 pub struct Page {
     pub slices: Vec<Slice>,
     pub tables: Vec<TableBox>,
+    /// Floating pictures of the page (their paragraphs take no room in the text).
+    pub floats: Vec<PlacedFloat>,
 }
 
 impl Page {
@@ -110,106 +110,15 @@ impl Page {
     }
 }
 
-/// Flows body paragraphs and tables onto pages. A paragraph may continue on the next page (between
-/// lines); a table row never splits (the table continues on the next page). The gap above a
-/// paragraph is dropped at the top of a page.
-pub fn paginate(
-    paragraphs: &[Rc<ParagraphLayout>],
-    blocks: &[Block],
-    setup: &PageSetup,
-) -> Vec<Page> {
-    let columns = usize::from(setup.columns.max(1));
-    if columns == 1 {
-        return flow(paragraphs, blocks, setup, 1);
-    }
-    // Flow the text through column-wide "pages", then set each run of `columns` of them side by
-    // side on one real page.
-    let narrow = PageSetup {
-        margin_right: setup.margin_right + setup.content_width() - setup.column_width(),
-        ..setup.clone()
-    };
-    let step = setup.column_width() + COLUMN_GAP;
-    flow(paragraphs, blocks, &narrow, columns)
-        .chunks(columns)
-        .map(|group| {
-            let mut page = Page::default();
-            for (i, part) in group.iter().enumerate() {
-                let dx = i as f32 * step;
-                page.slices.extend(part.slices.iter().cloned().map(|mut s| {
-                    s.x += dx;
-                    s
-                }));
-                page.tables.extend(part.tables.iter().cloned().map(|mut t| {
-                    t.shift(dx);
-                    t
-                }));
-            }
-            page
-        })
-        .collect()
-}
-
-/// Flows the blocks onto `setup`-sized pages; a page break skips to the next multiple of
-/// `columns` (the next real page when the pages are columns).
-fn flow(
-    paragraphs: &[Rc<ParagraphLayout>],
-    blocks: &[Block],
-    setup: &PageSetup,
-    columns: usize,
-) -> Vec<Page> {
-    let limit = setup.content_height();
-    let content_width = setup.content_width();
-    let mut pages = vec![Page::default()];
-    let mut y = 0.0;
-    for block in blocks {
-        match block {
-            Block::Para(para_ix) => {
-                let para = &paragraphs[*para_ix];
-                if para.page_break && !pages.last().is_some_and(Page::is_empty) {
-                    let next = (pages.len() - 1) / columns * columns + columns;
-                    while pages.len() <= next {
-                        pages.push(Page::default());
-                    }
-                    y = 0.0;
-                }
-                for (line_ix, line) in para.lines.iter().enumerate() {
-                    let lead = if line_ix == 0 && y > 0.0 {
-                        para.space_before
-                    } else {
-                        0.0
-                    };
-                    if y + lead + line.height > limit + EPS
-                        && !pages.last().is_some_and(Page::is_empty)
-                    {
-                        pages.push(Page::default());
-                        y = 0.0;
-                    } else {
-                        y += lead;
-                    }
-                    let page = pages.last_mut().expect("at least one page");
-                    match page.slices.last_mut() {
-                        Some(s) if s.para == *para_ix && s.lines.end == line_ix && s.x == 0.0 => {
-                            s.lines.end += 1;
-                            s.height += line.height;
-                        }
-                        _ => page.slices.push(Slice {
-                            para: *para_ix,
-                            lines: line_ix..line_ix + 1,
-                            y,
-                            height: line.height,
-                            x: 0.0,
-                            width: content_width,
-                        }),
-                    }
-                    y += line.height;
-                }
-                y += para.space_after.unwrap_or(setup.paragraph_spacing);
-            }
-            Block::Table(table) => {
-                crate::table_page::paginate_table(paragraphs, table, setup, &mut pages, &mut y);
-                y += TABLE_GAP;
-            }
-        }
-    }
-    pages
+/// A floating picture on a page; `x`/`y` are from the top-left corner of the text area.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlacedFloat {
+    /// The picture paragraph.
+    pub para: usize,
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub wrap: Wrap,
 }
