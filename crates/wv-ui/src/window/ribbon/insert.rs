@@ -73,6 +73,15 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
+    let at_caret = {
+        let core = &this.editor.read(cx).core;
+        core.comment_at(core.sel.head).and_then(|id| {
+            let c = core.doc.comments.iter().find(|c| c.id == id)?;
+            Some((id, c.text.clone()))
+        })
+    };
+    this.comment_editor
+        .update(cx, |e, _| e.set_current(at_caret));
     let notes = block_group(
         t(this.lang, Key::GroupNotes),
         vec![
@@ -80,6 +89,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
                 .tip(t(this.lang, Key::TipFootnote))
                 .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_footnote())))
                 .into_any_element(),
+            this.comment_editor.clone().into_any_element(),
         ],
         cx,
     );

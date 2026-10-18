@@ -162,7 +162,8 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                     .style
                     .highlight
                     .map(rgb)
-                    .or(f.style.mono.then_some(v.code_bg));
+                    .or(f.style.mono.then_some(v.code_bg))
+                    .or(f.style.comment.map(|_| v.comment_bg));
                 if let Some(background) = background {
                     window.paint_quad(fill(
                         Bounds::new(at(x, top), sz(f.width, line.height)),

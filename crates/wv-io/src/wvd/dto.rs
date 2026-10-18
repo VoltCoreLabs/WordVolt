@@ -36,6 +36,9 @@ pub(super) struct File {
     /// How tables are sized.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) table_looks: Vec<TableLookDto>,
+    /// Comments (the text they are about carries their id).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) comments: Vec<CommentDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -170,4 +173,13 @@ pub(super) struct Para {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) space_after: Option<u8>,
     pub(super) runs: Vec<RunDto>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub(super) struct CommentDto {
+    pub(super) id: u32,
+    #[serde(default)]
+    pub(super) author: String,
+    #[serde(default)]
+    pub(super) text: String,
 }

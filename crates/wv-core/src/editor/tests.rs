@@ -1114,3 +1114,54 @@ fn pasting_text_with_a_footnote_drops_the_mark() {
 fn wv_core_mark_len() -> usize {
     crate::NOTE_MARK.len_utf8()
 }
+
+#[test]
+fn a_comment_is_anchored_to_the_selected_text() {
+    let mut e = Editor::new(Document::from_text("one two three"));
+    assert_eq!(e.add_comment("Ann", "x"), None, "nothing is selected");
+    e.sel = Selection {
+        anchor: Position::new(0, 4),
+        head: Position::new(0, 7),
+    };
+    let id = e.add_comment("Ann", "Why two?").unwrap();
+    assert_eq!(
+        e.doc.comment_range(id),
+        Some((Position::new(0, 4), Position::new(0, 7)))
+    );
+    assert_eq!(e.comment_at(Position::new(0, 5)), Some(id));
+    assert_eq!(e.comment_at(Position::new(0, 2)), None);
+    let comments = e.doc.visible_comments();
+    assert_eq!(
+        (comments[0].author.as_str(), comments[0].text.as_str()),
+        ("Ann", "Why two?")
+    );
+    // Typing at the end of the commented text does not extend it, typing inside does.
+    e.sel = Selection::caret(Position::new(0, 7));
+    e.insert_text("!");
+    assert_eq!(e.doc.comment_range(id).unwrap().1, Position::new(0, 7));
+    e.sel = Selection::caret(Position::new(0, 5));
+    e.insert_text("?");
+    assert_eq!(e.doc.comment_range(id).unwrap().1, Position::new(0, 8));
+}
+
+#[test]
+fn deleting_a_comment_takes_the_anchor_off_and_undo_brings_it_back() {
+    let mut e = Editor::new(Document::from_text("one two three"));
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, 3),
+    };
+    let id = e.add_comment("Ann", "note").unwrap();
+    e.set_comment_text(id, "changed");
+    e.delete_comment(id);
+    assert!(e.doc.visible_comments().is_empty());
+    assert!(e.undo());
+    assert_eq!(e.doc.visible_comments()[0].text, "changed");
+    // Clearing the formatting keeps the anchor.
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, 13),
+    };
+    e.clear_formatting();
+    assert_eq!(e.doc.visible_comments().len(), 1);
+}

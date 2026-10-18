@@ -71,6 +71,7 @@ impl Render for EditorView {
                 cell_selection,
                 epoch: self.caret_epoch.clone(),
                 code_bg: theme.code_bg,
+                comment_bg: theme.comment_bg,
                 spoiler_color: theme.spoiler,
                 link_color: theme.accent,
                 bar_color: theme.border_strong,

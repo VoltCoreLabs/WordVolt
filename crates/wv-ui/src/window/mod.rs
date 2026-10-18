@@ -3,6 +3,7 @@ mod band_controls;
 mod color_picker;
 mod combo;
 mod commands;
+mod comment_editor;
 mod context_menu;
 mod context_objects;
 mod context_parts;

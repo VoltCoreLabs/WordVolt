@@ -6,6 +6,7 @@
 mod band_parts;
 mod band_write;
 mod bands;
+mod comments;
 mod document_xml;
 mod footnotes;
 mod package;
@@ -106,7 +107,10 @@ pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
         &band_parts::parts(doc),
         doc.variants.odd_even,
         &doc.images,
-        footnotes::xml(doc).as_deref(),
+        (
+            footnotes::xml(doc).as_deref(),
+            comments::xml(doc).as_deref(),
+        ),
     )
 }
 

@@ -76,6 +76,15 @@ impl File {
             footer_runs: styled_runs(&doc.footer),
             band_variants: VariantsDto::of(&doc.variants),
             table_widths: Vec::new(),
+            comments: doc
+                .comments
+                .iter()
+                .map(|c| CommentDto {
+                    id: c.id,
+                    author: c.author.clone(),
+                    text: c.text.clone(),
+                })
+                .collect(),
             table_looks: doc
                 .table_looks
                 .iter()
@@ -214,6 +223,15 @@ impl File {
         }
         doc.header = band_of(self.header, self.header_runs, &self.header_align);
         doc.footer = band_of(self.footer, self.footer_runs, &self.footer_align);
+        doc.comments = self
+            .comments
+            .into_iter()
+            .map(|c| wv_core::Comment {
+                id: c.id,
+                author: c.author,
+                text: c.text,
+            })
+            .collect();
         for (table, widths) in self.table_widths {
             doc.table_looks.insert(
                 table,

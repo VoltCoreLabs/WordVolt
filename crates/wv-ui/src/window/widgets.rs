@@ -1,5 +1,6 @@
 use super::color_picker::{ColorEvent, ColorPicker};
 use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
+use super::comment_editor::{CommentEditor, CommentEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::style_names::{style_from_label, style_label};
@@ -147,6 +148,27 @@ pub(super) fn make_link_editor(lang: Lang, cx: &mut Context<MainWindow>) -> Enti
     )
     .detach();
     link_editor
+}
+
+pub(super) fn make_comment_editor(
+    lang: Lang,
+    cx: &mut Context<MainWindow>,
+) -> Entity<CommentEditor> {
+    let editor = cx.new(|cx| CommentEditor::new(lang, cx));
+    cx.subscribe(&editor, |this, _, event: &CommentEvent, cx| {
+        let author = std::env::var("USERNAME").unwrap_or_default();
+        let event = event.clone();
+        this.edit(cx, move |c| match event {
+            CommentEvent::Add(text) => {
+                c.add_comment(&author, &text);
+            }
+            CommentEvent::Edit(id, text) => c.set_comment_text(id, &text),
+            CommentEvent::Delete(id) => c.delete_comment(id),
+        });
+        this.editor.update(cx, |view, cx| view.request_focus(cx));
+    })
+    .detach();
+    editor
 }
 
 pub(super) fn make_case_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<MenuButton> {

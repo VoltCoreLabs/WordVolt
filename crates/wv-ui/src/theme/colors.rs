@@ -18,6 +18,8 @@ pub struct Theme {
     pub page: Rgba,
     /// Background of inline code.
     pub code_bg: Rgba,
+    /// Background of text that has a comment.
+    pub comment_bg: Rgba,
     /// Block that hides spoiler text.
     pub spoiler: Rgba,
     /// Highlight of every search match and of the current one.

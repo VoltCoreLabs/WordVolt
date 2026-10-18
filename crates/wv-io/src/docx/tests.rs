@@ -584,3 +584,31 @@ fn reads_word_footnotes() {
     assert_eq!(doc.paragraphs[1].style.note, Some(2));
     assert_eq!(doc.note_numbers().get(&2), Some(&1));
 }
+
+#[test]
+fn comments_are_written_with_their_range_and_part() {
+    let mut e = Editor::new(Document::from_text("Comment me please"));
+    e.sel = wv_core::Selection {
+        anchor: wv_core::Position::new(0, 0),
+        head: wv_core::Position::new(0, 7),
+    };
+    e.add_comment("Ann", "Check <this>");
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut read = |name: &str| {
+        let mut s = String::new();
+        std::io::Read::read_to_string(&mut z.by_name(name).unwrap(), &mut s).unwrap();
+        s
+    };
+    let body = read("word/document.xml");
+    assert!(
+        body.contains("<w:commentRangeStart w:id=\"1\"/>") || body.contains("commentRangeStart")
+    );
+    assert!(body.contains("commentReference"));
+    let part = read("word/comments.xml");
+    assert!(part.contains("w:author=\"Ann\"") && part.contains("Check &lt;this&gt;"));
+    assert_eq!(
+        decode(&bytes).unwrap().paragraphs[0].text(),
+        "Comment me please"
+    );
+}

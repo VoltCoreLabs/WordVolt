@@ -4,7 +4,7 @@ use crate::style::{Align, CharStyle, Script};
 
 impl Editor {
     /// Applies `f` to every selected character; with a caret it changes the style of the next typed text.
-    fn apply_char_style(&mut self, f: impl Fn(&mut CharStyle)) {
+    pub(super) fn apply_char_style(&mut self, f: impl Fn(&mut CharStyle)) {
         let (start, end) = self.sel.range();
         if start == end {
             let mut style = self
@@ -30,9 +30,9 @@ impl Editor {
     /// the format painter.
     pub fn paint_char_style(&mut self, style: &CharStyle) {
         self.apply_char_style(|s| {
-            let (link, note) = (s.link.take(), s.note);
+            let (link, note, comment) = (s.link.take(), s.note, s.comment);
             *s = style.clone();
-            (s.link, s.note) = (link, note);
+            (s.link, s.note, s.comment) = (link, note, comment);
         });
     }
 
@@ -88,6 +88,7 @@ impl Editor {
             spoiler: self.doc.all_chars(s, e, |c| c.spoiler),
             link: self.uniform(|c| c.link.clone()).flatten(),
             note: None,
+            comment: None,
         }
     }
 
@@ -181,9 +182,9 @@ impl Editor {
     /// Removes all character formatting from the selection (or the next typed text).
     pub fn clear_formatting(&mut self) {
         self.apply_char_style(|s| {
-            let note = s.note;
+            let (note, comment) = (s.note, s.comment);
             *s = CharStyle::default();
-            s.note = note;
+            (s.note, s.comment) = (note, comment);
         });
     }
 

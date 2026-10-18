@@ -2,6 +2,7 @@
 
 mod case_ops;
 mod clipboard_ops;
+mod comment_ops;
 mod core;
 mod footnote_ops;
 mod image_ops;

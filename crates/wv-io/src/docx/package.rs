@@ -229,11 +229,11 @@ pub fn write(
     bands: &[BandPart],
     odd_even: bool,
     images: &[ImageData],
-    footnotes: Option<&str>,
+    (footnotes, comments): (Option<&str>, Option<&str>),
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-    let rels = document_rels(links, bands, odd_even, images, footnotes.is_some());
+    let mut rels = document_rels(links, bands, odd_even, images, footnotes.is_some());
     let numbering = numbering_xml(number_lists);
     let mut content_types = CONTENT_TYPES.replace(
         "</Types>",
@@ -256,6 +256,10 @@ pub fn write(
             ),
         );
         extra.push(("footnotes.xml".into(), notes.to_string()));
+    }
+    if let Some(text) = comments {
+        super::comments::register(&mut content_types, &mut rels);
+        extra.push(("comments.xml".into(), text.to_string()));
     }
     if odd_even {
         content_types = content_types.replace(
