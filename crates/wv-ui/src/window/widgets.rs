@@ -3,6 +3,7 @@ use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
 use super::comment_editor::{CommentEditor, CommentEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
+use super::refs_panel::{RefEvent, RefsPanel};
 use super::style_namer::{NewStyle, StyleNamer};
 use super::style_names::{style_from_label, style_label};
 use crate::theme::DEFAULT_FONT;
@@ -181,6 +182,25 @@ pub(super) fn make_style_namer(lang: Lang, cx: &mut Context<MainWindow>) -> Enti
     })
     .detach();
     namer
+}
+
+pub(super) fn make_refs_panel(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<RefsPanel> {
+    let panel = cx.new(|cx| RefsPanel::new(lang, cx));
+    cx.subscribe(&panel, |this, _, event: &RefEvent, cx| {
+        let event = event.clone();
+        this.edit(cx, move |c| match event {
+            RefEvent::Add(name) => _ = c.add_bookmark(&name),
+            RefEvent::Delete(id) => c.delete_bookmark(id),
+            RefEvent::Bookmark(name) => {
+                let text = c.bookmark_text(&name).unwrap_or_else(|| name.clone());
+                c.insert_reference(&name, text.trim());
+            }
+            RefEvent::Heading(para) => c.insert_heading_reference(para),
+        });
+        this.editor.update(cx, |view, cx| view.request_focus(cx));
+    })
+    .detach();
+    panel
 }
 
 pub(super) fn make_case_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<MenuButton> {

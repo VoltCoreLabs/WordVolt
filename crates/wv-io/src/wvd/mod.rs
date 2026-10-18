@@ -219,6 +219,16 @@ mod tests {
     }
 
     #[test]
+    fn bookmarks_round_trip() {
+        let mut e = Editor::new(Document::from_text("Закладка здесь"));
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+        e.add_bookmark("начало");
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.bookmarks.len(), 1);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

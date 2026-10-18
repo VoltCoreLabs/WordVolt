@@ -1382,3 +1382,49 @@ fn the_files_default_font_fills_what_nothing_else_sets() {
     assert_eq!(heading.runs[0].style.size_pt, Some(16));
     assert_eq!(heading.runs[0].style.font.as_deref(), Some("Georgia"));
 }
+
+#[test]
+fn bookmarks_mark_text_and_cross_references_link_to_them() {
+    let mut e = Editor::new(Document::from_text("Введение\nТекст про закладки"));
+    e.sel = Selection {
+        anchor: Position::new(1, "Текст ".len()),
+        head: Position::new(1, "Текст про".len()),
+    };
+    let id = e.add_bookmark("моя закладка").unwrap();
+    assert_eq!(
+        e.bookmark_position("моя закладка"),
+        Some(Position::new(1, "Текст ".len()))
+    );
+    assert_eq!(e.doc.visible_bookmarks().len(), 1);
+    // Typing next to the bookmark does not extend it.
+    e.sel = Selection::caret(Position::new(1, "Текст про".len()));
+    e.insert_text("!");
+    assert!(
+        e.doc.paragraphs[1]
+            .style_at(e.sel.head.offset)
+            .bookmark
+            .is_none()
+    );
+    // Adding it again moves it; a caret marks the character after it.
+    e.sel = Selection::caret(Position::new(0, 0));
+    let moved = e.add_bookmark("моя закладка").unwrap();
+    assert_ne!(moved, id);
+    assert_eq!(
+        e.bookmark_position("моя закладка"),
+        Some(Position::new(0, 0))
+    );
+    assert_eq!(e.doc.visible_bookmarks().len(), 1);
+    e.delete_bookmark(moved);
+    assert!(e.bookmark_position("моя закладка").is_none());
+    // A reference to a heading is a link to a hidden bookmark on it.
+    e.sel = Selection::caret(Position::new(1, e.doc.paragraphs[1].len()));
+    e.insert_heading_reference(0);
+    let linked = e.doc.paragraphs[1].runs.last().unwrap();
+    assert_eq!(linked.text, "Введение");
+    let name = linked.style.link.clone().unwrap();
+    assert!(name.starts_with("#_Ref"));
+    assert!(
+        e.doc.visible_bookmarks().is_empty(),
+        "hidden ones are not listed"
+    );
+}

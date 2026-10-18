@@ -56,6 +56,15 @@ pub(super) struct File {
     pub(super) default_font: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) default_size_pt: Option<u16>,
+    /// Bookmarks (the text they mark carries their id).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) bookmarks: Vec<BookmarkDto>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(super) struct BookmarkDto {
+    pub(super) id: u32,
+    pub(super) name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

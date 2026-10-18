@@ -109,6 +109,14 @@ impl File {
                 })
                 .collect(),
             page: (doc.page != PageSpec::default()).then(|| PageDto::of(&doc.page)),
+            bookmarks: doc
+                .bookmarks
+                .iter()
+                .map(|b| BookmarkDto {
+                    id: b.id,
+                    name: b.name.clone(),
+                })
+                .collect(),
             default_font: doc.default_font.clone(),
             default_size_pt: doc.default_size_pt,
             section_bands: doc
@@ -234,6 +242,14 @@ impl File {
         if let Some(spec) = self.page.and_then(PageDto::spec) {
             doc.page = spec;
         }
+        doc.bookmarks = self
+            .bookmarks
+            .into_iter()
+            .map(|b| wv_core::Bookmark {
+                id: b.id,
+                name: b.name,
+            })
+            .collect();
         doc.default_font = self.default_font;
         doc.default_size_pt = self.default_size_pt;
         doc.section_bands = self

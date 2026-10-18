@@ -14,6 +14,14 @@ pub struct Comment {
     pub date: String,
 }
 
+/// A named place in the text (the text carries `CharStyle::bookmark = id`); names starting with
+/// `_` are made by the program (cross-references) and are not listed.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Bookmark {
+    pub id: u32,
+    pub name: String,
+}
+
 /// Who made a tracked change and when (the text carries `CharStyle::change`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Revision {
@@ -47,6 +55,8 @@ pub struct Document {
     /// `None` = the application's.
     pub default_font: Option<String>,
     pub default_size_pt: Option<u16>,
+    /// Bookmarks by `CharStyle::bookmark` id; one without anchored text does not exist.
+    pub bookmarks: Vec<Bookmark>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -68,6 +78,7 @@ impl Default for Document {
             section_bands: BTreeMap::new(),
             default_font: None,
             default_size_pt: None,
+            bookmarks: Vec::new(),
             comments: Vec::new(),
             revisions: Vec::new(),
         }

@@ -45,4 +45,6 @@ pub struct CharStyle {
     pub comment: Option<u32>,
     /// The text was inserted or deleted with change tracking on.
     pub change: Option<Change>,
+    /// The text is the anchor of bookmark `id` (see `Document::bookmarks`).
+    pub bookmark: Option<u32>,
 }
