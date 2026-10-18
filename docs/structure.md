@@ -153,3 +153,5 @@ crates/wv-ui/src/
 1. `CLAUDE.md` → `plan.md` (текущий этап) → `crates/<name>/README.md`.
 2. Нужный файл находить через Grep по имени типа/функции, читать только его.
 3. Файл > 300 строк — сначала разбить (отдельная задача/коммит), потом менять.
+- `installer/` — установщики: `windows/wordvolt.iss` (Inno Setup), `linux/wordvolt.desktop`, `macos/Info.plist` (шаблон .app); собираются `.github/workflows/release.yml` (D-041).
+- `docs/releases/` — описания релизов (`<версия>.md`, `default.md`).

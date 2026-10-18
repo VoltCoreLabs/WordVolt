@@ -23,7 +23,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             )
             .tip(t(lang, Key::TipTrackChanges))
             .on_click(cx.listener(|this, _, _, cx| {
-                let author = std::env::var("USERNAME").unwrap_or_default();
+                let author = crate::settings::user_name();
                 this.editor.update(cx, |view, cx| {
                     let on = !view.core.tracking();
                     view.core.set_author(&author);
