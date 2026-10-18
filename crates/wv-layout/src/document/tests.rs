@@ -615,3 +615,39 @@ fn text_follows_the_outline_of_a_tight_picture() {
     let x = l.paragraphs[1].lines[0].x;
     assert!((20.0..=21.0).contains(&x), "starts at {x}");
 }
+
+#[test]
+fn text_that_continues_onto_a_page_with_a_square_picture_goes_around_it() {
+    // One long paragraph that fills pages 1 and 2 and ends on page 3, where the picture is.
+    let words = vec!["aaaa"; 30].join(" ");
+    let mut doc = Document::from_text(&words);
+    let mut picture = wv_core::Paragraph::default();
+    picture.style.image = Some(wv_core::ImageRef {
+        float: Some(wv_core::Float {
+            x: 0.0,
+            y: 0.0,
+            wrap: wv_core::Wrap::Square,
+        }),
+        ..wv_core::ImageRef::inline(0, 24.0, 32.0)
+    });
+    doc.paragraphs.push(picture);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let page = l
+        .pages
+        .iter()
+        .position(|p| !p.floats.is_empty())
+        .expect("the picture is on a page");
+    assert!(page >= 1, "the picture is not on the first page");
+    // The text on that page started on an earlier page, and still keeps away from the picture.
+    let slice = l.pages[page]
+        .slices
+        .iter()
+        .find(|s| s.para == 0)
+        .expect("text on the picture's page");
+    assert!(slice.lines.start > 0, "a continuation");
+    let first = &l.paragraphs[0].lines[slice.lines.start];
+    assert_eq!(
+        first.x, 32.0,
+        "the first line beside the picture is indented"
+    );
+}

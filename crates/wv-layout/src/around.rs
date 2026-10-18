@@ -88,17 +88,20 @@ fn obstacles(
             } else {
                 vec![(0.0, float.height, 0.0, float.width)]
             };
-            for slice in page.slices.iter().filter(|s| s.lines.start == 0) {
+            for slice in &page.slices {
                 let para = &paragraphs[slice.para];
                 if slice.para == float.para || doc.paragraphs[slice.para].style.cell.is_some() {
                     continue;
                 }
+                // The slice may be the continuation of a paragraph from the page before: its
+                // first line is `base` px down the paragraph.
+                let base = para.lines[slice.lines.start].y;
                 for &(top, bottom, x0, x1) in &parts {
                     let (top, bottom) = (
-                        float.y + top - GAP - slice.y,
-                        float.y + bottom + GAP - slice.y,
+                        float.y + top - GAP - slice.y + base,
+                        float.y + bottom + GAP - slice.y + base,
                     );
-                    if top >= para.height || bottom <= 0.0 {
+                    if top >= base + slice.height.max(1.0) || bottom <= base {
                         continue;
                     }
                     out.entry(slice.para).or_default().push(Obstacle {
