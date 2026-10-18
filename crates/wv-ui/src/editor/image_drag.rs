@@ -1,7 +1,9 @@
 use gpui_kit::*;
 use wv_core::{Crop, Float, Position, Wrap};
 
-use super::image_handles::{CORNERS, HANDLE, HANDLES, Handle, PlacedImage};
+use super::image_handles::{
+    CORNERS, HANDLE, HANDLES, Handle, PlacedImage, ROTATE_RADIUS, rotate_handle,
+};
 use super::view::EditorView;
 
 /// Pointer movement (px) that turns a click on a picture into a drag.
@@ -12,6 +14,8 @@ pub(super) enum Mode {
     Resize(Handle),
     /// Cutting the picture's side at the handle instead of scaling it.
     Crop(Handle),
+    /// Turning the picture with the rotation handle.
+    Rotate,
     Move,
 }
 
@@ -23,10 +27,13 @@ pub struct ImageDrag {
     picture: PlacedImage,
     /// What was cut off the picture at the start.
     pub(super) crop0: Crop,
+    /// Size before turning and angle at the start.
+    pub(super) frame0: (f32, f32),
+    pub(super) angle0: f32,
     /// Where in the picture the pointer grabbed it (layout px).
     grab: (f32, f32),
     /// Width change per pixel dragged for an inline picture (a centred one grows on both sides).
-    gain: f32,
+    pub(super) gain: f32,
     /// The drag has moved far enough to count.
     active: bool,
     /// No step recorded yet (the first change starts the undo step).
@@ -43,6 +50,14 @@ impl EditorView {
         if let Some(sel) = self.selected_image()
             && let Some((x, y, w, h)) = self.image_window_rect(&sel)
         {
+            // The round handle above the picture turns it.
+            if !self.cropping {
+                let (hx, hy) = rotate_handle(x, y, w);
+                if (px_x - hx).hypot(px_y - hy) <= ROTATE_RADIUS + 4.0 {
+                    self.begin_drag(Mode::Rotate, sel, (px_x, px_y), true);
+                    return true;
+                }
+            }
             let handles: &[Handle] = if sel.float.is_some() || self.cropping {
                 &HANDLES
             } else {
@@ -78,14 +93,15 @@ impl EditorView {
     fn begin_drag(&mut self, mode: Mode, picture: PlacedImage, start: (f32, f32), active: bool) {
         let z = self.zoom;
         let rect = self.image_window_rect(&picture).unwrap_or_default();
-        let crop0 = self
-            .core
-            .image_at_caret()
-            .map(|i| i.crop)
-            .unwrap_or_default();
+        let current = self.core.image_at_caret();
+        let crop0 = current.map(|i| i.crop).unwrap_or_default();
+        let frame0 = current.map_or((picture.width, picture.height), |i| (i.width, i.height));
+        let angle0 = current.map_or(0.0, |i| i.angle);
         self.resizing = Some(ImageDrag {
             mode,
             crop0,
+            frame0,
+            angle0,
             start,
             picture,
             grab: ((start.0 - rect.0) / z, (start.1 - rect.1) / z),
@@ -101,7 +117,12 @@ impl EditorView {
     }
 
     /// Continues a picture drag; `false` when none is in progress.
-    pub(super) fn drag_image(&mut self, at: Point<Pixels>, cx: &mut Context<Self>) -> bool {
+    pub(super) fn drag_image(
+        &mut self,
+        at: Point<Pixels>,
+        shift: bool,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let Some(d) = self.resizing.as_mut() else {
             return false;
         };
@@ -117,65 +138,11 @@ impl EditorView {
         match mode {
             Mode::Resize(handle) => self.resize_to(handle, picture, pointer, first, cx),
             Mode::Crop(handle) => self.crop_to(handle, picture, pointer, first, cx),
+            Mode::Rotate => self.rotate_to(picture, pointer, shift, first, cx),
             Mode::Move => self.move_to(pointer, cx),
         }
         self.reveal_caret.set(false);
         true
-    }
-
-    fn resize_to(
-        &mut self,
-        handle: Handle,
-        pic: PlacedImage,
-        pointer: (f32, f32),
-        first: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(d) = self.resizing.as_mut() else {
-            return;
-        };
-        let z = self.zoom;
-        let (dx, dy) = ((pointer.0 - d.start.0) / z, (pointer.1 - d.start.1) / z);
-        d.first = false;
-        let gain = d.gain;
-        let Some(float) = pic.float else {
-            // In the line of text only the width changes (the height follows the proportions).
-            let dx = dx * gain;
-            let width = pic.width + if handle.right() { dx } else { -dx };
-            self.apply(cx, |c| c.drag_image_width(width, first));
-            return;
-        };
-        let aspect = pic.width / pic.height.max(1.0);
-        let (mut x, mut y, mut w, mut h) = (pic.x, pic.y, pic.width, pic.height);
-        if handle.is_corner() {
-            // Corners keep the proportions; the opposite corner stays where it is.
-            let grow = if handle.right() { dx } else { -dx };
-            w = (pic.width + grow).max(16.0);
-            h = w / aspect;
-            if handle.left() {
-                x = pic.x + pic.width - w;
-            }
-            if handle.top() {
-                y = pic.y + pic.height - h;
-            }
-        } else {
-            if handle.right() {
-                w = (pic.width + dx).max(16.0);
-            }
-            if handle.left() {
-                w = (pic.width - dx).max(16.0);
-                x = pic.x + pic.width - w;
-            }
-            if handle.bottom() {
-                h = (pic.height + dy).max(16.0);
-            }
-            if handle.top() {
-                h = (pic.height - dy).max(16.0);
-                y = pic.y + pic.height - h;
-            }
-        }
-        let moved = Float { x, y, ..float };
-        self.apply(cx, |c| c.drag_image_geometry(w, h, Some(moved), first));
     }
 
     /// Moves the picture so the grabbed point follows the pointer; crossing to another page
@@ -188,16 +155,24 @@ impl EditorView {
             return;
         };
         let z = self.zoom;
+        // The page under the pointer, or the nearest one when it is between pages.
         let target = {
             let bounds = self.page_bounds.borrow();
+            let distance = |b: &Bounds<Pixels>| {
+                let dx = (f32::from(b.left()) - pointer.0)
+                    .max(pointer.0 - f32::from(b.right()))
+                    .max(0.0);
+                let dy = (f32::from(b.top()) - pointer.1)
+                    .max(pointer.1 - f32::from(b.bottom()))
+                    .max(0.0);
+                dx.hypot(dy)
+            };
             let on = bounds
                 .iter()
                 .enumerate()
-                .find(|(_, b)| {
-                    b.size.height > px(0.) && b.contains(&point(px(pointer.0), px(pointer.1)))
-                })
-                .map(|(i, _)| i)
-                .unwrap_or(d.page);
+                .filter(|(_, b)| b.size.height > px(0.))
+                .min_by(|a, b| distance(a.1).total_cmp(&distance(b.1)))
+                .map_or(d.page, |(i, _)| i);
             (on, bounds.get(on).copied())
         };
         let (page, Some(b)) = target else {

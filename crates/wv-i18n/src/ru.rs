@@ -113,6 +113,7 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
         Key::TipLineSpacing => "Интервалы и отступы абзаца",
         Key::WrapSquare => "Вокруг рамки",
+        Key::WrapTight => "По контуру",
         Key::CtxRotateRight => "Повернуть вправо",
         Key::CtxRotateLeft => "Повернуть влево",
         Key::CtxCrop => "Обрезать",

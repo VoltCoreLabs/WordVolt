@@ -118,9 +118,12 @@ pub struct PlacedFloat {
     pub id: u32,
     pub x: f32,
     pub y: f32,
+    /// The box of the turned picture (what the text goes around).
     pub width: f32,
     pub height: f32,
     pub wrap: Wrap,
-    pub rotation: u8,
+    /// The picture itself: its size before turning, the angle and the cut.
+    pub frame: (f32, f32),
+    pub angle: f32,
     pub crop: wv_core::Crop,
 }

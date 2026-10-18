@@ -125,7 +125,7 @@ impl EditorView {
         }
         if self.resizing.is_some() {
             if ev.pressed_button == Some(MouseButton::Left) {
-                self.drag_image(ev.position, cx);
+                self.drag_image(ev.position, ev.modifiers.shift, cx);
             } else {
                 self.resizing = None;
             }

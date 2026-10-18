@@ -62,6 +62,8 @@ impl Cell {
 pub enum Wrap {
     /// Text runs along the sides of the picture (it is laid out in the width that is left).
     Square,
+    /// Text follows the outline of the picture (its transparent parts let the text in).
+    Tight,
     /// Text stops above the picture and goes on below it.
     TopBottom,
     /// The picture is drawn over the text; the text does not move.
@@ -85,14 +87,20 @@ pub struct Float {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImageRef {
     pub id: u32,
-    /// Displayed size (after rotating and cropping).
+    /// Size of the picture before it is turned (after cropping).
     pub width: f32,
     pub height: f32,
     pub float: Option<Float>,
-    /// Quarter turns clockwise (0..=3).
-    pub rotation: u8,
-    /// What is cut off the displayed picture.
+    /// Degrees clockwise (0..360) around the centre.
+    pub angle: f32,
+    /// What is cut off the picture (before it is turned).
     pub crop: Crop,
+}
+
+/// Size of the smallest box that holds a `w` x `h` picture turned by `angle` degrees.
+pub fn turned_box(w: f32, h: f32, angle: f32) -> (f32, f32) {
+    let (sin, cos) = angle.to_radians().sin_cos();
+    (w * cos.abs() + h * sin.abs(), w * sin.abs() + h * cos.abs())
 }
 
 /// The parts cut off the sides of a picture, as fractions of its (rotated) size.
@@ -116,19 +124,14 @@ impl Crop {
             (1.0 - self.top - self.bottom).max(0.05),
         )
     }
-
-    /// The same cut after the picture is turned a quarter clockwise.
-    pub fn turned(self) -> Self {
-        Self {
-            left: self.bottom,
-            top: self.left,
-            right: self.top,
-            bottom: self.right,
-        }
-    }
 }
 
 impl ImageRef {
+    /// The box the turned picture takes up (what the text is laid out around).
+    pub fn bounds(&self) -> (f32, f32) {
+        turned_box(self.width, self.height, self.angle)
+    }
+
     /// A picture in the line of text.
     pub fn inline(id: u32, width: f32, height: f32) -> Self {
         Self {
@@ -136,7 +139,7 @@ impl ImageRef {
             width,
             height,
             float: None,
-            rotation: 0,
+            angle: 0.0,
             crop: Crop::default(),
         }
     }
@@ -198,7 +201,7 @@ impl std::hash::Hash for ImageRef {
         self.float
             .map(|f| (f.x.to_bits(), f.y.to_bits(), f.wrap))
             .hash(state);
-        self.rotation.hash(state);
+        self.angle.to_bits().hash(state);
         [
             self.crop.left,
             self.crop.top,

@@ -8,6 +8,7 @@ mod image_drag;
 mod image_handles;
 mod image_hit;
 mod image_paint;
+mod image_resize;
 mod image_settings;
 mod ime;
 mod keys;

@@ -4,6 +4,15 @@ use wv_core::Float;
 /// Side of a resize handle on screen (px).
 pub const HANDLE: f32 = 9.0;
 
+/// Distance (px) from the top edge of a picture to its rotation handle, and the handle's radius.
+pub const ROTATE_GAP: f32 = 28.0;
+pub const ROTATE_RADIUS: f32 = 6.0;
+
+/// Where the rotation handle of a picture is (above the middle of its top edge).
+pub fn rotate_handle(x: f32, y: f32, w: f32) -> (f32, f32) {
+    (x + w / 2.0, y - ROTATE_GAP)
+}
+
 /// A handle on the outline of a picture.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Handle {

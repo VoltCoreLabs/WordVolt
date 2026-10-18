@@ -7991,6 +7991,7 @@ dependencies = [
 name = "wv-layout"
 version = "0.1.0"
 dependencies = [
+ "image",
  "unicode-linebreak",
  "unicode-segmentation",
  "wv-core",

@@ -5,6 +5,9 @@ const EMU_PER_PX: f32 = 9525.0;
 
 const WP: &str = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
 
+/// Tight wrapping around the picture's box (Word needs an outline polygon).
+const TIGHT: &str = "<wp:wrapTight wrapText=\"bothSides\"><wp:wrapPolygon edited=\"0\"><wp:start x=\"0\" y=\"0\"/><wp:lineTo x=\"0\" y=\"21600\"/><wp:lineTo x=\"21600\" y=\"21600\"/><wp:lineTo x=\"21600\" y=\"0\"/><wp:lineTo x=\"0\" y=\"0\"/></wp:wrapPolygon></wp:wrapTight>";
+
 /// Relationship id of picture `id` (see `package::document_rels`).
 pub fn rel_id(id: u32) -> String {
     format!("rIdI{}", id + 1)
@@ -13,23 +16,15 @@ pub fn rel_id(id: u32) -> String {
 /// `w:drawing` run with the picture: inline, or anchored for a floating one; `unique` numbers the
 /// drawing object.
 pub fn drawing_xml(image: ImageRef, unique: u32) -> String {
-    let (cx, cy) = (
-        (image.width * EMU_PER_PX).round() as u64,
-        (image.height * EMU_PER_PX).round() as u64,
-    );
+    // `wp:extent` is the box of the turned picture, `a:ext` the picture before it is turned; the
+    // cut (`a:srcRect`) is in the picture's own orientation.
+    let emu = |px: f32| (px * EMU_PER_PX).round() as u64;
+    let (bw, bh) = image.bounds();
+    let (cx, cy) = (emu(bw), emu(bh));
+    let (ux, uy) = (emu(image.width), emu(image.height));
     let rid = rel_id(image.id);
-    // Word keeps the size of the unrotated picture in `a:xfrm` and the cut in the source's own
-    // orientation (`a:srcRect`).
-    let (ux, uy) = if image.rotation % 2 == 1 {
-        (cy, cx)
-    } else {
-        (cx, cy)
-    };
-    let rot = u32::from(image.rotation % 4) * 5_400_000;
-    let mut source = image.crop;
-    for _ in 0..(4 - image.rotation % 4) % 4 {
-        source = source.turned();
-    }
+    let rot = (image.angle.rem_euclid(360.0) * 60_000.0).round() as i64;
+    let source = image.crop;
     let thousandths = |f: f32| (f * 100_000.0).round() as i64;
     let src_rect = if source.is_none() {
         String::new()
@@ -57,6 +52,7 @@ pub fn drawing_xml(image: ImageRef, unique: u32) -> String {
             );
             let (behind, wrap) = match float.wrap {
                 Wrap::Square => (0, "<wp:wrapSquare wrapText=\"bothSides\"/>"),
+                Wrap::Tight => (0, TIGHT),
                 Wrap::TopBottom => (0, "<wp:wrapTopAndBottom/>"),
                 Wrap::Front => (0, "<wp:wrapNone/>"),
                 Wrap::Behind => (1, "<wp:wrapNone/>"),

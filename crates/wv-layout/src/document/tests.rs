@@ -578,3 +578,40 @@ j",
         );
     }
 }
+
+/// A PNG of `w` x `h` px that is opaque only in its left half.
+fn half_png(w: u32, h: u32) -> Vec<u8> {
+    let mut img = image::RgbaImage::new(w, h);
+    for y in 0..h {
+        for x in 0..w / 2 {
+            img.put_pixel(x, y, image::Rgba([10, 20, 30, 255]));
+        }
+    }
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
+#[test]
+fn text_follows_the_outline_of_a_tight_picture() {
+    let mut doc = Document::from_text("aaaa bbbb cccc dddd eeee");
+    doc.images.push(wv_core::ImageData {
+        format: wv_core::ImageFormat::Png,
+        bytes: std::sync::Arc::new(half_png(24, 32)),
+    });
+    let mut picture = wv_core::Paragraph::default();
+    picture.style.image = Some(wv_core::ImageRef {
+        float: Some(wv_core::Float {
+            x: 0.0,
+            y: 0.0,
+            wrap: wv_core::Wrap::Tight,
+        }),
+        ..wv_core::ImageRef::inline(0, 24.0, 32.0)
+    });
+    doc.paragraphs.insert(0, picture);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    // Only the left half (12 px) of the picture is solid: text starts after it and the gap,
+    // not after the whole 24 px box as with a square wrap.
+    let x = l.paragraphs[1].lines[0].x;
+    assert!((20.0..=21.0).contains(&x), "starts at {x}");
+}

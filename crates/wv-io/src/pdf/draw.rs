@@ -170,12 +170,14 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
         if slice.lines.start == 0 {
             if let Some(image) = para.image.filter(|i| i.float.is_none()) {
                 let x = setup.margin_left + slice.x + para.lines[0].x;
-                c.picture(
-                    image.id,
-                    (x, slice_top, image.width, image.height),
-                    image.rotation,
-                    image.crop,
-                );
+                let (bw, bh) = image.bounds();
+                c.picture(&pictures::Placed {
+                    id: image.id,
+                    rect: (x, slice_top, bw, bh),
+                    frame: (image.width, image.height),
+                    angle: image.angle,
+                    crop: image.crop,
+                });
                 images.insert(image.id);
             }
             if let Some(marker) = &para.marker {

@@ -85,7 +85,7 @@ pub(super) fn image_items(
         .core
         .image_at_caret()
         .map(|i| i.float.map(|f| f.wrap));
-    let wraps: [(&'static str, Key, Option<Wrap>, Action); 5] = [
+    let wraps: [(&'static str, Key, Option<Wrap>, Action); 6] = [
         ("ctx-wrap-inline", Key::WrapInline, None, |t, _, cx| {
             t.set_picture_wrap(None, cx)
         }),
@@ -94,6 +94,12 @@ pub(super) fn image_items(
             Key::WrapSquare,
             Some(Wrap::Square),
             |t, _, cx| t.set_picture_wrap(Some(Wrap::Square), cx),
+        ),
+        (
+            "ctx-wrap-tight",
+            Key::WrapTight,
+            Some(Wrap::Tight),
+            |t, _, cx| t.set_picture_wrap(Some(Wrap::Tight), cx),
         ),
         (
             "ctx-wrap-tb",
@@ -119,13 +125,14 @@ pub(super) fn image_items(
         items.push(row(id, t(lang, key), mark, true, action, cx).into_any_element());
     }
     items.push(separator(cx).into_any_element());
-    let (cropped, cropping) = {
+    let (cropped, cropping, upright) = {
         let view = this.editor.read(cx);
+        let image = view.core.image_at_caret();
         (
-            view.core
-                .image_at_caret()
-                .is_some_and(|i| !i.crop.is_none()),
+            image.is_some_and(|i| !i.crop.is_none()),
             view.cropping,
+            // A turned picture is not cropped (the edges would not line up with the handles).
+            image.is_none_or(|i| i.angle.rem_euclid(360.0) < 0.01),
         )
     };
     let crop_key = if cropping {
@@ -135,12 +142,12 @@ pub(super) fn image_items(
     };
     let pictures: [(&'static str, Key, bool, Action); 8] = [
         ("ctx-rotate-right", Key::CtxRotateRight, true, |t, _, cx| {
-            t.edit(cx, |c| c.rotate_image(1))
+            t.edit(cx, |c| c.turn_image(90.0))
         }),
         ("ctx-rotate-left", Key::CtxRotateLeft, true, |t, _, cx| {
-            t.edit(cx, |c| c.rotate_image(-1))
+            t.edit(cx, |c| c.turn_image(-90.0))
         }),
-        ("ctx-crop", crop_key, true, |t, _, cx| {
+        ("ctx-crop", crop_key, upright, |t, _, cx| {
             t.editor.update(cx, |view, cx| {
                 view.cropping = !view.cropping;
                 cx.notify();

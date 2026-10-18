@@ -445,6 +445,8 @@ fn floating_pictures_round_trip_with_their_wrapping() {
         0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
     ];
     for wrap in [
+        wv_core::Wrap::Square,
+        wv_core::Wrap::Tight,
         wv_core::Wrap::TopBottom,
         wv_core::Wrap::Front,
         wv_core::Wrap::Behind,
@@ -480,7 +482,7 @@ fn rotated_and_cropped_pictures_round_trip() {
         0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
         0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
     ];
-    for turns in 0..4 {
+    for angle in [0.0_f32, 90.0, 37.5, 270.0] {
         for float in [
             None,
             Some(wv_core::Float {
@@ -505,13 +507,13 @@ fn rotated_and_cropped_pictures_round_trip() {
                 float,
                 true,
             );
-            e.rotate_image(turns);
+            e.turn_image(angle);
             let back = decode(&encode(&e.doc).unwrap()).unwrap();
             let (a, b) = (
                 back.paragraphs[0].style.image.unwrap(),
                 e.doc.paragraphs[0].style.image.unwrap(),
             );
-            assert_eq!(a.rotation, b.rotation, "turns {turns}");
+            assert!((a.angle - b.angle).abs() < 0.01, "angle {angle}");
             assert!((a.width - b.width).abs() < 0.1 && (a.height - b.height).abs() < 0.1);
             for (x, y) in [
                 (a.crop.left, b.crop.left),
@@ -519,11 +521,7 @@ fn rotated_and_cropped_pictures_round_trip() {
                 (a.crop.right, b.crop.right),
                 (a.crop.bottom, b.crop.bottom),
             ] {
-                assert!(
-                    (x - y).abs() < 0.001,
-                    "turns {turn}: {a:?} vs {b:?}",
-                    turn = turns
-                );
+                assert!((x - y).abs() < 0.001, "angle {angle}: {a:?} vs {b:?}");
             }
             assert_eq!(a.float.map(|f| f.wrap), b.float.map(|f| f.wrap));
         }

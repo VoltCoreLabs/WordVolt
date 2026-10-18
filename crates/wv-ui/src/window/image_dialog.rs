@@ -15,9 +15,10 @@ pub enum ImageDialogEvent {
 }
 
 /// How the picture sits in the text, in the order of the buttons.
-const MODES: [(Key, Option<Wrap>); 5] = [
+const MODES: [(Key, Option<Wrap>); 6] = [
     (Key::WrapInline, None),
     (Key::WrapSquare, Some(Wrap::Square)),
+    (Key::WrapTight, Some(Wrap::Tight)),
     (Key::WrapTopBottom, Some(Wrap::TopBottom)),
     (Key::WrapFront, Some(Wrap::Front)),
     (Key::WrapBehind, Some(Wrap::Behind)),

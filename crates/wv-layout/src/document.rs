@@ -1,4 +1,4 @@
-use wv_core::{Document, Position, Wrap};
+use wv_core::{Document, Position};
 
 use std::rc::Rc;
 
@@ -90,7 +90,7 @@ impl DocLayout {
         let mut pages = paginate(&paragraphs, &blocks, &setup);
         if pages
             .iter()
-            .any(|p| p.floats.iter().any(|f| f.wrap == Wrap::Square))
+            .any(|p| p.floats.iter().any(|f| crate::around::beside(f.wrap)))
         {
             wrap_around(
                 doc,
