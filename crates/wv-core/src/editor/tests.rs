@@ -1,6 +1,6 @@
 use super::Editor;
 use crate::document::Document;
-use crate::position::Position;
+use crate::position::{Position, Selection};
 use crate::style::Align;
 
 fn typed(text: &str) -> Editor {
@@ -779,4 +779,33 @@ fn band_variants_are_one_undo_step() {
     assert_eq!(e.doc.bands_for(1).0.text(), "Main");
     assert!(e.undo());
     assert!(e.doc.header.is_empty() && !e.doc.variants.different_first);
+}
+
+#[test]
+fn copy_and_paste_keep_formatting() {
+    let mut e = Editor::new(Document::from_text("Привет мир\nвторая"));
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, 6),
+    };
+    e.toggle_bold();
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(1, 8),
+    };
+    let frag = e.copy_fragment();
+    assert_eq!(frag.len(), 2);
+    assert!(frag[0].runs[0].style.bold);
+    e.sel = Selection::caret(Position::new(1, 12));
+    e.paste_fragment(&frag);
+    assert_eq!(e.doc.paragraphs.len(), 3);
+    assert_eq!(
+        e.doc.paragraphs[1].text(),
+        "вторая".to_owned() + "Привет мир"
+    );
+    assert!(e.doc.paragraphs[1].runs.iter().any(|r| r.style.bold));
+    assert_eq!(e.doc.paragraphs[2].text(), "втор");
+    assert_eq!(e.sel.head, Position::new(2, 8));
+    assert!(e.undo());
+    assert_eq!(e.doc.paragraphs.len(), 2);
 }

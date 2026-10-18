@@ -40,6 +40,7 @@ impl EditorView {
             ("u", true) => self.apply(cx, |c| c.toggle_underline()),
             ("c", true) => self.copy_selection(cx),
             ("x", true) => self.cut_selection(cx),
+            ("v", true) if shift => self.paste_plain(cx),
             ("v", true) => self.paste_clipboard(cx),
             (_, false) => {
                 if let Some(text) = k
@@ -51,25 +52,6 @@ impl EditorView {
                 }
             }
             _ => {}
-        }
-    }
-
-    pub fn cut_selection(&mut self, cx: &mut Context<Self>) {
-        self.copy_selection(cx);
-        self.apply(cx, |c| _ = c.delete_selection());
-    }
-
-    pub fn copy_selection(&mut self, cx: &mut Context<Self>) {
-        let text = self.core.selected_text();
-        if !text.is_empty() {
-            cx.write_to_clipboard(ClipboardItem::new_string(text));
-        }
-    }
-
-    pub fn paste_clipboard(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            let text = text.replace("\r\n", "\n").replace('\r', "\n");
-            self.apply(cx, |c| c.insert_text(&text));
         }
     }
 }

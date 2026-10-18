@@ -1,6 +1,7 @@
 //! Editor = document + selection + history.
 
 mod case_ops;
+mod clipboard_ops;
 mod core;
 mod image_ops;
 mod movement;

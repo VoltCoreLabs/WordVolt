@@ -116,6 +116,13 @@ impl Paragraph {
         self.normalize();
     }
 
+    /// Inserts runs (with their own styles) at `offset`.
+    pub fn insert_runs(&mut self, offset: usize, runs: Vec<Run>) {
+        let at = self.split_at(offset);
+        self.runs.splice(at..at, runs);
+        self.normalize();
+    }
+
     pub fn delete(&mut self, start: usize, end: usize) {
         if start >= end {
             return;

@@ -112,6 +112,7 @@ crates/wv-io/src/
 crates/wv-ui/src/
 ├─ lib.rs
 ├─ app.rs                 инициализация, глобальное состояние
+├─ editor/clip.rs        копирование/вставка с форматированием (ClipFragment)
 ├─ spell.rs               глобальное состояние орфографии (SpellGlobal); window/spell.rs — загрузка, переключатель, «в словарь»
 ├─ window/                main_window.rs, titlebar.rs, status_bar.rs
 ├─ editor/
