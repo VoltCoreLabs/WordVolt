@@ -47,6 +47,9 @@ mod tests {
         e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
         e.doc.paragraphs[0].style.indent = 2;
         e.doc.paragraphs[0].style.line_spacing = Some(1.5);
+        e.doc.paragraphs[0].style.first_line = 3;
+        e.doc.paragraphs[0].style.space_before = Some(6);
+        e.doc.paragraphs[0].style.space_after = Some(0);
         e.doc.paragraphs[0].runs[0].style.highlight = Some(0xFFFF00);
         e.doc.paragraphs[0].runs[0].style.script = wv_core::Script::Sub;
         let back = decode(&encode(&e.doc).unwrap()).unwrap();

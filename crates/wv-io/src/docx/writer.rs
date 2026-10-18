@@ -117,6 +117,9 @@ pub fn write_paragraph(
         || num_id.is_some()
         || p.style.indent > 0
         || p.style.line_spacing.is_some()
+        || p.style.first_line > 0
+        || p.style.space_before.is_some()
+        || p.style.space_after.is_some()
         || p.style.named != NamedStyle::Normal;
     if has_props {
         // Child order follows the schema: pStyle, numPr, spacing, ind, jc.
@@ -132,17 +135,42 @@ pub fn write_paragraph(
                 p.style.indent
             ));
         }
-        if let Some(spacing) = p.style.line_spacing {
-            xml.push_str(&format!(
-                "<w:spacing w:line=\"{}\" w:lineRule=\"auto\"/>",
-                (spacing * 240.0).round() as u32
-            ));
+        let (line, before, after) = (
+            p.style.line_spacing,
+            p.style.space_before,
+            p.style.space_after,
+        );
+        if line.is_some() || before.is_some() || after.is_some() {
+            xml.push_str("<w:spacing");
+            if let Some(pt) = before {
+                xml.push_str(&format!(" w:before=\"{}\"", u32::from(pt) * 20));
+            }
+            if let Some(pt) = after {
+                xml.push_str(&format!(" w:after=\"{}\"", u32::from(pt) * 20));
+            }
+            if let Some(spacing) = line {
+                xml.push_str(&format!(
+                    " w:line=\"{}\" w:lineRule=\"auto\"",
+                    (spacing * 240.0).round() as u32
+                ));
+            }
+            xml.push_str("/>");
         }
-        if num_id.is_none() && p.style.indent > 0 {
-            xml.push_str(&format!(
-                "<w:ind w:left=\"{}\"/>",
-                u32::from(p.style.indent) * 720
-            ));
+        let left = if num_id.is_none() {
+            u32::from(p.style.indent) * 720
+        } else {
+            0
+        };
+        let first = u32::from(p.style.first_line) * 360;
+        if left > 0 || first > 0 {
+            xml.push_str("<w:ind");
+            if left > 0 {
+                xml.push_str(&format!(" w:left=\"{left}\""));
+            }
+            if first > 0 {
+                xml.push_str(&format!(" w:firstLine=\"{first}\""));
+            }
+            xml.push_str("/>");
         }
         if let Some(jc) = jc {
             xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));

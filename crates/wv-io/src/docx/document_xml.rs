@@ -51,6 +51,9 @@ struct State {
     list: Option<ListKind>,
     indent: u8,
     line_spacing: Option<f32>,
+    first_line: u8,
+    space_before: Option<u8>,
+    space_after: Option<u8>,
     links: HashMap<String, String>,
     link: Option<String>,
     paragraphs: Vec<Paragraph>,
@@ -214,14 +217,26 @@ impl State {
             b"numId" if self.in_paragraph_props => {
                 self.list = attr(e, b"val").and_then(|id| self.numbering.get(&id).copied());
             }
-            b"ind" if self.in_paragraph_props && self.list.is_none() => {
-                let left = attr(e, b"left")
-                    .or_else(|| attr(e, b"start"))
+            b"ind" if self.in_paragraph_props => {
+                self.first_line = attr(e, b"firstLine")
                     .and_then(|v| v.parse::<f32>().ok())
-                    .unwrap_or(0.0);
-                self.indent = (left / 720.0).round().clamp(0.0, 8.0) as u8;
+                    .map_or(0, |twips| (twips / 360.0).round().clamp(0.0, 8.0) as u8);
+                if self.list.is_none() {
+                    let left = attr(e, b"left")
+                        .or_else(|| attr(e, b"start"))
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .unwrap_or(0.0);
+                    self.indent = (left / 720.0).round().clamp(0.0, 8.0) as u8;
+                }
             }
             b"spacing" if self.in_paragraph_props => {
+                let pt = |name: &[u8]| {
+                    attr(e, name)
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .map(|twips| (twips / 20.0).round().clamp(0.0, 255.0) as u8)
+                };
+                self.space_before = pt(b"before");
+                self.space_after = pt(b"after");
                 let auto = attr(e, b"lineRule").is_none_or(|rule| rule == "auto");
                 if let (true, Some(line)) =
                     (auto, attr(e, b"line").and_then(|v| v.parse::<f32>().ok()))
@@ -322,6 +337,9 @@ impl State {
         self.list = None;
         self.indent = 0;
         self.line_spacing = None;
+        self.first_line = 0;
+        self.space_before = None;
+        self.space_after = None;
     }
 
     fn end_paragraph(&mut self) {
@@ -335,6 +353,9 @@ impl State {
             p.style.list = self.list;
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
+            p.style.first_line = self.first_line;
+            p.style.space_before = self.space_before;
+            p.style.space_after = self.space_after;
             p.style.cell = self.table.cell;
             p.style.image = self.image.take();
             self.paragraphs.push(p);

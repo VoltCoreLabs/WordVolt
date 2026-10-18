@@ -94,6 +94,31 @@ fn line_spacing_scales_height() {
 }
 
 #[test]
+fn first_line_is_indented_and_wraps_earlier() {
+    let mut p = plain("aaaa bbbb cccc");
+    p.style.first_line = 1;
+    // 24 px = 3 chars: the first line holds 12 - 3 = 9 chars, so "aaaa bbbb" fits, "cccc" wraps.
+    let l = layout_paragraph(&p, &opts(10.0), &Fixed);
+    assert_eq!(l.lines[0].x, FIRST_LINE_STEP);
+    assert_eq!(l.lines[1].x, 0.0);
+    let p2 = {
+        let mut p = plain("aaaa bbbb");
+        p.style.first_line = 1;
+        p
+    };
+    assert_eq!(lines_of(&p2, 10.0), ["aaaa ", "bbbb"]);
+}
+
+#[test]
+fn paragraph_gaps_override_the_style_defaults() {
+    let mut p = plain("a");
+    p.style.space_before = Some(6);
+    p.style.space_after = Some(0);
+    let l = layout_paragraph(&p, &opts(10.0), &Fixed);
+    assert_eq!((l.space_before, l.space_after), (8.0, Some(0.0)));
+}
+
+#[test]
 fn alignment_offsets() {
     let mut p = plain("abcd");
     p.style.align = Align::Center;

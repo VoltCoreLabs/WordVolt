@@ -15,6 +15,12 @@ pub const QUOTE_INDENT: f32 = 24.0;
 /// One indent step: 0.5 inch.
 pub const INDENT_STEP: f32 = 48.0;
 
+/// One step of the first-line indent: 0.25 inch.
+pub const FIRST_LINE_STEP: f32 = 24.0;
+
+/// Points to px (96 dpi).
+const PT: f32 = 4.0 / 3.0;
+
 /// Room for the bullet/number in front of a list item's text (px).
 pub const LIST_HANGING: f32 = 24.0;
 
@@ -83,9 +89,17 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         0.0
     };
     let indent = f32::from(p.style.indent) * INDENT_STEP + list_gap + quote;
+    let first = f32::from(p.style.first_line) * FIRST_LINE_STEP;
     let opts = &Options {
         width: opts.width - indent,
         line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
+    };
+    let limit = |rows: usize| {
+        if rows == 0 {
+            opts.width - first
+        } else {
+            opts.width
+        }
     };
     let text = p.text();
     let spans = run_spans(p);
@@ -97,14 +111,15 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         let word = pieces(p, &text, &spans, atom.start..word_end, false, m);
         let spaces = pieces(p, &text, &spans, word_end..atom.end, true, m);
         let word_width: f32 = word.iter().map(|x| x.width).sum();
-        if !current.is_empty() && current_width + word_width > opts.width + EPS {
+        if !current.is_empty() && current_width + word_width > limit(lines.len()) + EPS {
             lines.push(std::mem::take(&mut current));
             current_width = 0.0;
         }
-        if word_width > opts.width + EPS {
+        if word_width > limit(lines.len()) + EPS {
             for piece in word {
                 for part in split_graphemes(p, &text, piece, m) {
-                    if !current.is_empty() && current_width + part.width > opts.width + EPS {
+                    if !current.is_empty() && current_width + part.width > limit(lines.len()) + EPS
+                    {
                         lines.push(std::mem::take(&mut current));
                         current_width = 0.0;
                     }
@@ -120,14 +135,18 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         current.extend(spaces);
     }
     lines.push(current);
-    let mut layout = build(p, text, lines, opts, m);
+    let mut layout = build(p, text, lines, opts, first, m);
     layout.quote = p.style.quote;
     layout.indent = indent;
-    layout.space_before = p.style.named.space_before();
+    layout.space_before = p
+        .style
+        .space_before
+        .map_or(p.style.named.space_before(), |pt| f32::from(pt) * PT);
     layout.space_after = p
         .style
-        .list
-        .map(|_| LIST_SPACE_AFTER)
+        .space_after
+        .map(|pt| f32::from(pt) * PT)
+        .or(p.style.list.map(|_| LIST_SPACE_AFTER))
         .or(p.style.named.space_after());
     layout.lines.iter_mut().for_each(|line| line.x += indent);
     if let Some(img) = p.style.image {

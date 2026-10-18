@@ -9,6 +9,7 @@ pub(super) fn build(
     text: String,
     rows: Vec<Vec<Piece>>,
     opts: &Options,
+    first: f32,
     m: &dyn Measurer,
 ) -> ParagraphLayout {
     let mut default_style = p.runs.first().map(|r| r.style.clone()).unwrap_or_default();
@@ -17,7 +18,19 @@ pub(super) fn build(
     let mut lines = Vec::with_capacity(rows.len());
     let mut y = 0.0;
     for (i, row) in rows.iter().enumerate() {
-        let line = build_line(p, &text, row, i == last_row, y, &default_style, opts, m);
+        // The first line is narrower by the first-line indent and starts that far in.
+        let o = Options {
+            width: if i == 0 {
+                opts.width - first
+            } else {
+                opts.width
+            },
+            ..*opts
+        };
+        let mut line = build_line(p, &text, row, i == last_row, y, &default_style, &o, m);
+        if i == 0 {
+            line.x += first;
+        }
         y += line.height;
         lines.push(line);
     }
