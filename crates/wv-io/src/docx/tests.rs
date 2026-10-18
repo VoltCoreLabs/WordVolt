@@ -114,6 +114,9 @@ fn lists_indents_and_spacing_round_trip_with_separate_numbered_lists() {
         p.style.indent = indent;
     }
     doc.paragraphs[3].style.line_spacing = Some(2.0);
+    doc.paragraphs[4].style.first_line = 2;
+    doc.paragraphs[4].style.space_before = Some(12);
+    doc.paragraphs[4].style.space_after = Some(0);
     let bytes = encode(&doc).unwrap();
     assert_eq!(decode(&bytes).unwrap(), doc);
 }

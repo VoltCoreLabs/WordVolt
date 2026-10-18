@@ -1,10 +1,11 @@
 use std::ops::Range;
 
 use unicode_segmentation::UnicodeSegmentation;
-use wv_core::{Align, CharStyle, Paragraph};
+use wv_core::{Align, Paragraph};
 
 use crate::Measurer;
-use crate::line::{Fragment, Line};
+use crate::line::Line;
+use build::build;
 
 const EPS: f32 = 0.01;
 
@@ -13,6 +14,12 @@ pub const QUOTE_INDENT: f32 = 24.0;
 
 /// One indent step: 0.5 inch.
 pub const INDENT_STEP: f32 = 48.0;
+
+/// One step of the first-line indent: 0.25 inch.
+pub const FIRST_LINE_STEP: f32 = 24.0;
+
+/// Points to px (96 dpi).
+const PT: f32 = 4.0 / 3.0;
 
 /// Room for the bullet/number in front of a list item's text (px).
 pub const LIST_HANGING: f32 = 24.0;
@@ -66,11 +73,11 @@ impl ParagraphLayout {
     }
 }
 
-struct Piece {
-    range: Range<usize>,
-    run: usize,
-    width: f32,
-    space: bool,
+pub(super) struct Piece {
+    pub(super) range: Range<usize>,
+    pub(super) run: usize,
+    pub(super) width: f32,
+    pub(super) space: bool,
 }
 
 /// Lays out one paragraph for the given width.
@@ -82,9 +89,17 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         0.0
     };
     let indent = f32::from(p.style.indent) * INDENT_STEP + list_gap + quote;
+    let first = f32::from(p.style.first_line) * FIRST_LINE_STEP;
     let opts = &Options {
         width: opts.width - indent,
         line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
+    };
+    let limit = |rows: usize| {
+        if rows == 0 {
+            opts.width - first
+        } else {
+            opts.width
+        }
     };
     let text = p.text();
     let spans = run_spans(p);
@@ -96,14 +111,15 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         let word = pieces(p, &text, &spans, atom.start..word_end, false, m);
         let spaces = pieces(p, &text, &spans, word_end..atom.end, true, m);
         let word_width: f32 = word.iter().map(|x| x.width).sum();
-        if !current.is_empty() && current_width + word_width > opts.width + EPS {
+        if !current.is_empty() && current_width + word_width > limit(lines.len()) + EPS {
             lines.push(std::mem::take(&mut current));
             current_width = 0.0;
         }
-        if word_width > opts.width + EPS {
+        if word_width > limit(lines.len()) + EPS {
             for piece in word {
                 for part in split_graphemes(p, &text, piece, m) {
-                    if !current.is_empty() && current_width + part.width > opts.width + EPS {
+                    if !current.is_empty() && current_width + part.width > limit(lines.len()) + EPS
+                    {
                         lines.push(std::mem::take(&mut current));
                         current_width = 0.0;
                     }
@@ -119,14 +135,18 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         current.extend(spaces);
     }
     lines.push(current);
-    let mut layout = build(p, text, lines, opts, m);
+    let mut layout = build(p, text, lines, opts, first, m);
     layout.quote = p.style.quote;
     layout.indent = indent;
-    layout.space_before = p.style.named.space_before();
+    layout.space_before = p
+        .style
+        .space_before
+        .map_or(p.style.named.space_before(), |pt| f32::from(pt) * PT);
     layout.space_after = p
         .style
-        .list
-        .map(|_| LIST_SPACE_AFTER)
+        .space_after
+        .map(|pt| f32::from(pt) * PT)
+        .or(p.style.list.map(|_| LIST_SPACE_AFTER))
         .or(p.style.named.space_after());
     layout.lines.iter_mut().for_each(|line| line.x += indent);
     if let Some(img) = p.style.image {
@@ -222,133 +242,6 @@ fn split_graphemes<'a>(
         })
 }
 
-fn build(
-    p: &Paragraph,
-    text: String,
-    rows: Vec<Vec<Piece>>,
-    opts: &Options,
-    m: &dyn Measurer,
-) -> ParagraphLayout {
-    let mut default_style = p.runs.first().map(|r| r.style.clone()).unwrap_or_default();
-    p.style.named.apply(&mut default_style);
-    let last_row = rows.len() - 1;
-    let mut lines = Vec::with_capacity(rows.len());
-    let mut y = 0.0;
-    for (i, row) in rows.iter().enumerate() {
-        let line = build_line(p, &text, row, i == last_row, y, &default_style, opts, m);
-        y += line.height;
-        lines.push(line);
-    }
-    ParagraphLayout {
-        text,
-        quote: false,
-        indent: 0.0,
-        marker: None,
-        space_before: 0.0,
-        space_after: None,
-        lines,
-        height: y,
-        image: None,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_line(
-    p: &Paragraph,
-    text: &str,
-    row: &[Piece],
-    is_last: bool,
-    y: f32,
-    default_style: &CharStyle,
-    opts: &Options,
-    m: &dyn Measurer,
-) -> Line {
-    let trailing = row.iter().rev().take_while(|x| x.space).count();
-    let visible = &row[..row.len() - trailing];
-    // In the contents, a tab pushes the rest of the line (the page number) to the right edge.
-    let is_tab = |x: &Piece| p.style.toc && &text[x.range.clone()] == "\t";
-    let tab_extra = if row.iter().any(is_tab) {
-        (opts.width - visible.iter().map(|x| x.width).sum::<f32>()).max(0.0)
-    } else {
-        0.0
-    };
-    let visible_width: f32 = visible.iter().map(|x| x.width).sum::<f32>() + tab_extra;
-    let start = row.first().map_or(0, |x| x.range.start);
-    let end = row.last().map_or(0, |x| x.range.end);
-    let visible_end = visible.last().map_or(start, |x| x.range.end);
-
-    let mut space_extra = 0.0;
-    let x = match p.style.align {
-        Align::Left => 0.0,
-        Align::Center => ((opts.width - visible_width) / 2.0).max(0.0),
-        Align::Right => (opts.width - visible_width).max(0.0),
-        Align::Justify => {
-            let gaps = text[start..visible_end]
-                .bytes()
-                .filter(|b| *b == b' ')
-                .count();
-            if !is_last && gaps > 0 && visible_width < opts.width {
-                space_extra = (opts.width - visible_width) / gaps as f32;
-            }
-            0.0
-        }
-    };
-
-    let mut fragments: Vec<Fragment> = Vec::new();
-    let mut cursor = 0.0;
-    for piece in row {
-        let extra = space_extra
-            * text[piece.range.clone()]
-                .bytes()
-                .filter(|b| *b == b' ')
-                .count() as f32
-            * f32::from(piece.range.end <= visible_end);
-        let tab = is_tab(piece);
-        let width = piece.width + extra + if tab { tab_extra } else { 0.0 };
-        let after_tab = fragments
-            .last()
-            .is_some_and(|f| text[f.range.clone()].ends_with('\t'));
-        match fragments.last_mut() {
-            Some(f)
-                if f.range.end == piece.range.start
-                    && f.style == p.runs[piece.run].style
-                    && !tab
-                    && !after_tab =>
-            {
-                f.range.end = piece.range.end;
-                f.width += width;
-            }
-            _ => fragments.push(Fragment {
-                range: piece.range.clone(),
-                style: p.runs[piece.run].style.clone(),
-                x: cursor,
-                width,
-            }),
-        }
-        cursor += width;
-    }
-
-    let styles: Vec<&CharStyle> = if fragments.is_empty() {
-        vec![default_style]
-    } else {
-        fragments.iter().map(|f| &f.style).collect()
-    };
-    let ascent = styles.iter().map(|s| m.ascent(s)).fold(0.0, f32::max);
-    let descent = styles.iter().map(|s| m.descent(s)).fold(0.0, f32::max);
-    let height = (ascent + descent) * opts.line_spacing;
-    Line {
-        range: start..end,
-        visible_end,
-        fragments,
-        x,
-        width: visible_width,
-        y,
-        height,
-        baseline: height - descent,
-        space_extra,
-        is_last,
-    }
-}
-
+mod build;
 #[cfg(test)]
 mod tests;

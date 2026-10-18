@@ -80,6 +80,11 @@ pub struct ParaStyle {
     pub indent: u8,
     /// Line height multiplier; `None` = the document default.
     pub line_spacing: Option<f32>,
+    /// Extra indent of the first line in steps of 0.25 inch (0..=8).
+    pub first_line: u8,
+    /// Gap above / below the paragraph in points; `None` = the style's default.
+    pub space_before: Option<u8>,
+    pub space_after: Option<u8>,
     /// Set for paragraphs that belong to a table cell.
     pub cell: Option<Cell>,
     /// Set for picture paragraphs.
@@ -103,6 +108,9 @@ impl std::hash::Hash for ParaStyle {
         self.list.hash(state);
         self.indent.hash(state);
         self.line_spacing.map(f32::to_bits).hash(state);
+        self.first_line.hash(state);
+        self.space_before.hash(state);
+        self.space_after.hash(state);
         self.cell.hash(state);
         self.image.hash(state);
         self.toc.hash(state);

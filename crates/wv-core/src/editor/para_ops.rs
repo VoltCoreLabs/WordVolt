@@ -44,6 +44,32 @@ impl Editor {
         self.edit_para_styles(a, b, |s| s.line_spacing = spacing);
     }
 
+    /// Moves the first line of the selected paragraphs `delta` steps (0.25 inch) in or out.
+    pub fn change_first_line(&mut self, delta: i8) {
+        let (a, b) = self.selected_paras();
+        self.edit_para_styles(a, b, |s| {
+            s.first_line = (i16::from(s.first_line) + i16::from(delta)).clamp(0, 8) as u8
+        });
+    }
+
+    /// Sets the gap above (`after = false`) or below the selected paragraphs, in points.
+    pub fn set_para_gap(&mut self, after: bool, points: Option<u8>) {
+        let (a, b) = self.selected_paras();
+        self.edit_para_styles(a, b, |s| {
+            if after {
+                s.space_after = points;
+            } else {
+                s.space_before = points;
+            }
+        });
+    }
+
+    /// The gap above / below the first selected paragraph in points (`None` = the default).
+    pub fn para_gap(&self, after: bool) -> Option<u8> {
+        let s = &self.doc.paragraphs[self.sel.head.para].style;
+        if after { s.space_after } else { s.space_before }
+    }
+
     /// Applies a built-in style to the selected paragraphs.
     pub fn set_named_style(&mut self, named: NamedStyle) {
         let (a, b) = self.selected_paras();

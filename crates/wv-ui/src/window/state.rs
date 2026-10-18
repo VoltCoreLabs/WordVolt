@@ -239,6 +239,12 @@ impl MainWindow {
             let items = SPACINGS
                 .iter()
                 .map(|(label, _)| MenuItem::Text(label))
+                .chain([
+                    MenuItem::Tr(Key::GapBefore),
+                    MenuItem::Tr(Key::GapAfter),
+                    MenuItem::Tr(Key::FirstLineMore),
+                    MenuItem::Tr(Key::FirstLineLess),
+                ])
                 .collect();
             MenuButton::new(
                 "spacing",
@@ -255,6 +261,17 @@ impl MainWindow {
                 if let Some((_, value)) = SPACINGS.get(*index) {
                     let value = *value;
                     this.edit(cx, move |c| c.set_line_spacing(Some(value)));
+                } else {
+                    let extra = *index - SPACINGS.len();
+                    this.edit(cx, move |c| match extra {
+                        0 | 1 => {
+                            let after = extra == 1;
+                            let on = c.para_gap(after).is_none_or(|n| n == 0);
+                            c.set_para_gap(after, Some(if on { 12 } else { 0 }));
+                        }
+                        2 => c.change_first_line(1),
+                        _ => c.change_first_line(-1),
+                    });
                 }
                 this.editor.update(cx, |view, cx| view.request_focus(cx));
             },
