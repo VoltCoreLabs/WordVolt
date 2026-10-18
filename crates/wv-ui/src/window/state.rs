@@ -61,6 +61,9 @@ pub struct MainWindow {
     pub columns_menu: Entity<MenuButton>,
     pub page_setup: Entity<PageSetupEditor>,
     pub paragraph_dialog: Entity<ParagraphEditor>,
+    pub image_dialog: Entity<super::image_dialog::ImageDialog>,
+    /// Where the right-click menu was last opened (window coordinates).
+    pub last_menu_at: Option<Point<Pixels>>,
     pub menu_bar: Entity<MenuBar>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
@@ -108,6 +111,7 @@ impl MainWindow {
         let margins_menu = widgets_page::make_margins_menu(lang, cx);
         let columns_menu = widgets_page::make_columns_menu(lang, cx);
         let page_setup = widgets_page::make_page_setup(lang, cx);
+        let image_dialog = widgets_page::make_image_dialog(lang, cx);
         let paragraph_dialog = widgets_page::make_paragraph_dialog(lang, cx);
         let menu_bar = cx.new(|_| MenuBar::new(lang));
         cx.subscribe_in(
@@ -133,6 +137,8 @@ impl MainWindow {
             columns_menu,
             page_setup,
             paragraph_dialog,
+            image_dialog,
+            last_menu_at: None,
             menu_bar,
             font_combo,
             size_combo,

@@ -47,7 +47,7 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
-        if self.start_resize(ev.position) || self.start_border_drag(ev.position) {
+        if self.start_image_drag(ev.position, cx) || self.start_border_drag(ev.position) {
             return;
         }
         let Some(at) = self.hit(ev.position, window) else {
@@ -88,7 +88,14 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
-        if let Some(at) = self.hit(ev.position, window) {
+        if let Some(picture) = self.image_at(ev.position) {
+            // A right click on a picture selects it (it has no text to put the caret in).
+            if self.core.sel.head.para != picture.para {
+                self.apply(cx, |core| {
+                    core.set_head(Position::new(picture.para, 0), false)
+                });
+            }
+        } else if let Some(at) = self.hit(ev.position, window) {
             let (start, end) = self.core.sel.range();
             if start == end || at < start || at > end {
                 self.apply(cx, |core| core.set_head(at, false));
@@ -116,7 +123,7 @@ impl EditorView {
         }
         if self.resizing.is_some() {
             if ev.pressed_button == Some(MouseButton::Left) {
-                self.drag_resize(ev.position, cx);
+                self.drag_image(ev.position, cx);
             } else {
                 self.resizing = None;
             }
@@ -132,7 +139,7 @@ impl EditorView {
 
     pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.selecting = false;
-        self.resizing = None;
+        self.end_image_drag();
         self.border_drag = None;
         if !self.core.sel.is_collapsed()
             && let Some(style) = self.painter.take()

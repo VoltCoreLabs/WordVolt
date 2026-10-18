@@ -920,3 +920,58 @@ fn plain_typing_through_the_text_input_replaces_the_selection() {
     e.ime_replace(None, "i", false);
     assert_eq!(e.doc.paragraphs[0].text(), "hio");
 }
+
+fn doc_with_picture() -> Editor {
+    let mut e = Editor::new(Document::from_text("one\ntwo\nthree"));
+    let mut picture = crate::Paragraph::default();
+    picture.style.image = Some(crate::ImageRef::inline(0, 100.0, 50.0));
+    e.doc.paragraphs.insert(1, picture);
+    e.sel = Selection::caret(Position::new(1, 0));
+    e
+}
+
+#[test]
+fn a_picture_floats_and_its_size_changes_in_one_undo_step() {
+    let mut e = doc_with_picture();
+    let float = crate::Float {
+        x: 10.0,
+        y: 20.0,
+        wrap: crate::Wrap::TopBottom,
+    };
+    e.set_image_geometry(200.0, 80.0, Some(float));
+    let image = e.image_at_caret().unwrap();
+    assert_eq!(
+        (image.width, image.height, image.float),
+        (200.0, 80.0, Some(float))
+    );
+    // A drag changes the step that the first change started.
+    e.drag_image_geometry(210.0, 90.0, Some(float), false);
+    assert_eq!(e.image_at_caret().unwrap().width, 210.0);
+    assert!(e.undo());
+    assert_eq!(
+        e.image_at_caret().unwrap(),
+        crate::ImageRef::inline(0, 100.0, 50.0)
+    );
+}
+
+#[test]
+fn a_picture_moves_to_another_paragraph() {
+    let mut e = doc_with_picture();
+    let float = crate::Float {
+        x: 0.0,
+        y: 0.0,
+        wrap: crate::Wrap::Front,
+    };
+    // Before "three" (index 3): the picture paragraph ends up between "two" and "three".
+    assert!(e.move_image_to(3, Some(float)));
+    let texts: Vec<String> = e.doc.paragraphs.iter().map(|p| p.text()).collect();
+    assert_eq!(texts, ["one", "two", "", "three"]);
+    assert_eq!(e.sel.head.para, 2);
+    assert_eq!(e.image_at_caret().unwrap().float, Some(float));
+    // Back to the front of the document.
+    assert!(e.move_image_to(0, None));
+    assert!(e.doc.paragraphs[0].style.image.is_some());
+    assert_eq!(e.sel.head.para, 0);
+    assert!(e.undo());
+    assert!(e.doc.paragraphs[2].style.image.is_some());
+}

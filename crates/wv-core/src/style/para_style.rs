@@ -57,13 +57,47 @@ impl Cell {
     }
 }
 
-/// A picture that fills the paragraph (its text is empty): index into `Document::images` and the
-/// displayed size in px (96 dpi).
+/// How text goes around a floating picture.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Wrap {
+    /// Text stops above the picture and goes on below it.
+    TopBottom,
+    /// The picture is drawn over the text; the text does not move.
+    Front,
+    /// The picture is drawn under the text; the text does not move.
+    Behind,
+}
+
+/// A picture placed freely on the page instead of in the line of text. `x`/`y` (px) are the
+/// picture's top-left corner from the top-left corner of the text area of the page where its
+/// paragraph is.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Float {
+    pub x: f32,
+    pub y: f32,
+    pub wrap: Wrap,
+}
+
+/// A picture that fills the paragraph (its text is empty): index into `Document::images`, the
+/// displayed size in px (96 dpi) and, for a floating picture, where it is on the page.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImageRef {
     pub id: u32,
     pub width: f32,
     pub height: f32,
+    pub float: Option<Float>,
+}
+
+impl ImageRef {
+    /// A picture in the line of text.
+    pub fn inline(id: u32, width: f32, height: f32) -> Self {
+        Self {
+            id,
+            width,
+            height,
+            float: None,
+        }
+    }
 }
 
 /// Most tab stops a paragraph can have.
@@ -119,6 +153,9 @@ pub struct ParaStyle {
 impl std::hash::Hash for ImageRef {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         (self.id, self.width.to_bits(), self.height.to_bits()).hash(state);
+        self.float
+            .map(|f| (f.x.to_bits(), f.y.to_bits(), f.wrap))
+            .hash(state);
     }
 }
 

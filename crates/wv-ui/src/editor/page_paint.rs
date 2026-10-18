@@ -123,6 +123,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     super::table_paint::paint_tables(v, &at, &visible, window);
 
     super::band_paint::paint_bands(v, &m, &at, window, cx);
+    super::image_paint::paint_floats(v, &at, true, window, cx);
     super::image_paint::paint_images(v, &at, &visible, window, cx);
 
     let setup = &v.layout.setup;
@@ -280,5 +281,6 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
     }
 
+    super::image_paint::paint_floats(v, &at, false, window, cx);
     paint_caret(v, &m, &at, &sz, window);
 }

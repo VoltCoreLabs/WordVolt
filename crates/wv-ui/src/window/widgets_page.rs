@@ -1,4 +1,5 @@
 use super::header_footer::{HeaderFooterEditor, HeaderFooterEvent};
+use super::image_dialog::{ImageDialog, ImageDialogEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::page_setup::{PageSetupEditor, PageSetupEvent};
 use super::paragraph_dialog::{ParagraphEditor, ParagraphEvent};
@@ -180,4 +181,20 @@ pub(super) fn make_table_edit_menu(lang: Lang, cx: &mut Context<MainWindow>) -> 
     )
     .detach();
     table_edit_menu
+}
+
+pub(super) fn make_image_dialog(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<ImageDialog> {
+    let image_dialog = cx.new(|cx| ImageDialog::new(lang, cx));
+    cx.subscribe(
+        &image_dialog,
+        |this, _, ImageDialogEvent::Apply(s): &ImageDialogEvent, cx| {
+            let s = *s;
+            this.edit(cx, move |c| {
+                c.set_image_geometry(s.width, s.height, s.float)
+            });
+            this.editor.update(cx, |view, cx| view.request_focus(cx));
+        },
+    )
+    .detach();
+    image_dialog
 }

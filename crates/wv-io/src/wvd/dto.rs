@@ -86,11 +86,23 @@ pub(super) struct ImageDto {
     pub(super) data: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone)]
 pub(super) struct ImageRefDto {
     pub(super) id: u32,
     pub(super) width: f32,
     pub(super) height: f32,
+    /// Floating picture: position on the page and how the text goes around it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) float: Option<FloatDto>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub(super) struct FloatDto {
+    pub(super) x: f32,
+    pub(super) y: f32,
+    /// `topbottom` (default), `front` or `behind`.
+    #[serde(default)]
+    pub(super) wrap: String,
 }
 
 /// Table cell of a paragraph.

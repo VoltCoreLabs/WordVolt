@@ -143,6 +143,7 @@ impl Render for MainWindow {
             )
             .children(self.context_menu.map(|at| context_menu(self, at, cx)))
             .children(self.tab_menu.map(|at| tab_menu(self, at, cx)))
+            .child(self.image_dialog.clone())
             .child(tooltip_layer(cx))
     }
 }

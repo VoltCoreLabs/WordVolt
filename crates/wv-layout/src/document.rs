@@ -5,7 +5,8 @@ use std::rc::Rc;
 use crate::Measurer;
 use crate::layout_cache::LayoutCache;
 use crate::numbering::Counters;
-use crate::page::{Page, PageSetup, Slice, paginate};
+use crate::page::{Page, PageSetup, Slice};
+use crate::paginate::paginate;
 use crate::paragraph::{Options, ParagraphLayout};
 use crate::table;
 

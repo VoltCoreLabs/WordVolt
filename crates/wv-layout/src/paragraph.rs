@@ -62,6 +62,8 @@ pub struct ImageBox {
     pub id: u32,
     pub width: f32,
     pub height: f32,
+    /// A floating picture takes no room in the text (the text goes around it, see `Wrap`).
+    pub float: Option<wv_core::Float>,
 }
 
 impl ParagraphLayout {
@@ -172,12 +174,18 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
             id: img.id,
             width: img.width,
             height: img.height,
+            float: img.float,
         });
+        // A floating picture takes no room in the text.
+        let room = if img.float.is_some() { 0.0 } else { img.height };
         if let Some(line) = layout.lines.first_mut() {
             (line.x, line.y, line.width) = (indent + offset, 0.0, img.width);
-            (line.height, line.baseline) = (img.height, img.height);
+            (line.height, line.baseline) = (room, room);
         }
-        layout.height = img.height;
+        layout.height = room;
+        if img.float.is_some() {
+            (layout.space_before, layout.space_after) = (0.0, Some(0.0));
+        }
     }
     layout
 }

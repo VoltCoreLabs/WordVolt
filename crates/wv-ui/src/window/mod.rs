@@ -14,6 +14,7 @@ mod file_ops;
 mod find_bar;
 mod header_footer;
 mod header_footer_panel;
+mod image_dialog;
 mod image_ops;
 mod link_editor;
 mod main_window;

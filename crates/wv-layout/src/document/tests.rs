@@ -240,11 +240,7 @@ fn table_rows_move_to_the_next_page_instead_of_splitting() {
 fn picture_paragraph_takes_its_height_and_follows_alignment() {
     use wv_core::{Align, ImageRef};
     let mut doc = Document::from_text("a\n\nb");
-    doc.paragraphs[1].style.image = Some(ImageRef {
-        id: 0,
-        width: 40.0,
-        height: 50.0,
-    });
+    doc.paragraphs[1].style.image = Some(ImageRef::inline(0, 40.0, 50.0));
     doc.paragraphs[1].style.align = Align::Center;
     let l = DocLayout::new(&doc, small(), &Fixed);
     let image = l.paragraphs[1].image.unwrap();
@@ -452,4 +448,47 @@ fn caret_in_the_second_column_is_offset() {
     let c = l.caret(Position::new(5, 0), &Fixed).unwrap();
     let step = two_columns().column_width() + crate::page::COLUMN_GAP;
     assert_eq!(c.x, 10.0 + step);
+}
+
+fn with_float(wrap: wv_core::Wrap) -> DocLayout {
+    let mut doc = Document::from_text("a\nb\nc");
+    let mut picture = wv_core::Paragraph::default();
+    picture.style.image = Some(wv_core::ImageRef {
+        id: 0,
+        width: 40.0,
+        height: 16.0,
+        float: Some(wv_core::Float {
+            x: 10.0,
+            y: 32.0,
+            wrap,
+        }),
+    });
+    doc.paragraphs.insert(1, picture);
+    DocLayout::new(&doc, small(), &Fixed)
+}
+
+#[test]
+fn text_stops_above_and_goes_on_below_a_top_and_bottom_picture() {
+    let l = with_float(wv_core::Wrap::TopBottom);
+    let page = &l.pages[0];
+    assert_eq!(page.floats.len(), 1);
+    assert_eq!((page.floats[0].x, page.floats[0].y), (10.0, 32.0));
+    // "a" fits above the picture (0..16); "b" would reach into the band 32..48 (+6 gap on both
+    // sides) and starts below it instead.
+    let ys: Vec<(usize, f32)> = page.slices.iter().map(|s| (s.para, s.y)).collect();
+    assert_eq!(ys[0], (0, 0.0));
+    let b = ys.iter().find(|(p, _)| *p == 2).unwrap();
+    assert_eq!(b.1, 54.0);
+    // The picture paragraph itself takes no room.
+    let picture = page.slices.iter().find(|s| s.para == 1).unwrap();
+    assert_eq!(picture.height, 0.0);
+}
+
+#[test]
+fn text_runs_under_or_over_a_picture_that_does_not_push_it() {
+    for wrap in [wv_core::Wrap::Front, wv_core::Wrap::Behind] {
+        let l = with_float(wrap);
+        let b = l.pages[0].slices.iter().find(|s| s.para == 2).unwrap();
+        assert_eq!(b.y, 16.0, "{wrap:?} leaves the text where it is");
+    }
 }
