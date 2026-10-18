@@ -2,6 +2,7 @@
 
 mod band_paint;
 mod caret;
+mod clip;
 mod image_paint;
 mod keys;
 mod locate;
