@@ -11,6 +11,9 @@ struct Settings {
     /// Pages sit side by side while they fit (false: always one page per row).
     #[serde(default = "yes")]
     multi_page: bool,
+    /// Misspelled words are underlined.
+    #[serde(default = "yes")]
+    spellcheck: bool,
 }
 
 fn yes() -> bool {
@@ -22,6 +25,7 @@ impl Default for Settings {
         Self {
             recent_colors: Vec::new(),
             multi_page: true,
+            spellcheck: true,
         }
     }
 }
@@ -58,6 +62,50 @@ pub fn load_multi_page() -> bool {
 pub fn save_multi_page(on: bool) {
     if let Some(path) = file() {
         let _ = update(&path, |s| s.multi_page = on);
+    }
+}
+
+pub fn load_spellcheck() -> bool {
+    file().is_none_or(|p| read(&p).spellcheck)
+}
+
+pub fn save_spellcheck(on: bool) {
+    if let Some(path) = file() {
+        let _ = update(&path, |s| s.spellcheck = on);
+    }
+}
+
+/// `<config dir>/WordVolt/userdict.txt`: the words the user added, one per line.
+fn user_dict_file() -> Option<PathBuf> {
+    file().map(|p| p.with_file_name("userdict.txt"))
+}
+
+pub fn load_user_words() -> Vec<String> {
+    user_dict_file()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .map(|text| {
+            text.lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn append_user_word(word: &str) {
+    use std::io::Write;
+    if let Some(path) = user_dict_file() {
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            let _ = writeln!(file, "{word}");
+        }
     }
 }
 

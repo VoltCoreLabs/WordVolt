@@ -28,10 +28,11 @@ pub fn status_bar(
     word_count: usize,
     zoom: f32,
     multi_page: bool,
+    spell_on: bool,
     cx: &mut Context<MainWindow>,
 ) -> Div {
     let th = cx.global::<Theme>();
-    let (muted, text, hover) = (th.text_muted, th.text, th.surface_alt);
+    let (muted, text, hover, accent) = (th.text_muted, th.text, th.surface_alt, th.accent);
     let layout_toggle = div()
         .id("status-pages")
         .size(px(22.))
@@ -68,10 +69,43 @@ pub fn status_bar(
             px(15.),
             text,
         ));
+    let spell_toggle = div()
+        .id("status-spell")
+        .size(px(22.))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(radius::sm())
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover))
+        .tip(t(
+            lang,
+            if spell_on {
+                Key::TipSpellOff
+            } else {
+                Key::TipSpellOn
+            },
+        ))
+        .on_mouse_down(
+            MouseButton::Left,
+            cx.listener(|this, _, window, cx| this.toggle_spell(window, cx)),
+        )
+        .child(icon(
+            Icon::TextAa,
+            if spell_on {
+                Weight::Bold
+            } else {
+                Weight::Regular
+            },
+            px(15.),
+            if spell_on { accent } else { muted },
+        ));
     let zoom_controls = div()
         .flex()
         .items_center()
         .gap(space::xs())
+        .child(spell_toggle)
         .child(layout_toggle)
         .child(
             zoom_button("status-zoom-out", "−".into(), 22., hover)

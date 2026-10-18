@@ -5,6 +5,7 @@ mod app;
 mod assets;
 mod editor;
 mod settings;
+mod spell;
 mod theme;
 mod ui_kit;
 mod window;

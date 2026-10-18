@@ -116,6 +116,43 @@ impl GpuiMeasurer {
         )
     }
 
+    /// Like `shape_zoomed` (text that is not in capitals), with a wavy underline in `wavy` under
+    /// the byte ranges `marks` (sorted, inside the text).
+    pub fn shape_marked(
+        &self,
+        text: &str,
+        style: &CharStyle,
+        color: Hsla,
+        zoom: f32,
+        marks: &[std::ops::Range<usize>],
+        wavy: Hsla,
+    ) -> ShapedLine {
+        let mut runs = Vec::new();
+        let mut at = 0;
+        for mark in marks {
+            if mark.start > at {
+                runs.push(text_run(mark.start - at, style, color));
+            }
+            let mut run = text_run(mark.end - mark.start, style, color);
+            run.underline = Some(UnderlineStyle {
+                thickness: px(1.),
+                color: Some(wavy),
+                wavy: true,
+            });
+            runs.push(run);
+            at = mark.end;
+        }
+        if at < text.len() {
+            runs.push(text_run(text.len() - at, style, color));
+        }
+        self.system.shape_line(
+            text.to_string().into(),
+            px(font_px(style) * zoom),
+            &runs,
+            None,
+        )
+    }
+
     fn metrics(&self, style: &CharStyle) -> (f32, f32) {
         let k = key(style);
         if let Some(found) = self.cache.borrow().metrics.get(&k) {

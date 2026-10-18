@@ -20,6 +20,7 @@ mod page_setup;
 mod print;
 mod ribbon;
 mod side_panel;
+mod spell;
 mod state;
 mod status_bar;
 mod style_names;
