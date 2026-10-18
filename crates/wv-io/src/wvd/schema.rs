@@ -60,7 +60,27 @@ impl File {
                 first_line: p.style.first_line,
                 page_break: p.style.page_break,
                 left_extra: p.style.left_extra,
-                tabs: p.style.tabs.clone(),
+                tabs: p.style.tabs.iter().map(|t| t.pos).collect(),
+                tab_kinds: if p
+                    .style
+                    .tabs
+                    .iter()
+                    .all(|t| t.kind == wv_core::TabKind::Left)
+                {
+                    Vec::new()
+                } else {
+                    p.style
+                        .tabs
+                        .iter()
+                        .map(|t| {
+                            wv_core::TabKind::ALL
+                                .iter()
+                                .position(|k| *k == t.kind)
+                                .unwrap_or(0) as u8
+                        })
+                        .collect()
+                },
+                right_indent: p.style.right_indent,
                 space_before: p.style.space_before,
                 space_after: p.style.space_after,
                 runs: p.runs.iter().map(run_dto).collect(),
@@ -205,7 +225,22 @@ impl File {
                     first_line: p.first_line,
                     page_break: p.page_break,
                     left_extra: p.left_extra,
-                    tabs: p.tabs.iter().copied().take(wv_core::MAX_TABS).collect(),
+                    tabs: p
+                        .tabs
+                        .iter()
+                        .enumerate()
+                        .take(wv_core::MAX_TABS)
+                        .map(|(i, pos)| wv_core::TabStop {
+                            pos: *pos,
+                            kind: p
+                                .tab_kinds
+                                .get(i)
+                                .and_then(|k| wv_core::TabKind::ALL.get(usize::from(*k)))
+                                .copied()
+                                .unwrap_or_default(),
+                        })
+                        .collect(),
+                    right_indent: p.right_indent,
                     space_before: p.space_before,
                     space_after: p.space_after,
                 },

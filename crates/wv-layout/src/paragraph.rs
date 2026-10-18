@@ -120,9 +120,15 @@ pub fn layout_paragraph_around(
         + list_gap
         + quote;
     let first = f32::from(p.style.first_line) * PT;
-    let stops: Vec<f32> = p.style.tabs.iter().map(|t| f32::from(*t) * PT).collect();
+    let stops: Vec<(f32, wv_core::TabKind)> = p
+        .style
+        .tabs
+        .iter()
+        .map(|t| (f32::from(t.pos) * PT, t.kind))
+        .collect();
+    let right = f32::from(p.style.right_indent) * PT;
     let opts = &Options {
-        width: opts.width - indent,
+        width: opts.width - indent - right,
         line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
     };
     let mut bx = Boxes::new(p, opts.line_spacing, opts.width, first, obstacles, m);

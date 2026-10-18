@@ -33,13 +33,21 @@ impl EditorView {
             return false;
         };
         let mut metrics = self.core.para_metrics();
-        let Some(grab) = ruler::press(&g, &mut metrics, f32::from(at.x), f32::from(at.y)) else {
+        let pressed = ruler::press(
+            &g,
+            &mut metrics,
+            (f32::from(at.x), f32::from(at.y)),
+            self.new_tab_kind,
+        );
+        let Some((grab, made)) = pressed else {
             return false;
         };
         self.ruler_drag = Some(Drag {
             grab,
             metrics,
             removing: false,
+            still: true,
+            made,
         });
         cx.notify();
         true
@@ -64,7 +72,11 @@ impl EditorView {
 
     pub(super) fn ruler_up(&mut self, cx: &mut Context<Self>) {
         if let Some(d) = self.ruler_drag.take() {
-            let metrics = ruler::finish(&d);
+            let (metrics, kind) = ruler::finish(&d);
+            // Stops made next are of the kind that was last chosen.
+            if let Some(kind) = kind {
+                self.new_tab_kind = kind;
+            }
             if metrics != self.core.para_metrics() {
                 self.apply(cx, |core| core.set_para_metrics(&metrics));
             } else {

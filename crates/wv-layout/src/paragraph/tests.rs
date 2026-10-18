@@ -225,7 +225,7 @@ fn a_tab_reaches_the_next_default_stop() {
 #[test]
 fn custom_tab_stops_come_first() {
     let mut p = plain("a\tb\tc");
-    p.style.tabs = vec![30]; // 40 px
+    p.style.tabs = vec![wv_core::TabStop::left(30)]; // 40 px
     let l = layout_paragraph(&p, &opts(40.0), &Fixed);
     let xs: Vec<f32> = l.lines[0].fragments.iter().map(|f| f.x).collect();
     // "b" at 40; the second tab starts at 48, past the last custom stop: the next default stop is 96.
@@ -243,7 +243,7 @@ fn caret_after_a_tab_sits_at_the_tab_end() {
 #[test]
 fn past_the_last_custom_stop_the_default_grid_applies() {
     let mut p = plain("a\tbb\tccc");
-    p.style.tabs = vec![57]; // 76 px
+    p.style.tabs = vec![wv_core::TabStop::left(57)]; // 76 px
     let l = layout_paragraph(&p, &opts(40.0), &Fixed);
     let frags: Vec<(f32, f32)> = l.lines[0]
         .fragments
@@ -253,4 +253,44 @@ fn past_the_last_custom_stop_the_default_grid_applies() {
     // "bb" ends at 92; the next default stop is 96, so the second tab is 4 px wide.
     assert_eq!(frags[3], (92.0, 4.0));
     assert_eq!(frags[4].0, 96.0);
+}
+
+fn stop(pos: u16, kind: wv_core::TabKind) -> wv_core::TabStop {
+    wv_core::TabStop { pos, kind }
+}
+
+#[test]
+fn text_lines_up_at_right_centre_and_decimal_stops() {
+    // A stop at 150 pt = 200 px; every char is 8 px wide.
+    let at = |text: &str, kind| {
+        let mut p = plain(text);
+        p.style.tabs = vec![stop(150, kind)];
+        let l = layout_paragraph(&p, &opts(60.0), &Fixed);
+        let frags = &l.lines[0].fragments;
+        let last = frags.last().unwrap();
+        (frags.get(1).map_or(0.0, |f| f.x), last.x + last.width)
+    };
+    use wv_core::TabKind::*;
+    // Left: the text starts on the stop.
+    assert_eq!(at("\tabcd", Left).0, 200.0);
+    // Right: "abcd" (32 px) ends on the stop.
+    assert_eq!(at("\tabcd", Right).1, 200.0);
+    // Centre: "abcd" is centred on the stop.
+    assert_eq!(at("\tabcd", Center).0, 200.0 - 16.0);
+    // Decimal: what is before the point ("12", 16 px) ends on the stop.
+    assert_eq!(at("\t12.50", Decimal).0, 200.0 - 16.0);
+    // Text too wide for the room before the stop falls through to the default grid.
+    let mut wide = plain("\tabcdefghijklmnopqrstuvwxyz0123456789");
+    wide.style.tabs = vec![stop(30, Right)];
+    let l = layout_paragraph(&wide, &opts(80.0), &Fixed);
+    assert_eq!(l.lines[0].fragments[1].x, 48.0);
+}
+
+#[test]
+fn a_right_indent_narrows_the_lines() {
+    let mut p = plain("aaaa bbbb cccc");
+    // 20 chars would hold it all; a right indent of 48 pt = 64 px = 8 chars leaves 12.
+    assert_eq!(lines_of(&p, 20.0).len(), 1);
+    p.style.right_indent = 48;
+    assert_eq!(lines_of(&p, 20.0), ["aaaa bbbb ", "cccc"]);
 }

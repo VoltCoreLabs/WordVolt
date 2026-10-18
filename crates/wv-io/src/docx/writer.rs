@@ -139,6 +139,7 @@ pub fn write_paragraph(
         || p.style.first_line > 0
         || p.style.page_break
         || p.style.left_extra > 0
+        || p.style.right_indent > 0
         || !p.style.tabs.is_empty()
         || p.style.space_before.is_some()
         || p.style.space_after.is_some()
@@ -169,10 +170,11 @@ pub fn write_paragraph(
         }
         if !p.style.tabs.is_empty() {
             xml.push_str("<w:tabs>");
-            for pos in &p.style.tabs {
+            for tab in &p.style.tabs {
                 xml.push_str(&format!(
-                    "<w:tab w:val=\"left\" w:pos=\"{}\"/>",
-                    u32::from(*pos) * 20
+                    "<w:tab w:val=\"{}\" w:pos=\"{}\"/>",
+                    tab.kind.id(),
+                    u32::from(tab.pos) * 20
                 ));
             }
             xml.push_str("</w:tabs>");
@@ -204,10 +206,14 @@ pub fn write_paragraph(
             0
         };
         let first = u32::from(p.style.first_line) * 20;
-        if left > 0 || first > 0 {
+        let right = u32::from(p.style.right_indent) * 20;
+        if left > 0 || first > 0 || right > 0 {
             xml.push_str("<w:ind");
             if left > 0 {
                 xml.push_str(&format!(" w:left=\"{left}\""));
+            }
+            if right > 0 {
+                xml.push_str(&format!(" w:right=\"{right}\""));
             }
             if first > 0 {
                 xml.push_str(&format!(" w:firstLine=\"{first}\""));

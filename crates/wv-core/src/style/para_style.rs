@@ -145,6 +145,65 @@ impl ImageRef {
     }
 }
 
+/// How text lines up at a tab stop.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TabKind {
+    /// The text starts at the stop.
+    #[default]
+    Left,
+    /// The text is centred on the stop.
+    Center,
+    /// The text ends at the stop.
+    Right,
+    /// The text is lined up on its decimal separator.
+    Decimal,
+}
+
+impl TabKind {
+    pub const ALL: [TabKind; 4] = [Self::Left, Self::Center, Self::Right, Self::Decimal];
+
+    /// The next kind (what a click on a stop in the ruler cycles through).
+    pub fn next(self) -> Self {
+        Self::ALL[(Self::ALL.iter().position(|k| *k == self).unwrap_or(0) + 1) % 4]
+    }
+
+    /// The name Word uses for it in `w:tab w:val`.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Center => "center",
+            Self::Right => "right",
+            Self::Decimal => "decimal",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "left" | "start" => Some(Self::Left),
+            "center" => Some(Self::Center),
+            "right" | "end" => Some(Self::Right),
+            "decimal" => Some(Self::Decimal),
+            _ => None,
+        }
+    }
+}
+
+/// A tab stop: its place in points from the left edge of the text and how text lines up there.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct TabStop {
+    pub pos: u16,
+    pub kind: TabKind,
+}
+
+impl TabStop {
+    pub fn left(pos: u16) -> Self {
+        Self {
+            pos,
+            kind: TabKind::Left,
+        }
+    }
+}
+
 /// Most tab stops a paragraph can have.
 pub const MAX_TABS: usize = 20;
 
@@ -157,7 +216,9 @@ pub struct ParaMetrics {
     pub space_before: Option<u8>,
     pub space_after: Option<u8>,
     pub line_spacing: Option<f32>,
-    pub tabs: Vec<u16>,
+    pub tabs: Vec<TabStop>,
+    /// Right indent in points.
+    pub right_pt: u8,
 }
 
 /// Paragraph formatting.
@@ -178,9 +239,10 @@ pub struct ParaStyle {
     pub left_extra: u8,
     /// Extra indent of the first line in points.
     pub first_line: u8,
-    /// Tab stops in points from the left edge of the text (sorted); past the last one the
-    /// default stops (every 0.5 inch) apply.
-    pub tabs: Vec<u16>,
+    /// Tab stops (sorted by place); past the last one the default stops (every 0.5 inch) apply.
+    pub tabs: Vec<TabStop>,
+    /// Right indent in points.
+    pub right_indent: u8,
     /// Gap above / below the paragraph in points; `None` = the style's default.
     pub space_before: Option<u8>,
     pub space_after: Option<u8>,
@@ -232,6 +294,7 @@ impl std::hash::Hash for ParaStyle {
         self.left_extra.hash(state);
         self.first_line.hash(state);
         self.tabs.hash(state);
+        self.right_indent.hash(state);
         self.page_break.hash(state);
         self.space_before.hash(state);
         self.space_after.hash(state);

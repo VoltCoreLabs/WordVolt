@@ -69,6 +69,7 @@ impl Editor {
             space_after: s.space_after,
             line_spacing: s.line_spacing,
             tabs: s.tabs.clone(),
+            right_pt: s.right_indent,
         }
     }
 
@@ -76,8 +77,8 @@ impl Editor {
     pub fn set_para_metrics(&mut self, m: &ParaMetrics) {
         let (a, b) = self.selected_paras();
         let mut tabs = m.tabs.clone();
-        tabs.sort_unstable();
-        tabs.dedup();
+        tabs.sort_unstable_by_key(|t| t.pos);
+        tabs.dedup_by_key(|t| t.pos);
         tabs.truncate(MAX_TABS);
         self.edit_para_styles(a, b, |s| {
             if s.list.is_some() {
@@ -96,6 +97,7 @@ impl Editor {
             s.space_after = m.space_after;
             s.line_spacing = m.line_spacing;
             s.tabs = tabs.clone();
+            s.right_indent = m.right_pt;
         });
     }
 
