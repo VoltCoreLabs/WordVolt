@@ -52,6 +52,10 @@ impl ScrollState {
         self.content_h.set(f32::from(height));
     }
 
+    pub fn viewport_top(&self) -> f32 {
+        self.viewport_top.get()
+    }
+
     pub fn viewport_width(&self) -> f32 {
         self.viewport_w.get()
     }

@@ -59,6 +59,10 @@ pub struct EditorView {
     pub multi_page: bool,
     /// Non-printing characters are drawn.
     pub show_marks: bool,
+    /// The ruler strip is shown above the page.
+    pub show_ruler: bool,
+    /// A ruler marker is being dragged.
+    pub(super) ruler_drag: Option<super::ruler::Drag>,
     /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
     pub(super) scroll_x: f32,
     /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
@@ -92,6 +96,8 @@ impl EditorView {
             zoom: 1.0,
             multi_page: crate::settings::load_multi_page(),
             show_marks: false,
+            show_ruler: true,
+            ruler_drag: None,
             scroll_x: 0.0,
             picture_cache: Default::default(),
         }
@@ -106,6 +112,12 @@ impl EditorView {
             self.scroll_x = 0.0;
             cx.notify();
         }
+    }
+
+    pub fn toggle_ruler(&mut self, cx: &mut Context<Self>) {
+        self.show_ruler = !self.show_ruler;
+        self.ruler_drag = None;
+        cx.notify();
     }
 
     pub fn toggle_marks(&mut self, cx: &mut Context<Self>) {

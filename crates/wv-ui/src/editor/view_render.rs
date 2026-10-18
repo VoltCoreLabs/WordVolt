@@ -165,6 +165,55 @@ impl Render for EditorView {
         .top_0()
         .left_0()
         .size_full();
+        // The ruler: painted over the top of the view, from the layout and the shown pages.
+        let ruler_probe = self.show_ruler.then(|| {
+            let drag = self.ruler_drag.as_ref();
+            let metrics = drag.map_or_else(|| self.core.para_metrics(), |d| d.metrics.clone());
+            let removing = drag.and_then(|d| match (d.removing, d.grab) {
+                (true, super::ruler::Grab::Tab(i)) => Some(i),
+                _ => None,
+            });
+            let caret_page = layout
+                .caret(self.core.sel.head, &self.measurer(window))
+                .map_or(0, |c| c.page);
+            let colors = super::ruler::Colors {
+                bar: theme.surface,
+                margin: theme.surface_alt,
+                tick: theme.border_strong,
+                text: theme.text_muted,
+                marker: theme.accent,
+            };
+            let (layout, bounds, zoom) = (layout.clone(), self.page_bounds.clone(), self.zoom);
+            let cache = self.measure_cache.clone();
+            canvas(
+                |b, _, _| b,
+                move |_, b, window, cx| {
+                    let meas = super::measure::GpuiMeasurer::new(window, cache.clone());
+                    let Some(g) = super::ruler::geometry(
+                        &layout,
+                        &bounds.borrow(),
+                        caret_page,
+                        zoom,
+                        f32::from(b.top()),
+                    ) else {
+                        return;
+                    };
+                    super::ruler::paint(
+                        &g,
+                        (&metrics, removing),
+                        &colors,
+                        f32::from(b.left()),
+                        f32::from(b.right()),
+                        &meas,
+                        (window, cx),
+                    );
+                },
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+        });
         let (input_focus, input_view) = (self.focus.clone(), cx.entity());
         let viewport_probe = canvas(
             move |b, _, _| {
@@ -225,6 +274,7 @@ impl Render for EditorView {
             .relative()
             .size_full()
             .overflow_hidden()
+            .children(ruler_probe)
             .child(
                 div()
                     .relative()
