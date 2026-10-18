@@ -210,7 +210,19 @@ pub fn write_paragraph(
         xml.push_str(&super::picture::drawing_xml(image, lists.pictures));
     }
     let mut open_link: Option<&str> = None;
+    let mut open_comment: Option<u32> = None;
     for run in &p.runs {
+        let comment = run.style.comment;
+        if comment != open_comment {
+            if open_link.take().is_some() {
+                xml.push_str("</w:hyperlink>");
+            }
+            close_comment(xml, open_comment);
+            if let Some(id) = comment {
+                xml.push_str(&format!("<w:commentRangeStart w:id=\"{id}\"/>"));
+            }
+            open_comment = comment;
+        }
         let link = run.style.link.as_deref();
         if link != open_link {
             if open_link.is_some() {
@@ -227,7 +239,17 @@ pub fn write_paragraph(
     if open_link.is_some() {
         xml.push_str("</w:hyperlink>");
     }
+    close_comment(xml, open_comment);
     xml.push_str("</w:p>");
+}
+
+/// The end of a comment's range and the run that points at the comment.
+fn close_comment(xml: &mut String, id: Option<u32>) {
+    if let Some(id) = id {
+        xml.push_str(&format!(
+            "<w:commentRangeEnd w:id=\"{id}\"/><w:r><w:commentReference w:id=\"{id}\"/></w:r>"
+        ));
+    }
 }
 
 /// XML-escapes text and drops characters XML 1.0 forbids.

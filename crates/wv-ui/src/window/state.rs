@@ -8,6 +8,7 @@ use wv_i18n::{APP_NAME, Key, Lang, t};
 
 use super::color_picker::ColorPicker;
 use super::combo::Combo;
+use super::comment_editor::CommentEditor;
 use super::doc_tabs::DocSlot;
 use super::find_bar::FindBar;
 use super::header_footer::HeaderFooterEditor;
@@ -49,6 +50,7 @@ pub struct MainWindow {
     pub text_color: Entity<ColorPicker>,
     pub highlight: Entity<ColorPicker>,
     pub link_editor: Entity<LinkEditor>,
+    pub comment_editor: Entity<CommentEditor>,
     pub case_menu: Entity<MenuButton>,
     pub spacing_menu: Entity<MenuButton>,
     pub style_combo: Entity<Combo>,
@@ -101,6 +103,7 @@ impl MainWindow {
         let text_color = widgets::make_text_color(lang, cx);
         let highlight = widgets::make_highlight(lang, cx);
         let link_editor = widgets::make_link_editor(lang, cx);
+        let comment_editor = widgets::make_comment_editor(lang, cx);
         let case_menu = widgets::make_case_menu(lang, cx);
         let spacing_menu = widgets::make_spacing_menu(lang, cx);
         let style_combo = widgets::make_style_combo(lang, cx);
@@ -145,6 +148,7 @@ impl MainWindow {
             text_color,
             highlight,
             link_editor,
+            comment_editor,
             file_path: None,
             dirty: false,
             docs: vec![DocSlot::new(editor)],

@@ -147,6 +147,19 @@ mod tests {
     }
 
     #[test]
+    fn comments_round_trip() {
+        let mut e = Editor::new(Document::from_text("Comment me"));
+        e.sel = wv_core::Selection {
+            anchor: wv_core::Position::new(0, 0),
+            head: wv_core::Position::new(0, 7),
+        };
+        e.add_comment("Ann", "Привет");
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.comments.len(), 1);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

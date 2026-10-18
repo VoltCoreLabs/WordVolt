@@ -22,6 +22,8 @@ pub struct PageView {
     pub cell_selection: Option<wv_core::CellSelection>,
     pub epoch: Rc<Cell<Instant>>,
     pub code_bg: Rgba,
+    /// Background of text that has a comment.
+    pub comment_bg: Rgba,
     pub spoiler_color: Rgba,
     pub link_color: Rgba,
     pub bar_color: Rgba,

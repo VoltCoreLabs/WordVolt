@@ -27,6 +27,9 @@ pub(super) struct RunDto {
     /// Footnote mark: the id of the footnote.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     note: Option<u32>,
+    /// The text is the anchor of this comment.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    comment: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     size_pt: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -122,6 +125,7 @@ pub(super) fn run_dto(r: &Run) -> RunDto {
         spoiler: r.style.spoiler,
         link: r.style.link.clone(),
         note: r.style.note,
+        comment: r.style.comment,
         size_pt: r.style.size_pt,
         color: r.style.color,
         font: r.style.font.clone(),
@@ -141,6 +145,7 @@ pub(super) fn run_of(r: RunDto) -> Run {
         spoiler: r.spoiler,
         link: r.link,
         note: r.note,
+        comment: r.comment,
         size_pt: r.size_pt,
         color: r.color,
         font: r.font,

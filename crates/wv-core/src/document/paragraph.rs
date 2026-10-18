@@ -41,16 +41,26 @@ impl Paragraph {
     /// (or of the first run at offset 0).
     pub fn style_at(&self, offset: usize) -> CharStyle {
         let mut pos = 0;
+        let mut found = None;
         for run in &self.runs {
             pos += run.text.len();
             if pos >= offset && !run.text.is_empty() {
-                return typed(&run.style);
+                found = Some(typed(&run.style));
+                break;
             }
         }
-        self.runs
-            .last()
-            .map(|r| typed(&r.style))
-            .unwrap_or_default()
+        let mut style = found.unwrap_or_else(|| {
+            self.runs
+                .last()
+                .map(|r| typed(&r.style))
+                .unwrap_or_default()
+        });
+        // Text typed at the end of a commented range is not part of it; inside, it is.
+        let next = self.style_at_raw(offset).and_then(|s| s.comment);
+        if style.comment != next {
+            style.comment = None;
+        }
+        style
     }
 
     /// The paragraph with its named style's defaults written into the runs (what is drawn);
@@ -115,7 +125,7 @@ impl Paragraph {
     }
 
     /// Merges neighbouring runs with equal style and drops empty ones.
-    fn normalize(&mut self) {
+    pub(crate) fn normalize(&mut self) {
         self.runs.retain(|r| !r.text.is_empty());
         let mut out: Vec<Run> = Vec::with_capacity(self.runs.len());
         for run in self.runs.drain(..) {

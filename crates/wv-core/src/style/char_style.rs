@@ -33,4 +33,6 @@ pub struct CharStyle {
     pub link: Option<String>,
     /// The run is the mark of footnote `id` (one `NOTE_MARK` character).
     pub note: Option<u32>,
+    /// The text is the anchor of comment `id` (see `Document::comments`).
+    pub comment: Option<u32>,
 }

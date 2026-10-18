@@ -8,8 +8,8 @@ pub mod search;
 pub mod style;
 
 pub use document::{
-    BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, DocSettings, Document, ImageData, ImageFormat,
-    MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph, Run, TableLook,
+    BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, Comment, DocSettings, Document, ImageData,
+    ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph, Run, TableLook,
 };
 pub use editor::CellSelection;
 pub use editor::MAX_IMAGE_WIDTH;
