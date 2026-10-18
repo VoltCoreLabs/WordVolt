@@ -207,7 +207,10 @@ mod tests {
 
     fn state() -> ScrollState {
         let s = ScrollState::default();
-        s.set_viewport(Bounds::new(point(px(0.), px(100.)), size(px(500.), px(400.))));
+        s.set_viewport(Bounds::new(
+            point(px(0.), px(100.)),
+            size(px(500.), px(400.)),
+        ));
         s.set_content_height(px(2000.));
         s
     }
