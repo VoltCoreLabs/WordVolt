@@ -21,6 +21,8 @@ mod note_paint;
 mod page_paint;
 mod page_view;
 mod paint_parts;
+mod ruler;
+mod ruler_input;
 mod scroll;
 mod table_paint;
 mod table_resize;

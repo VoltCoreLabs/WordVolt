@@ -113,6 +113,8 @@ pub enum Key {
     GroupNotes,
     TipFootnote,
     TipComment,
+    Ruler,
+    TipRuler,
     BookmarkHint,
     BookmarkList,
     HeadingList,

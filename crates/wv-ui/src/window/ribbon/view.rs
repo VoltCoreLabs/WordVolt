@@ -47,7 +47,10 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
-    let marks_on = this.editor.read(cx).show_marks;
+    let (marks_on, ruler_on) = {
+        let view = this.editor.read(cx);
+        (view.show_marks, view.show_ruler)
+    };
     let show = block_group(
         t(this.lang, Key::GroupShow),
         vec![
@@ -64,6 +67,22 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             .tip(t(this.lang, Key::TipShowMarks))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.editor.update(cx, |view, cx| view.toggle_marks(cx));
+                cx.notify();
+            }))
+            .into_any_element(),
+            button(
+                "show-ruler",
+                t(this.lang, Key::Ruler),
+                if ruler_on {
+                    ButtonKind::Primary
+                } else {
+                    ButtonKind::Default
+                },
+                cx,
+            )
+            .tip(t(this.lang, Key::TipRuler))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.editor.update(cx, |view, cx| view.toggle_ruler(cx));
                 cx.notify();
             }))
             .into_any_element(),

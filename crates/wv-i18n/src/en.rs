@@ -159,6 +159,10 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::BookmarkHint => "Bookmark on the selected text: type a name and press Enter",
         Key::BookmarkList => "Bookmarks (click: cross-reference, ×: delete)",
         Key::HeadingList => "Headings (click: reference; Ctrl+click on a link goes there)",
+        Key::Ruler => "Ruler",
+        Key::TipRuler => {
+            "Ruler above the page: drag the left and first-line indent markers, click it to set a tab stop (drag one off the ruler to remove it)"
+        }
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {
