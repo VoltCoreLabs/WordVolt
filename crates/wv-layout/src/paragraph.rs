@@ -5,6 +5,8 @@ use wv_core::{Align, Paragraph};
 
 use crate::Measurer;
 use crate::line::Line;
+use boxes::Boxes;
+pub use boxes::Obstacle;
 use build::build;
 
 const EPS: f32 = 0.01;
@@ -64,6 +66,9 @@ pub struct ImageBox {
     pub height: f32,
     /// A floating picture takes no room in the text (the text goes around it, see `Wrap`).
     pub float: Option<wv_core::Float>,
+    /// Quarter turns clockwise and what is cut off (see `wv_core::ImageRef`).
+    pub rotation: u8,
+    pub crop: wv_core::Crop,
 }
 
 impl ParagraphLayout {
@@ -85,6 +90,16 @@ pub(super) struct Piece {
 
 /// Lays out one paragraph for the given width.
 pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> ParagraphLayout {
+    layout_paragraph_around(p, opts, m, &[])
+}
+
+/// Like `layout_paragraph`, with the text going around the `obstacles` (pictures).
+pub fn layout_paragraph_around(
+    p: &Paragraph,
+    opts: &Options,
+    m: &dyn Measurer,
+    obstacles: &[Obstacle],
+) -> ParagraphLayout {
     let quote = if p.style.quote { QUOTE_INDENT } else { 0.0 };
     let list_gap = if p.style.list.is_some() {
         LIST_HANGING
@@ -101,13 +116,7 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         width: opts.width - indent,
         line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
     };
-    let limit = |rows: usize| {
-        if rows == 0 {
-            opts.width - first
-        } else {
-            opts.width
-        }
-    };
+    let mut bx = Boxes::new(p, opts.line_spacing, opts.width, first, obstacles, m);
     let text = p.text();
     let spans = run_spans(p);
     let mut lines: Vec<Vec<Piece>> = Vec::new();
@@ -118,14 +127,15 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
         let word = pieces(p, &text, &spans, atom.start..word_end, false, m);
         let mut spaces = pieces(p, &text, &spans, word_end..atom.end, true, m);
         let word_width: f32 = word.iter().map(|x| x.width).sum();
-        if !current.is_empty() && current_width + word_width > limit(lines.len()) + EPS {
+        if !current.is_empty() && current_width + word_width > bx.width(lines.len()) + EPS {
             lines.push(std::mem::take(&mut current));
             current_width = 0.0;
         }
-        if word_width > limit(lines.len()) + EPS {
+        if word_width > bx.width(lines.len()) + EPS {
             for piece in word {
                 for part in split_graphemes(p, &text, piece, m) {
-                    if !current.is_empty() && current_width + part.width > limit(lines.len()) + EPS
+                    if !current.is_empty()
+                        && current_width + part.width > bx.width(lines.len()) + EPS
                     {
                         lines.push(std::mem::take(&mut current));
                         current_width = 0.0;
@@ -139,15 +149,16 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
             current.extend(word);
         }
         if !p.style.toc {
-            // Tabs reach the next stop; the first line starts `first` px in.
-            let at = current_width + if lines.is_empty() { first } else { 0.0 };
+            // Tabs reach the next stop, counted from the left edge of the text.
+            let at = current_width + bx.inset(lines.len());
             tabs::resolve_tabs(p, &text, &mut spaces, at, &stops, m);
         }
         current_width += spaces.iter().map(|x| x.width).sum::<f32>();
         current.extend(spaces);
     }
     lines.push(current);
-    let mut layout = build(p, text, lines, opts, first, m);
+    let boxes = bx.finish(lines.len());
+    let mut layout = build(p, text, lines, opts, &boxes, m);
     layout.quote = p.style.quote;
     layout.toc = p.style.toc;
     layout.page_break = p.style.page_break;
@@ -175,6 +186,8 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
             width: img.width,
             height: img.height,
             float: img.float,
+            rotation: img.rotation,
+            crop: img.crop,
         });
         // A floating picture takes no room in the text.
         let room = if img.float.is_some() { 0.0 } else { img.height };
@@ -262,6 +275,7 @@ fn split_graphemes<'a>(
         })
 }
 
+mod boxes;
 mod build;
 mod tabs;
 #[cfg(test)]

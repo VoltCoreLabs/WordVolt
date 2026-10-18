@@ -145,6 +145,7 @@ pub(super) fn run_of(r: RunDto) -> Run {
 
 pub(super) fn wrap_name(w: Wrap) -> &'static str {
     match w {
+        Wrap::Square => "square",
         Wrap::TopBottom => "topbottom",
         Wrap::Front => "front",
         Wrap::Behind => "behind",
@@ -153,6 +154,7 @@ pub(super) fn wrap_name(w: Wrap) -> &'static str {
 
 pub(super) fn wrap_from(name: &str) -> Wrap {
     match name {
+        "square" => Wrap::Square,
         "front" => Wrap::Front,
         "behind" => Wrap::Behind,
         _ => Wrap::TopBottom,

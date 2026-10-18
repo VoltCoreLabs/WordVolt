@@ -18,8 +18,32 @@ pub fn drawing_xml(image: ImageRef, unique: u32) -> String {
         (image.height * EMU_PER_PX).round() as u64,
     );
     let rid = rel_id(image.id);
+    // Word keeps the size of the unrotated picture in `a:xfrm` and the cut in the source's own
+    // orientation (`a:srcRect`).
+    let (ux, uy) = if image.rotation % 2 == 1 {
+        (cy, cx)
+    } else {
+        (cx, cy)
+    };
+    let rot = u32::from(image.rotation % 4) * 5_400_000;
+    let mut source = image.crop;
+    for _ in 0..(4 - image.rotation % 4) % 4 {
+        source = source.turned();
+    }
+    let thousandths = |f: f32| (f * 100_000.0).round() as i64;
+    let src_rect = if source.is_none() {
+        String::new()
+    } else {
+        format!(
+            "<a:srcRect l=\"{}\" t=\"{}\" r=\"{}\" b=\"{}\"/>",
+            thousandths(source.left),
+            thousandths(source.top),
+            thousandths(source.right),
+            thousandths(source.bottom)
+        )
+    };
     let graphic = format!(
-        "<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"{unique}\" name=\"{rid}\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"{rid}\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>"
+        "<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"{unique}\" name=\"{rid}\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"{rid}\"/>{src_rect}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm rot=\"{rot}\"><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{ux}\" cy=\"{uy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>"
     );
     let doc_pr = format!("<wp:docPr id=\"{unique}\" name=\"Picture {unique}\"/>");
     let drawing = match image.float {
@@ -32,6 +56,7 @@ pub fn drawing_xml(image: ImageRef, unique: u32) -> String {
                 (float.y * EMU_PER_PX).round() as i64,
             );
             let (behind, wrap) = match float.wrap {
+                Wrap::Square => (0, "<wp:wrapSquare wrapText=\"bothSides\"/>"),
                 Wrap::TopBottom => (0, "<wp:wrapTopAndBottom/>"),
                 Wrap::Front => (0, "<wp:wrapNone/>"),
                 Wrap::Behind => (1, "<wp:wrapNone/>"),

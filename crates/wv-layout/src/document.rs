@@ -1,8 +1,9 @@
-use wv_core::{Document, Position};
+use wv_core::{Document, Position, Wrap};
 
 use std::rc::Rc;
 
 use crate::Measurer;
+use crate::around::{Source, wrap_around};
 use crate::layout_cache::LayoutCache;
 use crate::numbering::Counters;
 use crate::page::{Page, PageSetup, Slice};
@@ -57,7 +58,8 @@ impl DocLayout {
         let content_width = setup.column_width();
         let fractions = table::column_fractions(doc);
         let mut counters = Counters::default();
-        let paragraphs: Vec<Rc<ParagraphLayout>> = doc
+        let mut sources: Vec<Source> = Vec::with_capacity(doc.paragraphs.len());
+        let mut paragraphs: Vec<Rc<ParagraphLayout>> = doc
             .paragraphs
             .iter()
             .map(|p| {
@@ -75,14 +77,31 @@ impl DocLayout {
                     width,
                     line_spacing: setup.line_spacing,
                 };
-                match p.with_named_style() {
-                    Some(resolved) => cache.layout(&resolved, &options, marker, m),
-                    None => cache.layout(p, &options, marker, m),
-                }
+                let layout = match p.with_named_style() {
+                    Some(resolved) => cache.layout(&resolved, &options, marker.clone(), m),
+                    None => cache.layout(p, &options, marker.clone(), m),
+                };
+                sources.push(Source { options, marker });
+                layout
             })
             .collect();
         cache.end();
-        let pages = paginate(&paragraphs, &table::blocks(doc), &setup);
+        let blocks = table::blocks(doc);
+        let mut pages = paginate(&paragraphs, &blocks, &setup);
+        if pages
+            .iter()
+            .any(|p| p.floats.iter().any(|f| f.wrap == Wrap::Square))
+        {
+            wrap_around(
+                doc,
+                &setup,
+                &blocks,
+                &sources,
+                &mut paragraphs,
+                &mut pages,
+                m,
+            );
+        }
         let mut locations = vec![Vec::new(); paragraphs.len()];
         for (page, p) in pages.iter().enumerate() {
             for (slice_ix, s) in p.slices.iter().enumerate() {

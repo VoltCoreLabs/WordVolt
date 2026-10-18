@@ -15,7 +15,7 @@ use std::path::Path;
 
 pub use error::IoError;
 pub use format::Format;
-pub use image::probe_image;
+pub use image::{probe_image, rotate_image};
 pub use pdf::{FontRequest, FontSource, SystemFonts, encode as encode_pdf};
 use wv_core::Document;
 

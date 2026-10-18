@@ -123,11 +123,13 @@ fn flow(
                     y = 0.0;
                 }
                 for (line_ix, line) in para.lines.iter().enumerate() {
-                    let mut lead = if line_ix == 0 && y > 0.0 {
-                        para.space_before
-                    } else {
-                        0.0
-                    };
+                    // `gap`: the line did not fit beside a picture and starts below it.
+                    let mut lead = line.gap
+                        + if line_ix == 0 && y > 0.0 {
+                            para.space_before
+                        } else {
+                            0.0
+                        };
                     // Text does not run into a picture that has the page to itself in that band.
                     while let Some(band) = (line.height > 0.0)
                         .then(|| {
@@ -187,6 +189,8 @@ fn flow(
                             width: image.width,
                             height: image.height,
                             wrap: float.wrap,
+                            rotation: image.rotation,
+                            crop: image.crop,
                         },
                     ));
                 }

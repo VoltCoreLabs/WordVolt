@@ -80,6 +80,28 @@ impl State {
                 self.pictures.embed = None;
                 self.pictures.size = (0.0, 0.0);
                 self.pictures.anchor = None;
+                self.pictures.rotation = 0;
+                self.pictures.crop = wv_core::Crop::default();
+            }
+            b"xfrm" if self.pictures.in_drawing => {
+                // Only quarter turns are kept.
+                let rot = attr(e, b"rot")
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .unwrap_or(0.0);
+                self.pictures.rotation = ((rot / 5_400_000.0).round() as i64).rem_euclid(4) as u8;
+            }
+            b"srcRect" if self.pictures.in_drawing => {
+                let part = |name: &[u8]| {
+                    attr(e, name)
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .map_or(0.0, |v| (v / 100_000.0).clamp(0.0, 0.9))
+                };
+                self.pictures.crop = wv_core::Crop {
+                    left: part(b"l"),
+                    top: part(b"t"),
+                    right: part(b"r"),
+                    bottom: part(b"b"),
+                };
             }
             b"anchor" if self.pictures.in_drawing => {
                 self.pictures.anchor = Some(PictureAnchor {
@@ -96,14 +118,17 @@ impl State {
             }
             b"wrapNone" if self.pictures.anchor.is_some() => {
                 if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(false);
+                    a.wrap = Some(wv_core::Wrap::Front);
                 }
             }
-            b"wrapTopAndBottom" | b"wrapSquare" | b"wrapTight" | b"wrapThrough"
-                if self.pictures.anchor.is_some() =>
-            {
+            b"wrapTopAndBottom" if self.pictures.anchor.is_some() => {
                 if let Some(a) = self.pictures.anchor.as_mut() {
-                    a.wrap = Some(true);
+                    a.wrap = Some(wv_core::Wrap::TopBottom);
+                }
+            }
+            b"wrapSquare" | b"wrapTight" | b"wrapThrough" if self.pictures.anchor.is_some() => {
+                if let Some(a) = self.pictures.anchor.as_mut() {
+                    a.wrap = Some(wv_core::Wrap::Square);
                 }
             }
             b"extent" if self.pictures.in_drawing && self.pictures.size.0 == 0.0 => {

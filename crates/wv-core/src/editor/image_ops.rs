@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::Editor;
 use crate::document::{ImageData, ImageFormat, Paragraph};
 use crate::position::{Position, Selection};
-use crate::style::{Float, ImageRef};
+use crate::style::{Crop, Float, ImageRef};
 
 /// Widest picture inserted at its natural size (px); larger ones are scaled down to this.
 pub const MAX_IMAGE_WIDTH: f32 = 600.0;
@@ -89,22 +89,28 @@ impl Editor {
         self.amend_last_edit(para, changed);
     }
 
+    /// Changes the caret's picture with `f` (the size stays on the page). One undo step; for a
+    /// drag the first call (`first`) starts it and the following ones change that step.
+    pub fn edit_image(&mut self, first: bool, f: impl FnOnce(&mut ImageRef)) {
+        let Some(mut image) = self.image_at_caret() else {
+            return;
+        };
+        f(&mut image);
+        (image.width, image.height) = self.clamp_image(image.width, image.height);
+        let para = self.sel.head.para;
+        if first {
+            self.edit_para_styles(para, para, |s| s.image = Some(image));
+        } else {
+            let mut changed = self.doc.paragraphs[para].clone();
+            changed.style.image = Some(image);
+            self.amend_last_edit(para, changed);
+        }
+    }
+
     /// Sets the size and placement of the caret's picture (one undo step): `float` `None` puts it
     /// back into the line of text.
     pub fn set_image_geometry(&mut self, width: f32, height: f32, float: Option<Float>) {
-        let Some(image) = self.image_at_caret() else {
-            return;
-        };
-        let (width, height) = self.clamp_image(width, height);
-        let para = self.sel.head.para;
-        self.edit_para_styles(para, para, |s| {
-            s.image = Some(ImageRef {
-                width,
-                height,
-                float,
-                ..image
-            })
-        });
+        self.drag_image_geometry(width, height, float, true);
     }
 
     /// `set_image_geometry` for a drag: the first call (`first`) starts an undo step, the following
@@ -116,22 +122,58 @@ impl Editor {
         float: Option<Float>,
         first: bool,
     ) {
-        if first {
-            return self.set_image_geometry(width, height, float);
+        self.edit_image(first, |i| {
+            (i.width, i.height, i.float) = (width, height, float);
+        });
+    }
+
+    /// Turns the caret's picture by `quarters` quarter turns clockwise (negative: counter-clockwise).
+    pub fn rotate_image(&mut self, quarters: i8) {
+        let turns = quarters.rem_euclid(4) as u8;
+        if turns == 0 {
+            return;
         }
+        self.edit_image(true, |i| {
+            for _ in 0..turns {
+                (i.width, i.height) = (i.height, i.width);
+                i.crop = i.crop.turned();
+            }
+            i.rotation = (i.rotation + turns) % 4;
+        });
+    }
+
+    /// Cuts `crop` off the picture, which shows `width` x `height` px of it afterwards (and sits at
+    /// `float`). Like `drag_image_geometry` it is one undo step per drag.
+    pub fn drag_image_crop(
+        &mut self,
+        crop: Crop,
+        width: f32,
+        height: f32,
+        float: Option<Float>,
+        first: bool,
+    ) {
+        self.edit_image(first, |i| {
+            (i.crop, i.width, i.height, i.float) = (crop, width, height, float);
+        });
+    }
+
+    /// Brings back what was cut off the picture (it grows to its full size).
+    pub fn reset_image_crop(&mut self) {
         let Some(image) = self.image_at_caret() else {
             return;
         };
-        let (width, height) = self.clamp_image(width, height);
-        let para = self.sel.head.para;
-        let mut changed = self.doc.paragraphs[para].clone();
-        changed.style.image = Some(ImageRef {
-            width,
-            height,
-            float,
-            ..image
+        let (vw, vh) = image.crop.visible();
+        self.edit_image(true, |i| {
+            let cut = i.crop;
+            i.width /= vw;
+            i.height /= vh;
+            i.crop = Crop::default();
+            // What comes back on the left and top pushes the picture's corner out.
+            if let Some(f) = i.float.as_mut() {
+                f.x -= cut.left * i.width;
+                f.y -= cut.top * i.height;
+            }
         });
-        self.amend_last_edit(para, changed);
     }
 
     /// Picture sizes stay between 16 px and the text area of the page.

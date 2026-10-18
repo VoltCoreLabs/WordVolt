@@ -121,4 +121,6 @@ pub struct PlacedFloat {
     pub width: f32,
     pub height: f32,
     pub wrap: Wrap,
+    pub rotation: u8,
+    pub crop: wv_core::Crop,
 }

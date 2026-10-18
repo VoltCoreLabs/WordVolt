@@ -975,3 +975,47 @@ fn a_picture_moves_to_another_paragraph() {
     assert!(e.undo());
     assert!(e.doc.paragraphs[2].style.image.is_some());
 }
+
+#[test]
+fn rotating_a_picture_swaps_its_size_and_turns_the_crop() {
+    let mut e = doc_with_picture();
+    e.drag_image_crop(
+        crate::Crop {
+            left: 0.1,
+            top: 0.2,
+            right: 0.0,
+            bottom: 0.0,
+        },
+        90.0,
+        40.0,
+        None,
+        true,
+    );
+    e.rotate_image(1);
+    let i = e.image_at_caret().unwrap();
+    assert_eq!((i.width, i.height, i.rotation), (40.0, 90.0, 1));
+    // What was cut off the left is now cut off the top, the top cut is now on the right.
+    assert_eq!((i.crop.top, i.crop.right, i.crop.left), (0.1, 0.2, 0.0));
+    e.rotate_image(-1);
+    let i = e.image_at_caret().unwrap();
+    assert_eq!((i.width, i.height, i.rotation), (90.0, 40.0, 0));
+    assert_eq!((i.crop.left, i.crop.top), (0.1, 0.2));
+    e.rotate_image(4);
+    assert_eq!(e.image_at_caret().unwrap().rotation, 0);
+}
+
+#[test]
+fn resetting_the_crop_restores_the_full_picture() {
+    let mut e = doc_with_picture();
+    let crop = crate::Crop {
+        left: 0.25,
+        top: 0.0,
+        right: 0.25,
+        bottom: 0.0,
+    };
+    e.drag_image_crop(crop, 50.0, 50.0, None, true);
+    e.reset_image_crop();
+    let i = e.image_at_caret().unwrap();
+    assert_eq!((i.width, i.height), (100.0, 50.0));
+    assert!(i.crop.is_none());
+}

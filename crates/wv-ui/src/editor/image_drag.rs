@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{Float, Position, Wrap};
+use wv_core::{Crop, Float, Position, Wrap};
 
 use super::image_handles::{CORNERS, HANDLE, HANDLES, Handle, PlacedImage};
 use super::view::EditorView;
@@ -8,8 +8,10 @@ use super::view::EditorView;
 const DRAG_THRESHOLD: f32 = 4.0;
 
 #[derive(Clone, Copy)]
-enum Mode {
+pub(super) enum Mode {
     Resize(Handle),
+    /// Cutting the picture's side at the handle instead of scaling it.
+    Crop(Handle),
     Move,
 }
 
@@ -17,8 +19,10 @@ enum Mode {
 pub struct ImageDrag {
     mode: Mode,
     /// Pointer at the start (window px) and the picture then.
-    start: (f32, f32),
+    pub(super) start: (f32, f32),
     picture: PlacedImage,
+    /// What was cut off the picture at the start.
+    pub(super) crop0: Crop,
     /// Where in the picture the pointer grabbed it (layout px).
     grab: (f32, f32),
     /// Width change per pixel dragged for an inline picture (a centred one grows on both sides).
@@ -26,7 +30,7 @@ pub struct ImageDrag {
     /// The drag has moved far enough to count.
     active: bool,
     /// No step recorded yet (the first change starts the undo step).
-    first: bool,
+    pub(super) first: bool,
     /// Page the picture is anchored to now.
     page: usize,
 }
@@ -39,7 +43,7 @@ impl EditorView {
         if let Some(sel) = self.selected_image()
             && let Some((x, y, w, h)) = self.image_window_rect(&sel)
         {
-            let handles: &[Handle] = if sel.float.is_some() {
+            let handles: &[Handle] = if sel.float.is_some() || self.cropping {
                 &HANDLES
             } else {
                 &CORNERS
@@ -49,7 +53,12 @@ impl EditorView {
                 (px_x - hx).abs() <= HANDLE && (px_y - hy).abs() <= HANDLE
             });
             if let Some(handle) = hit {
-                self.begin_drag(Mode::Resize(handle), sel, (px_x, px_y), true);
+                let mode = if self.cropping {
+                    Mode::Crop(handle)
+                } else {
+                    Mode::Resize(handle)
+                };
+                self.begin_drag(mode, sel, (px_x, px_y), true);
                 return true;
             }
         }
@@ -69,8 +78,14 @@ impl EditorView {
     fn begin_drag(&mut self, mode: Mode, picture: PlacedImage, start: (f32, f32), active: bool) {
         let z = self.zoom;
         let rect = self.image_window_rect(&picture).unwrap_or_default();
+        let crop0 = self
+            .core
+            .image_at_caret()
+            .map(|i| i.crop)
+            .unwrap_or_default();
         self.resizing = Some(ImageDrag {
             mode,
+            crop0,
             start,
             picture,
             grab: ((start.0 - rect.0) / z, (start.1 - rect.1) / z),
@@ -101,6 +116,7 @@ impl EditorView {
         let (mode, picture, first) = (d.mode, d.picture, d.first);
         match mode {
             Mode::Resize(handle) => self.resize_to(handle, picture, pointer, first, cx),
+            Mode::Crop(handle) => self.crop_to(handle, picture, pointer, first, cx),
             Mode::Move => self.move_to(pointer, cx),
         }
         self.reveal_caret.set(false);

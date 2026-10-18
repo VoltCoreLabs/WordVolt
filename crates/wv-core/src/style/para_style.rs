@@ -60,6 +60,8 @@ impl Cell {
 /// How text goes around a floating picture.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Wrap {
+    /// Text runs along the sides of the picture (it is laid out in the width that is left).
+    Square,
     /// Text stops above the picture and goes on below it.
     TopBottom,
     /// The picture is drawn over the text; the text does not move.
@@ -83,9 +85,47 @@ pub struct Float {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImageRef {
     pub id: u32,
+    /// Displayed size (after rotating and cropping).
     pub width: f32,
     pub height: f32,
     pub float: Option<Float>,
+    /// Quarter turns clockwise (0..=3).
+    pub rotation: u8,
+    /// What is cut off the displayed picture.
+    pub crop: Crop,
+}
+
+/// The parts cut off the sides of a picture, as fractions of its (rotated) size.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Crop {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+}
+
+impl Crop {
+    pub fn is_none(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Fraction of the uncropped picture that stays visible, horizontally and vertically.
+    pub fn visible(&self) -> (f32, f32) {
+        (
+            (1.0 - self.left - self.right).max(0.05),
+            (1.0 - self.top - self.bottom).max(0.05),
+        )
+    }
+
+    /// The same cut after the picture is turned a quarter clockwise.
+    pub fn turned(self) -> Self {
+        Self {
+            left: self.bottom,
+            top: self.left,
+            right: self.top,
+            bottom: self.right,
+        }
+    }
 }
 
 impl ImageRef {
@@ -96,6 +136,8 @@ impl ImageRef {
             width,
             height,
             float: None,
+            rotation: 0,
+            crop: Crop::default(),
         }
     }
 }
@@ -156,6 +198,15 @@ impl std::hash::Hash for ImageRef {
         self.float
             .map(|f| (f.x.to_bits(), f.y.to_bits(), f.wrap))
             .hash(state);
+        self.rotation.hash(state);
+        [
+            self.crop.left,
+            self.crop.top,
+            self.crop.right,
+            self.crop.bottom,
+        ]
+        .map(f32::to_bits)
+        .hash(state);
     }
 }
 
