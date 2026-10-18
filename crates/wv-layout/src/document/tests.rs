@@ -539,3 +539,42 @@ fn a_picture_with_no_room_beside_it_pushes_the_text_below() {
     assert_eq!(first.x, 0.0);
     assert!(first.gap > 0.0, "the line starts below the picture");
 }
+
+#[test]
+fn text_that_flows_onto_a_page_with_a_picture_stays_out_of_its_band() {
+    let mut doc = Document::from_text(
+        "a
+b
+c
+d
+e
+f
+g
+h
+i
+j",
+    );
+    let mut picture = wv_core::Paragraph::default();
+    picture.style.image = Some(wv_core::ImageRef {
+        float: Some(wv_core::Float {
+            x: 10.0,
+            y: 16.0,
+            wrap: wv_core::Wrap::TopBottom,
+        }),
+        ..wv_core::ImageRef::inline(0, 40.0, 16.0)
+    });
+    doc.paragraphs.insert(7, picture);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let page = &l.pages[1];
+    assert_eq!(page.floats.len(), 1);
+    // The picture is 16..32 on the page; text may not touch 10..38 (with its gap). The first
+    // paragraph that flowed onto the page starts below that, not at the top.
+    for s in page.slices.iter().filter(|s| s.height > 0.0) {
+        assert!(
+            s.y + s.height <= 10.0 + 0.01 || s.y >= 38.0 - 0.01,
+            "paragraph {} at {} runs into the picture",
+            s.para,
+            s.y
+        );
+    }
+}
