@@ -85,10 +85,16 @@ pub(super) fn image_items(
         .core
         .image_at_caret()
         .map(|i| i.float.map(|f| f.wrap));
-    let wraps: [(&'static str, Key, Option<Wrap>, Action); 4] = [
+    let wraps: [(&'static str, Key, Option<Wrap>, Action); 5] = [
         ("ctx-wrap-inline", Key::WrapInline, None, |t, _, cx| {
             t.set_picture_wrap(None, cx)
         }),
+        (
+            "ctx-wrap-square",
+            Key::WrapSquare,
+            Some(Wrap::Square),
+            |t, _, cx| t.set_picture_wrap(Some(Wrap::Square), cx),
+        ),
         (
             "ctx-wrap-tb",
             Key::WrapTopBottom,
@@ -113,23 +119,53 @@ pub(super) fn image_items(
         items.push(row(id, t(lang, key), mark, true, action, cx).into_any_element());
     }
     items.push(separator(cx).into_any_element());
-    let pictures: [(&'static str, Key, Action); 4] = [
-        ("ctx-pic-smaller", Key::CtxPicSmaller, |t, _, cx| {
+    let (cropped, cropping) = {
+        let view = this.editor.read(cx);
+        (
+            view.core
+                .image_at_caret()
+                .is_some_and(|i| !i.crop.is_none()),
+            view.cropping,
+        )
+    };
+    let crop_key = if cropping {
+        Key::CtxCropDone
+    } else {
+        Key::CtxCrop
+    };
+    let pictures: [(&'static str, Key, bool, Action); 8] = [
+        ("ctx-rotate-right", Key::CtxRotateRight, true, |t, _, cx| {
+            t.edit(cx, |c| c.rotate_image(1))
+        }),
+        ("ctx-rotate-left", Key::CtxRotateLeft, true, |t, _, cx| {
+            t.edit(cx, |c| c.rotate_image(-1))
+        }),
+        ("ctx-crop", crop_key, true, |t, _, cx| {
+            t.editor.update(cx, |view, cx| {
+                view.cropping = !view.cropping;
+                cx.notify();
+            })
+        }),
+        ("ctx-crop-reset", Key::CtxCropReset, cropped, |t, _, cx| {
+            t.edit(cx, |c| c.reset_image_crop())
+        }),
+        ("ctx-pic-smaller", Key::CtxPicSmaller, true, |t, _, cx| {
             t.edit(cx, |c| c.scale_image(0.8))
         }),
-        ("ctx-pic-larger", Key::CtxPicLarger, |t, _, cx| {
+        ("ctx-pic-larger", Key::CtxPicLarger, true, |t, _, cx| {
             t.edit(cx, |c| c.scale_image(1.25))
         }),
-        ("ctx-pic-fit", Key::CtxPicFit, |t, _, cx| {
+        ("ctx-pic-fit", Key::CtxPicFit, true, |t, _, cx| {
             t.edit(cx, |c| c.set_image_width(f32::MAX))
         }),
         (
             "ctx-pic-settings",
             Key::CtxImageSettings,
+            true,
             |t, window, cx| t.open_image_dialog(window, cx),
         ),
     ];
-    for (id, key, action) in pictures {
-        items.push(row(id, t(lang, key), None, true, action, cx).into_any_element());
+    for (id, key, enabled, action) in pictures {
+        items.push(row(id, t(lang, key), None, enabled, action, cx).into_any_element());
     }
 }

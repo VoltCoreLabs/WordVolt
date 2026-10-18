@@ -117,6 +117,25 @@ mod tests {
     }
 
     #[test]
+    fn rotated_and_cropped_pictures_round_trip() {
+        use wv_core::{Crop, ImageFormat};
+        let mut e = Editor::default();
+        e.insert_image(ImageFormat::Png, vec![1, 2, 3], 100.0, 50.0);
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+        let crop = Crop {
+            left: 0.1,
+            top: 0.0,
+            right: 0.2,
+            bottom: 0.05,
+        };
+        e.drag_image_crop(crop, 70.0, 47.5, None, true);
+        e.rotate_image(3);
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.paragraphs[0].style.image.unwrap().rotation, 3);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

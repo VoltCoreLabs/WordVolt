@@ -85,16 +85,6 @@ impl Canvas<'_> {
             self.fill(x, baseline - size * 0.3, width, thickness, rgb);
         }
     }
-
-    fn picture(&mut self, id: u32, x: f32, top: f32, width: f32, height: f32) {
-        let name = format!("I{id}");
-        let (px, py) = (self.x(x), self.y(top + height));
-        self.content
-            .save_state()
-            .transform([width * PT, 0.0, 0.0, height * PT, px, py])
-            .x_object(Name(name.as_bytes()))
-            .restore_state();
-    }
 }
 
 fn draw_bands(
@@ -172,7 +162,7 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
         layout.pages.len(),
         layout,
     );
-    place_floats(&mut c, &mut images, layout, page, true);
+    pictures::place_floats(&mut c, &mut images, layout, page, true);
     for slice in &layout.pages[page].slices {
         let para = &layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
@@ -180,7 +170,12 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
         if slice.lines.start == 0 {
             if let Some(image) = para.image.filter(|i| i.float.is_none()) {
                 let x = setup.margin_left + slice.x + para.lines[0].x;
-                c.picture(image.id, x, slice_top, image.width, image.height);
+                c.picture(
+                    image.id,
+                    (x, slice_top, image.width, image.height),
+                    image.rotation,
+                    image.crop,
+                );
                 images.insert(image.id);
             }
             if let Some(marker) = &para.marker {
@@ -248,34 +243,11 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
             }
         }
     }
-    place_floats(&mut c, &mut images, layout, page, false);
+    pictures::place_floats(&mut c, &mut images, layout, page, false);
     PageContent {
         data: c.content.finish().to_vec(),
         images,
     }
 }
 
-/// Floating pictures of the page: those behind the text first, the others on top of it.
-fn place_floats(
-    c: &mut Canvas,
-    images: &mut BTreeSet<u32>,
-    layout: &DocLayout,
-    page: usize,
-    behind: bool,
-) {
-    let setup = &layout.setup;
-    for f in layout.pages[page]
-        .floats
-        .iter()
-        .filter(|f| (f.wrap == wv_core::Wrap::Behind) == behind)
-    {
-        c.picture(
-            f.id,
-            setup.margin_left + f.x,
-            setup.margin_top + f.y,
-            f.width,
-            f.height,
-        );
-        images.insert(f.id);
-    }
-}
+mod pictures;

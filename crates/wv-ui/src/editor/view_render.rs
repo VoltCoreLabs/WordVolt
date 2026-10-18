@@ -80,6 +80,7 @@ impl Render for EditorView {
                 find_current_color: theme.find_current,
                 table_color: theme.border_strong,
                 misspell_color: theme.danger,
+                cropping: self.cropping,
                 bands: bands.clone(),
                 images: images.clone(),
                 band_color: theme.text_muted,

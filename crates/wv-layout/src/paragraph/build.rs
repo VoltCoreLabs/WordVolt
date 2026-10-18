@@ -1,5 +1,6 @@
 use wv_core::{Align, CharStyle, Paragraph};
 
+use super::boxes::LineBox;
 use super::{Options, ParagraphLayout, Piece};
 use crate::Measurer;
 use crate::line::{Fragment, Line};
@@ -9,7 +10,7 @@ pub(super) fn build(
     text: String,
     rows: Vec<Vec<Piece>>,
     opts: &Options,
-    first: f32,
+    boxes: &[LineBox],
     m: &dyn Measurer,
 ) -> ParagraphLayout {
     let mut default_style = p.runs.first().map(|r| r.style.clone()).unwrap_or_default();
@@ -18,19 +19,16 @@ pub(super) fn build(
     let mut lines = Vec::with_capacity(rows.len());
     let mut y = 0.0;
     for (i, row) in rows.iter().enumerate() {
-        // The first line is narrower by the first-line indent and starts that far in.
+        // Each line has its own place: how far in it starts, how wide it is and a gap above it.
+        let b = boxes[i];
         let o = Options {
-            width: if i == 0 {
-                opts.width - first
-            } else {
-                opts.width
-            },
+            width: b.width,
             ..*opts
         };
+        y += b.gap;
         let mut line = build_line(p, &text, row, i == last_row, y, &default_style, &o, m);
-        if i == 0 {
-            line.x += first;
-        }
+        line.x += b.inset;
+        line.gap = b.gap;
         y += line.height;
         lines.push(line);
     }
@@ -146,5 +144,6 @@ fn build_line(
         baseline: height - descent,
         space_extra,
         is_last,
+        gap: 0.0,
     }
 }

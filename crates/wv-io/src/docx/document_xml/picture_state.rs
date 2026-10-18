@@ -14,6 +14,9 @@ pub(super) struct PictureState {
     pub(super) rels: Vec<String>,
     pub(super) in_drawing: bool,
     pub(super) embed: Option<String>,
+    /// Quarter turns and the cut (source orientation) of the drawing being read.
+    pub(super) rotation: u8,
+    pub(super) crop: wv_core::Crop,
     pub(super) size: (f32, f32),
     /// The paragraph that follows a picture inside one `w:p`; dropped if it stays empty.
     pub(super) after: bool,
@@ -25,8 +28,8 @@ pub(super) struct PictureAnchor {
     pub(super) x: f32,
     pub(super) y: f32,
     pub(super) behind: bool,
-    /// `Some(true)`: text above and below (or around); `Some(false)`: no wrapping.
-    pub(super) wrap: Option<bool>,
+    /// How the text goes around it; `Front` also stands for "no wrapping" (see `behind`).
+    pub(super) wrap: Option<wv_core::Wrap>,
 }
 
 impl State {
@@ -47,11 +50,19 @@ impl State {
             self.line_break(false);
         }
         let mut image = ImageRef::inline(id, width, height);
+        // Turn and cut as Word keeps them: the cut is in the source's orientation.
+        image.rotation = self.pictures.rotation % 4;
+        let mut crop = self.pictures.crop;
+        for _ in 0..image.rotation {
+            crop = crop.turned();
+        }
+        image.crop = crop;
         image.float = self.pictures.anchor.take().map(|a| {
             let wrap = match (a.wrap, a.behind) {
-                (Some(false), true) => wv_core::Wrap::Behind,
-                (Some(false), false) => wv_core::Wrap::Front,
-                _ => wv_core::Wrap::TopBottom,
+                (Some(wv_core::Wrap::Front), true) => wv_core::Wrap::Behind,
+                (Some(wrap), _) => wrap,
+                (None, true) => wv_core::Wrap::Behind,
+                (None, false) => wv_core::Wrap::TopBottom,
             };
             wv_core::Float {
                 x: a.x,

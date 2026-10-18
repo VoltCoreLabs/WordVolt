@@ -50,6 +50,8 @@ impl EditorView {
         if self.start_image_drag(ev.position, cx) || self.start_border_drag(ev.position) {
             return;
         }
+        // A click away from the picture ends cropping.
+        self.cropping = false;
         let Some(at) = self.hit(ev.position, window) else {
             return;
         };

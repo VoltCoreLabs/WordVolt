@@ -470,3 +470,62 @@ fn floating_pictures_round_trip_with_their_wrapping() {
         assert!((image.width - 200.0).abs() < 0.1 && (image.height - 100.0).abs() < 0.1);
     }
 }
+
+#[test]
+fn rotated_and_cropped_pictures_round_trip() {
+    let png: Vec<u8> = vec![
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
+        0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00,
+        0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+        0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+    for turns in 0..4 {
+        for float in [
+            None,
+            Some(wv_core::Float {
+                x: 10.0,
+                y: 20.0,
+                wrap: wv_core::Wrap::Square,
+            }),
+        ] {
+            let mut e = Editor::default();
+            e.insert_image(wv_core::ImageFormat::Png, png.clone(), 320.0, 240.0);
+            e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+            e.set_image_geometry(320.0, 240.0, float);
+            e.drag_image_crop(
+                wv_core::Crop {
+                    left: 0.1,
+                    top: 0.2,
+                    right: 0.0,
+                    bottom: 0.25,
+                },
+                288.0,
+                132.0,
+                float,
+                true,
+            );
+            e.rotate_image(turns);
+            let back = decode(&encode(&e.doc).unwrap()).unwrap();
+            let (a, b) = (
+                back.paragraphs[0].style.image.unwrap(),
+                e.doc.paragraphs[0].style.image.unwrap(),
+            );
+            assert_eq!(a.rotation, b.rotation, "turns {turns}");
+            assert!((a.width - b.width).abs() < 0.1 && (a.height - b.height).abs() < 0.1);
+            for (x, y) in [
+                (a.crop.left, b.crop.left),
+                (a.crop.top, b.crop.top),
+                (a.crop.right, b.crop.right),
+                (a.crop.bottom, b.crop.bottom),
+            ] {
+                assert!(
+                    (x - y).abs() < 0.001,
+                    "turns {turn}: {a:?} vs {b:?}",
+                    turn = turns
+                );
+            }
+            assert_eq!(a.float.map(|f| f.wrap), b.float.map(|f| f.wrap));
+        }
+    }
+}

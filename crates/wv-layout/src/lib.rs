@@ -1,5 +1,6 @@
 //! Text layout and pagination. See README.md.
 
+mod around;
 mod band_line;
 mod document;
 mod layout_cache;
@@ -21,7 +22,8 @@ pub use line::{Fragment, Line};
 pub use measure::{DEFAULT_SIZE_PT, Measurer, base_px, font_px, script_shift};
 pub use page::{Page, PageSetup, PlacedFloat, Slice};
 pub use paragraph::{
-    INDENT_STEP, ImageBox, LIST_HANGING, Options, ParagraphLayout, QUOTE_INDENT, layout_paragraph,
+    INDENT_STEP, ImageBox, LIST_HANGING, Obstacle, Options, ParagraphLayout, QUOTE_INDENT,
+    layout_paragraph, layout_paragraph_around,
 };
 pub use table::{CELL_PADDING, CellRect, Shade, TableBox};
 

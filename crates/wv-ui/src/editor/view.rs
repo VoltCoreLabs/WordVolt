@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
@@ -16,7 +15,7 @@ pub(super) const PAGE_GAP: f32 = 24.0;
 /// The paged editing surface inside a smooth-scrolling viewport. Owns the document (`core`);
 /// the page layout is recomputed whenever the document changes.
 /// Stored picture bytes (cache keys) and the GPUI images built from them.
-pub(super) type PictureCache = (Vec<Arc<Vec<u8>>>, Rc<Vec<Arc<Image>>>);
+pub(super) type PictureCache = Rc<super::image_paint::PictureSet>;
 
 pub const MIN_ZOOM: f32 = 0.10;
 pub const MAX_ZOOM: f32 = 4.0;
@@ -49,6 +48,8 @@ pub struct EditorView {
     pub(super) measure_cache: Rc<RefCell<MeasureCache>>,
     /// Format painter: the formatting picked up, applied to the next selection.
     pub painter: Option<wv_core::CharStyle>,
+    /// The handles of the selected picture cut its sides instead of scaling it.
+    pub cropping: bool,
     /// Window bounds of every page, written while painting (used for mouse hit-testing).
     pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
     pub(super) focused_once: bool,
@@ -84,6 +85,7 @@ impl EditorView {
             measure_cache: Rc::default(),
             page_bounds: Rc::default(),
             painter: None,
+            cropping: false,
             focused_once: false,
             zoom: 1.0,
             multi_page: crate::settings::load_multi_page(),

@@ -33,6 +33,8 @@ pub struct Line {
     /// Extra width added to every space (justified lines).
     pub space_extra: f32,
     pub is_last: bool,
+    /// Empty space above the line (text that did not fit beside a picture moved down).
+    pub gap: f32,
 }
 
 impl Line {

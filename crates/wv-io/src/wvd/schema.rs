@@ -30,6 +30,13 @@ impl File {
                         y: f.y,
                         wrap: wrap_name(f.wrap).to_string(),
                     }),
+                    rotation: i.rotation,
+                    crop: (!i.crop.is_none()).then_some([
+                        i.crop.left,
+                        i.crop.top,
+                        i.crop.right,
+                        i.crop.bottom,
+                    ]),
                 }),
                 cell: p.style.cell.map(|c| CellDto {
                     table: c.table,
@@ -131,6 +138,16 @@ impl File {
                             y: f.y,
                             wrap: wrap_from(&f.wrap),
                         }),
+                        rotation: i.rotation % 4,
+                        crop: i.crop.map_or(
+                            wv_core::Crop::default(),
+                            |[left, top, right, bottom]| wv_core::Crop {
+                                left: left.clamp(0.0, 0.9),
+                                top: top.clamp(0.0, 0.9),
+                                right: right.clamp(0.0, 0.9),
+                                bottom: bottom.clamp(0.0, 0.9),
+                            },
+                        ),
                     }),
                     cell: p.cell.map(|c| Cell {
                         shade: c.shade,

@@ -1,27 +1,54 @@
 use gpui_kit::*;
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use wv_core::ImageFormat;
+use wv_core::{Crop, ImageFormat};
 
 use super::image_handles::{CORNERS, HANDLE, HANDLES, Handle};
 use super::page_paint::PageView;
 use super::view::EditorView;
 
+/// The document's pictures as GPUI images; a turned picture is made when first needed.
+#[derive(Default)]
+pub struct PictureSet {
+    keys: Vec<Arc<Vec<u8>>>,
+    base: Vec<Arc<Image>>,
+    turned: RefCell<HashMap<(u32, u8), Arc<Image>>>,
+}
+
+impl PictureSet {
+    /// Picture `id` turned by `rotation` quarter turns clockwise.
+    pub fn get(&self, id: u32, rotation: u8) -> Option<Arc<Image>> {
+        let base = self.base.get(id as usize)?;
+        if rotation.is_multiple_of(4) {
+            return Some(base.clone());
+        }
+        let mut turned = self.turned.borrow_mut();
+        let image = turned.entry((id, rotation % 4)).or_insert_with(|| {
+            wv_io::rotate_image(&self.keys[id as usize], rotation)
+                .map(|png| Arc::new(Image::from_bytes(gpui_kit::ImageFormat::Png, png)))
+                .unwrap_or_else(|| base.clone())
+        });
+        Some(image.clone())
+    }
+}
+
 impl EditorView {
     /// GPUI images for the document's pictures (kept while the stored bytes stay the same).
-    pub(super) fn picture_sources(&mut self) -> Rc<Vec<Arc<Image>>> {
+    pub(super) fn picture_sources(&mut self) -> Rc<PictureSet> {
         let images = &self.core.doc.images;
-        let same = self.picture_cache.0.len() == images.len()
+        let same = self.picture_cache.keys.len() == images.len()
             && self
                 .picture_cache
-                .0
+                .keys
                 .iter()
                 .zip(images)
                 .all(|(a, b)| Arc::ptr_eq(a, &b.bytes));
         if !same {
-            let sources = images
+            let base = images
                 .iter()
                 .map(|i| {
                     let format = match i.format {
@@ -34,19 +61,40 @@ impl EditorView {
                 })
                 .collect();
             let keys = images.iter().map(|i| i.bytes.clone()).collect();
-            self.picture_cache = (keys, Rc::new(sources));
+            self.picture_cache = Rc::new(PictureSet {
+                keys,
+                base,
+                turned: RefCell::default(),
+            });
         }
-        self.picture_cache.1.clone()
+        self.picture_cache.clone()
     }
 }
 
-/// Paints one picture at `bounds`.
-fn paint_picture(v: &PageView, id: u32, bounds: Bounds<Pixels>, window: &mut Window, cx: &mut App) {
-    let Some(source) = v.images.get(id as usize) else {
+/// Paints a picture (turned, with its crop cut off) in `bounds`, the visible part of it.
+fn paint_picture(
+    v: &PageView,
+    image: (u32, u8, Crop),
+    bounds: Bounds<Pixels>,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let (id, rotation, crop) = image;
+    let Some(source) = v.images.get(id, rotation) else {
         return;
     };
-    if let Some(data) = source.clone().use_render_image(window, cx) {
-        let _ = window.paint_image(bounds, bounds, Corners::default(), data, 0, false);
+    // The whole picture is laid out so that its visible part lands in `bounds`.
+    let (vw, vh) = crop.visible();
+    let (full_w, full_h) = (bounds.size.width / vw, bounds.size.height / vh);
+    let full = Bounds::new(
+        point(
+            bounds.origin.x - full_w * crop.left,
+            bounds.origin.y - full_h * crop.top,
+        ),
+        size(full_w, full_h),
+    );
+    if let Some(data) = source.use_render_image(window, cx) {
+        let _ = window.paint_image(bounds, full, Corners::default(), data, 0, false);
     }
 }
 
@@ -76,7 +124,13 @@ pub fn paint_images(
             at(x, top),
             size(px(image.width * v.zoom), px(image.height * v.zoom)),
         );
-        paint_picture(v, image.id, bounds, window, cx);
+        paint_picture(
+            v,
+            (image.id, image.rotation, image.crop),
+            bounds,
+            window,
+            cx,
+        );
         if v.head.para == slice.para {
             paint_handles(v, bounds, &CORNERS, window);
         }
@@ -101,12 +155,12 @@ pub fn paint_floats(
         );
         if behind {
             if is_behind {
-                paint_picture(v, f.id, bounds, window, cx);
+                paint_picture(v, (f.id, f.rotation, f.crop), bounds, window, cx);
             }
             continue;
         }
         if !is_behind {
-            paint_picture(v, f.id, bounds, window, cx);
+            paint_picture(v, (f.id, f.rotation, f.crop), bounds, window, cx);
         }
         // The handles go over everything, also over the text in front of a "behind" picture.
         if v.head.para == f.para {
@@ -117,7 +171,8 @@ pub fn paint_floats(
 
 /// Outline and handles of the selected picture.
 fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, handles: &[Handle], window: &mut Window) {
-    let accent = v.link_color;
+    // Cropping shows dark handles.
+    let accent = if v.cropping { v.text } else { v.link_color };
     let line = px(1.5);
     let (o, s) = (bounds.origin, bounds.size);
     for edge in [

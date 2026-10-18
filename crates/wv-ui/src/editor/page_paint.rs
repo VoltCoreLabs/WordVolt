@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
@@ -36,10 +35,12 @@ pub struct PageView {
     pub table_color: Rgba,
     /// Wavy underline of misspelled words.
     pub misspell_color: Rgba,
+    /// The selected picture's handles cut its sides.
+    pub cropping: bool,
     /// Header and footer text, and their colour.
     pub bands: Rc<(Band, Band, BandVariants)>,
     /// Pictures of the document by `ImageRef::id`.
-    pub images: Rc<Vec<Arc<Image>>>,
+    pub images: Rc<super::image_paint::PictureSet>,
     pub band_color: Rgba,
     /// Display scale (1.0 = 100%).
     pub zoom: f32,

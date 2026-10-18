@@ -454,14 +454,12 @@ fn with_float(wrap: wv_core::Wrap) -> DocLayout {
     let mut doc = Document::from_text("a\nb\nc");
     let mut picture = wv_core::Paragraph::default();
     picture.style.image = Some(wv_core::ImageRef {
-        id: 0,
-        width: 40.0,
-        height: 16.0,
         float: Some(wv_core::Float {
             x: 10.0,
             y: 32.0,
             wrap,
         }),
+        ..wv_core::ImageRef::inline(0, 40.0, 16.0)
     });
     doc.paragraphs.insert(1, picture);
     DocLayout::new(&doc, small(), &Fixed)
@@ -491,4 +489,53 @@ fn text_runs_under_or_over_a_picture_that_does_not_push_it() {
         let b = l.pages[0].slices.iter().find(|s| s.para == 2).unwrap();
         assert_eq!(b.y, 16.0, "{wrap:?} leaves the text where it is");
     }
+}
+
+#[test]
+fn text_goes_along_the_side_of_a_square_picture() {
+    let mut doc = Document::from_text("aaaa bbbb cccc dddd eeee");
+    let mut picture = wv_core::Paragraph::default();
+    picture.style.image = Some(wv_core::ImageRef {
+        float: Some(wv_core::Float {
+            x: 0.0,
+            y: 0.0,
+            wrap: wv_core::Wrap::Square,
+        }),
+        ..wv_core::ImageRef::inline(0, 24.0, 32.0)
+    });
+    doc.paragraphs.insert(0, picture);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let text = &l.paragraphs[1];
+    // The picture and its gap take 32 px at the left for the first lines; below it the text is
+    // full width again.
+    assert_eq!(text.lines[0].x, 32.0);
+    assert_eq!(text.lines[1].x, 32.0);
+    assert_eq!(text.lines[2].x, 32.0);
+    assert_eq!(text.lines[3].x, 0.0);
+    assert!(
+        text.lines[0].range.len() <= 6,
+        "narrow lines beside the picture"
+    );
+    // Nothing ran under the picture and the paragraph is still in one piece on the page.
+    assert_eq!(l.pages.len(), 1);
+}
+
+#[test]
+fn a_picture_with_no_room_beside_it_pushes_the_text_below() {
+    let mut doc = Document::from_text("aaaa bbbb");
+    let mut picture = wv_core::Paragraph::default();
+    // 60 px of the 80 px wide text area plus the gap leaves less than a line is worth.
+    picture.style.image = Some(wv_core::ImageRef {
+        float: Some(wv_core::Float {
+            x: 0.0,
+            y: 0.0,
+            wrap: wv_core::Wrap::Square,
+        }),
+        ..wv_core::ImageRef::inline(0, 60.0, 32.0)
+    });
+    doc.paragraphs.insert(0, picture);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let first = &l.paragraphs[1].lines[0];
+    assert_eq!(first.x, 0.0);
+    assert!(first.gap > 0.0, "the line starts below the picture");
 }
