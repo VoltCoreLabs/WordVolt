@@ -26,6 +26,16 @@ impl Editor {
         self.edit_paragraphs(start.para, last + 1, paras, sel);
     }
 
+    /// Gives the selected text the character formatting `style` (a link stays as it is):
+    /// the format painter.
+    pub fn paint_char_style(&mut self, style: &CharStyle) {
+        self.apply_char_style(|s| {
+            let link = s.link.take();
+            *s = style.clone();
+            s.link = link;
+        });
+    }
+
     /// Switches a property on unless the whole selection (or the caret) already has it, then off.
     fn toggle_char_style(
         &mut self,

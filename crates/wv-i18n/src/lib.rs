@@ -121,6 +121,8 @@ pub enum Key {
     TipIndent,
     TipOutdent,
     TipLineSpacing,
+    GroupClipboard,
+    TipFormatPainter,
     GroupPages,
     TipPageBreak,
     TipBlankPage,
@@ -337,6 +339,10 @@ fn ru(key: Key) -> &'static str {
         Key::TipIndent => "Увеличить отступ (Tab в списке)",
         Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
         Key::TipLineSpacing => "Интервалы и отступы абзаца",
+        Key::GroupClipboard => "Буфер обмена",
+        Key::TipFormatPainter => {
+            "Формат по образцу: выделите текст с нужным видом, нажмите, затем выделите, куда перенести"
+        }
         Key::GroupPages => "Страницы",
         Key::TipPageBreak => "Разрыв страницы (Ctrl+Enter)",
         Key::TipBlankPage => "Пустая страница",
@@ -547,6 +553,10 @@ fn en(key: Key) -> &'static str {
         Key::TipIndent => "Increase indent (Tab in a list)",
         Key::TipOutdent => "Decrease indent (Shift+Tab)",
         Key::TipLineSpacing => "Paragraph spacing and indents",
+        Key::GroupClipboard => "Clipboard",
+        Key::TipFormatPainter => {
+            "Format painter: select text with the look you want, click, then select where to apply it"
+        }
         Key::GroupPages => "Pages",
         Key::TipPageBreak => "Page break (Ctrl+Enter)",
         Key::TipBlankPage => "Blank page",

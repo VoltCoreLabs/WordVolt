@@ -57,6 +57,7 @@ pub enum Icon {
     PageMargins,
     Paragraph,
     PageBreak,
+    PaintBrush,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -123,6 +124,7 @@ impl Icon {
             Icon::PageMargins => "page-margins",
             Icon::Paragraph => "paragraph",
             Icon::PageBreak => "page-break",
+            Icon::PaintBrush => "paint-brush",
         }
     }
 }
