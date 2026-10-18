@@ -65,7 +65,8 @@ struct State {
     first_line: u8,
     page_break: bool,
     left_extra: u8,
-    tabs: Vec<u16>,
+    tabs: Vec<wv_core::TabStop>,
+    right_indent: u8,
     space_before: Option<u8>,
     space_after: Option<u8>,
     links: HashMap<String, String>,
@@ -186,6 +187,7 @@ impl State {
         self.page_break = false;
         self.left_extra = 0;
         self.tabs.clear();
+        self.right_indent = 0;
         self.space_before = None;
         self.space_after = None;
     }
@@ -210,8 +212,9 @@ impl State {
             p.style.page_break = self.page_break;
             p.style.left_extra = self.left_extra;
             p.style.tabs = std::mem::take(&mut self.tabs);
-            p.style.tabs.sort_unstable();
-            p.style.tabs.dedup();
+            p.style.tabs.sort_unstable_by_key(|t| t.pos);
+            p.style.tabs.dedup_by_key(|t| t.pos);
+            p.style.right_indent = self.right_indent;
             p.style.space_before = self.space_before;
             p.style.space_after = self.space_after;
             p.style.cell = self.table.cell;

@@ -63,6 +63,8 @@ pub struct EditorView {
     pub show_ruler: bool,
     /// A ruler marker is being dragged.
     pub(super) ruler_drag: Option<super::ruler::Drag>,
+    /// The kind of tab stop a click on the ruler makes.
+    pub(super) new_tab_kind: wv_core::TabKind,
     /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
     pub(super) scroll_x: f32,
     /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
@@ -98,6 +100,7 @@ impl EditorView {
             show_marks: false,
             show_ruler: true,
             ruler_drag: None,
+            new_tab_kind: wv_core::TabKind::Left,
             scroll_x: 0.0,
             picture_cache: Default::default(),
         }

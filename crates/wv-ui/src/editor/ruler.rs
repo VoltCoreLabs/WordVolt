@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::{MAX_TABS, ParaMetrics};
+use wv_core::{MAX_TABS, ParaMetrics, TabKind, TabStop};
 use wv_layout::{DocLayout, Measurer};
 
 use super::measure::GpuiMeasurer;
@@ -50,6 +50,8 @@ pub(super) enum Grab {
     Left,
     /// The extra indent of the first line (the upper marker).
     First,
+    /// The indent from the right edge.
+    Right,
     Tab(usize),
 }
 
@@ -59,34 +61,51 @@ pub(super) struct Drag {
     pub metrics: ParaMetrics,
     /// A tab stop pulled off the strip: it is removed when let go.
     pub removing: bool,
+    /// The marker was pressed but has not moved yet; letting go then changes the kind of a tab
+    /// stop that was there before.
+    pub still: bool,
+    /// The tab stop was made by this press.
+    pub made: bool,
 }
 
-/// The marker under the pointer, or a new tab stop where the strip itself is pressed (its index
-/// then is `metrics.tabs.len()`; `metrics` has the new stop).
-pub(super) fn press(g: &Geom, m: &mut ParaMetrics, x: f32, y: f32) -> Option<Grab> {
+/// The marker under the pointer, or a new tab stop of `kind` where the strip itself is pressed
+/// (`metrics` then has the new stop; the second value tells that it was made).
+pub(super) fn press(
+    g: &Geom,
+    m: &mut ParaMetrics,
+    (x, y): (f32, f32),
+    kind: TabKind,
+) -> Option<(Grab, bool)> {
     if y < g.top || y > g.top + HEIGHT {
         return None;
     }
     let left = g.x(f32::from(m.left_pt));
     let first = g.x(f32::from(m.left_pt) + f32::from(m.first_line));
+    let right = g.x(g.text_pt() - f32::from(m.right_pt));
     let upper = y < g.top + HEIGHT / 2.0;
     if upper && (x - first).abs() <= GRAB {
-        return Some(Grab::First);
+        return Some((Grab::First, false));
     }
     if !upper && (x - left).abs() <= GRAB {
-        return Some(Grab::Left);
+        return Some((Grab::Left, false));
+    }
+    if !upper && (x - right).abs() <= GRAB {
+        return Some((Grab::Right, false));
     }
     if let Some(i) = m
         .tabs
         .iter()
-        .position(|t| (x - g.x(f32::from(*t))).abs() <= GRAB)
+        .position(|t| (x - g.x(f32::from(t.pos))).abs() <= GRAB)
     {
-        return Some(Grab::Tab(i));
+        return Some((Grab::Tab(i), false));
     }
     let pt = g.pt(x);
     if pt >= 0.0 && pt <= g.text_pt() && m.tabs.len() < MAX_TABS {
-        m.tabs.push(pt.round() as u16);
-        return Some(Grab::Tab(m.tabs.len() - 1));
+        m.tabs.push(TabStop {
+            pos: pt.round() as u16,
+            kind,
+        });
+        return Some((Grab::Tab(m.tabs.len() - 1), true));
     }
     None
 }
@@ -95,30 +114,42 @@ pub(super) fn press(g: &Geom, m: &mut ParaMetrics, x: f32, y: f32) -> Option<Gra
 pub(super) fn drag(g: &Geom, d: &mut Drag, x: f32, y: f32) {
     let pt = g.pt(x).round();
     let max = g.text_pt().floor().max(0.0);
+    let before = d.metrics.clone();
     match d.grab {
         Grab::Left => d.metrics.left_pt = pt.clamp(0.0, max) as u16,
         Grab::First => {
             let first = (pt - f32::from(d.metrics.left_pt)).clamp(0.0, 255.0);
             d.metrics.first_line = first as u8;
         }
+        Grab::Right => d.metrics.right_pt = (max - pt).clamp(0.0, 255.0) as u8,
         Grab::Tab(i) => {
             if let Some(tab) = d.metrics.tabs.get_mut(i) {
-                *tab = pt.clamp(0.0, max) as u16;
+                tab.pos = pt.clamp(0.0, max) as u16;
             }
             d.removing = (y - (g.top + HEIGHT / 2.0)).abs() > REMOVE_DISTANCE;
         }
     }
+    if d.metrics != before || d.removing {
+        d.still = false;
+    }
 }
 
-/// The paragraph values a finished drag gives (a removed tab stop is gone, the stops sorted).
-pub(super) fn finish(d: &Drag) -> ParaMetrics {
+/// The paragraph values a finished drag gives (a removed tab stop is gone; a stop that was only
+/// clicked has the next kind) and the kind that was set, if any.
+pub(super) fn finish(d: &Drag) -> (ParaMetrics, Option<TabKind>) {
     let mut m = d.metrics.clone();
-    if let (true, Grab::Tab(i)) = (d.removing, d.grab)
+    let mut set = None;
+    if let Grab::Tab(i) = d.grab
         && i < m.tabs.len()
     {
-        m.tabs.remove(i);
+        if d.removing {
+            m.tabs.remove(i);
+        } else if d.still && !d.made {
+            m.tabs[i].kind = m.tabs[i].kind.next();
+            set = Some(m.tabs[i].kind);
+        }
     }
-    m
+    (m, set)
 }
 
 /// Where the ruler is for the page with the caret (or, off screen, the first page that is shown).
@@ -219,26 +250,48 @@ pub(super) fn paint(
             );
         }
     }
-    // Tab stops: a small "L".
+    // Tab stops: an L, a mirrored L, an upside-down T, and that with a dot, by kind.
     for (i, tab) in m.tabs.iter().enumerate() {
         if removing == Some(i) {
             continue;
         }
-        let x = g.x(f32::from(*tab));
-        window.paint_quad(fill(
-            Bounds::new(point(px(x - 1.0), px(g.top + 6.0)), size(px(2.), px(10.))),
-            colors.marker,
-        ));
-        window.paint_quad(fill(
-            Bounds::new(point(px(x - 1.0), px(g.top + 14.0)), size(px(6.), px(2.))),
-            colors.marker,
-        ));
+        let x = g.x(f32::from(tab.pos));
+        let bar = |window: &mut Window, dx: f32, y: f32, w: f32, h: f32| {
+            window.paint_quad(fill(
+                Bounds::new(point(px(x + dx), px(g.top + y)), size(px(w), px(h))),
+                colors.marker,
+            ));
+        };
+        match tab.kind {
+            TabKind::Left => {
+                bar(window, -1.0, 6.0, 2.0, 10.0);
+                bar(window, -1.0, 14.0, 6.0, 2.0);
+            }
+            TabKind::Right => {
+                bar(window, -1.0, 6.0, 2.0, 10.0);
+                bar(window, -5.0, 14.0, 6.0, 2.0);
+            }
+            TabKind::Center | TabKind::Decimal => {
+                bar(window, -1.0, 6.0, 2.0, 10.0);
+                bar(window, -4.0, 14.0, 9.0, 2.0);
+                if tab.kind == TabKind::Decimal {
+                    bar(window, 3.0, 10.0, 2.0, 2.0);
+                }
+            }
+        }
     }
     // Indent markers: the first line's points down, the paragraph's points up with a base.
     let first_x = g.x(f32::from(m.left_pt) + f32::from(m.first_line));
     let left_x = g.x(f32::from(m.left_pt));
     triangle(window, first_x, g.top + 1.0, true, colors.marker);
     triangle(window, left_x, g.top + 11.0, false, colors.marker);
+    triangle(
+        window,
+        g.x(g.text_pt() - f32::from(m.right_pt)),
+        g.top + 11.0,
+        false,
+        colors.marker,
+    );
     window.paint_quad(fill(
         Bounds::new(
             point(px(left_x - 5.0), px(g.top + 17.0)),
@@ -269,7 +322,7 @@ fn triangle(window: &mut Window, x: f32, top: f32, down: bool, color: Rgba) {
 #[cfg(test)]
 mod tests {
     use super::{Drag, Geom, Grab, drag, finish, press};
-    use wv_core::ParaMetrics;
+    use wv_core::{ParaMetrics, TabKind, TabStop};
 
     fn geom() -> Geom {
         Geom {
@@ -289,7 +342,8 @@ mod tests {
             space_before: None,
             space_after: None,
             line_spacing: None,
-            tabs: vec![200],
+            tabs: vec![TabStop::left(200)],
+            right_pt: 10,
         }
     }
 
@@ -306,14 +360,39 @@ mod tests {
         let g = geom();
         let mut m = metrics();
         let (first, left) = (g.x(54.0), g.x(36.0));
-        assert_eq!(press(&g, &mut m, first, 52.0), Some(Grab::First));
-        assert_eq!(press(&g, &mut m, left, 70.0), Some(Grab::Left));
-        assert_eq!(press(&g, &mut m, g.x(200.0), 60.0), Some(Grab::Tab(0)));
-        // The empty strip makes a tab stop; outside the text or the strip nothing happens.
-        assert_eq!(press(&g, &mut m, g.x(300.0), 60.0), Some(Grab::Tab(1)));
-        assert_eq!(m.tabs, [200, 300]);
-        assert_eq!(press(&g, &mut m, g.x(300.0), 10.0), None);
-        assert_eq!(press(&g, &mut m, g.x(-20.0), 60.0), None);
+        let kind = TabKind::Left;
+        assert_eq!(
+            press(&g, &mut m, (first, 52.0), kind),
+            Some((Grab::First, false))
+        );
+        assert_eq!(
+            press(&g, &mut m, (left, 70.0), kind),
+            Some((Grab::Left, false))
+        );
+        let right = g.x(g.text_pt() - 10.0);
+        assert_eq!(
+            press(&g, &mut m, (right, 70.0), kind),
+            Some((Grab::Right, false))
+        );
+        assert_eq!(
+            press(&g, &mut m, (g.x(200.0), 60.0), kind),
+            Some((Grab::Tab(0), false))
+        );
+        // The empty strip makes a tab stop of the chosen kind; outside the text or the strip
+        // nothing happens.
+        assert_eq!(
+            press(&g, &mut m, (g.x(300.0), 60.0), TabKind::Right),
+            Some((Grab::Tab(1), true))
+        );
+        assert_eq!(
+            m.tabs[1],
+            TabStop {
+                pos: 300,
+                kind: TabKind::Right
+            }
+        );
+        assert_eq!(press(&g, &mut m, (g.x(300.0), 10.0), kind), None);
+        assert_eq!(press(&g, &mut m, (g.x(-20.0), 60.0), kind), None);
     }
 
     #[test]
@@ -323,6 +402,8 @@ mod tests {
             grab: Grab::Left,
             metrics: metrics(),
             removing: false,
+            still: true,
+            made: false,
         };
         drag(&g, &mut d, g.x(72.0), 60.0);
         assert_eq!((d.metrics.left_pt, d.metrics.first_line), (72, 18));
@@ -331,12 +412,37 @@ mod tests {
         assert_eq!(d.metrics.first_line, 18);
         drag(&g, &mut d, g.x(10.0), 52.0);
         assert_eq!(d.metrics.first_line, 0, "no hanging indent");
+        d.grab = Grab::Right;
+        drag(&g, &mut d, g.x(g.text_pt() - 40.0), 60.0);
+        assert_eq!(d.metrics.right_pt, 40);
         d.grab = Grab::Tab(0);
         drag(&g, &mut d, g.x(250.0), 60.0);
-        assert_eq!(d.metrics.tabs, [250]);
+        assert_eq!(d.metrics.tabs, [TabStop::left(250)]);
         assert!(!d.removing);
         drag(&g, &mut d, g.x(250.0), 200.0);
         assert!(d.removing);
-        assert!(finish(&d).tabs.is_empty());
+        assert!(finish(&d).0.tabs.is_empty());
+    }
+
+    #[test]
+    fn clicking_a_tab_stop_cycles_its_kind_but_dragging_does_not() {
+        let g = geom();
+        let mut d = Drag {
+            grab: Grab::Tab(0),
+            metrics: metrics(),
+            removing: false,
+            still: true,
+            made: false,
+        };
+        let (m, set) = finish(&d);
+        assert_eq!(set, Some(TabKind::Center));
+        assert_eq!(m.tabs[0].kind, TabKind::Center);
+        drag(&g, &mut d, g.x(220.0), 60.0);
+        let (m, set) = finish(&d);
+        assert_eq!((set, m.tabs[0]), (None, TabStop::left(220)));
+        // A stop made by this press keeps the kind it was made with.
+        d.still = true;
+        d.made = true;
+        assert_eq!(finish(&d).1, None);
     }
 }

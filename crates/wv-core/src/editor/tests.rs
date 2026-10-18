@@ -819,12 +819,25 @@ fn paragraph_dialog_values_round_trip() {
         space_before: Some(6),
         space_after: Some(12),
         line_spacing: Some(1.5),
-        tabs: vec![144, 36, 36],
+        tabs: vec![
+            crate::TabStop {
+                pos: 144,
+                kind: crate::TabKind::Right,
+            },
+            crate::TabStop::left(36),
+            crate::TabStop::left(36),
+        ],
+        right_pt: 18,
     };
     e.set_para_metrics(&m);
     let got = e.para_metrics();
     assert_eq!((got.left_pt, got.first_line), (100, 20));
-    assert_eq!(got.tabs, vec![36, 144], "sorted, no duplicates");
+    assert_eq!(
+        got.tabs.iter().map(|t| (t.pos, t.kind)).collect::<Vec<_>>(),
+        [(36, crate::TabKind::Left), (144, crate::TabKind::Right)],
+        "sorted, no duplicates"
+    );
+    assert_eq!(got.right_pt, 18);
     assert_eq!(e.doc.paragraphs[0].style.indent, 2);
     assert_eq!(e.doc.paragraphs[0].style.left_extra, 28);
     assert!(e.undo());

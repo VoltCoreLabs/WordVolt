@@ -65,7 +65,7 @@ fn texts(m: &ParaMetrics) -> [String; 6] {
         cm(f32::from(m.first_line)),
         m.tabs
             .iter()
-            .map(|t| cm(f32::from(*t)))
+            .map(|t| cm(f32::from(t.pos)))
             .collect::<Vec<_>>()
             .join("; "),
     ]
@@ -124,7 +124,19 @@ impl ParagraphEditor {
             line_spacing: line,
             left_pt: cm_to_pt(self.edits[3].text()).min(65535.0) as u16,
             first_line: cm_to_pt(self.edits[4].text()).min(255.0) as u8,
-            tabs: parse_tabs(self.edits[5].text()),
+            // A stop that stays where it was keeps its kind (the dialog lists places only).
+            tabs: parse_tabs(self.edits[5].text())
+                .into_iter()
+                .map(|pos| {
+                    self.current
+                        .tabs
+                        .iter()
+                        .find(|t| t.pos == pos)
+                        .copied()
+                        .unwrap_or_else(|| wv_core::TabStop::left(pos))
+                })
+                .collect(),
+            right_pt: self.current.right_pt,
         };
         self.open = false;
         self.current = metrics.clone();

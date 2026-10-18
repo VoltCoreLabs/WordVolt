@@ -53,7 +53,14 @@ mod tests {
         e.doc.paragraphs[0].style.first_line = 27;
         e.doc.paragraphs[1].style.page_break = true;
         e.doc.paragraphs[0].style.left_extra = 5;
-        e.doc.paragraphs[0].style.tabs = vec![36, 108];
+        e.doc.paragraphs[0].style.tabs = vec![
+            wv_core::TabStop::left(36),
+            wv_core::TabStop {
+                pos: 108,
+                kind: wv_core::TabKind::Decimal,
+            },
+        ];
+        e.doc.paragraphs[0].style.right_indent = 20;
         e.doc.paragraphs[0].style.space_before = Some(6);
         e.doc.paragraphs[0].style.space_after = Some(0);
         e.doc.paragraphs[0].runs[0].style.highlight = Some(0xFFFF00);

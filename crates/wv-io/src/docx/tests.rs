@@ -122,7 +122,14 @@ fn lists_indents_and_spacing_round_trip_with_separate_numbered_lists() {
     doc.paragraphs[4].style.first_line = 18;
     doc.paragraphs[2].style.page_break = true;
     doc.paragraphs[3].style.left_extra = 7;
-    doc.paragraphs[4].style.tabs = vec![36, 144];
+    doc.paragraphs[4].style.right_indent = 30;
+    doc.paragraphs[4].style.tabs = vec![
+        wv_core::TabStop::left(36),
+        wv_core::TabStop {
+            pos: 144,
+            kind: wv_core::TabKind::Right,
+        },
+    ];
     doc.paragraphs[4].style.space_before = Some(12);
     doc.paragraphs[4].style.space_after = Some(0);
     let bytes = encode(&doc).unwrap();

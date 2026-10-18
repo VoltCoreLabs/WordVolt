@@ -153,6 +153,9 @@ impl State {
                 let twips = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
                 self.first_line =
                     twips(b"firstLine").map_or(0, |t| (t / 20.0).round().clamp(0.0, 255.0) as u8);
+                self.right_indent = twips(b"right")
+                    .or_else(|| twips(b"end"))
+                    .map_or(0, |t| (t / 20.0).round().clamp(0.0, 255.0) as u8);
                 if self.list.is_none() {
                     let left = twips(b"left")
                         .or_else(|| twips(b"start"))
@@ -166,11 +169,17 @@ impl State {
                 }
             }
             b"tab" if self.in_paragraph_props => {
-                let left = attr(e, b"val").is_none_or(|v| matches!(v.as_str(), "left" | "start"));
+                let kind = attr(e, b"val").map_or(Some(wv_core::TabKind::Left), |v| {
+                    wv_core::TabKind::from_id(&v)
+                });
                 let pos = attr(e, b"pos").and_then(|v| v.parse::<f32>().ok());
-                if let (true, Some(pos), true) = (left, pos, self.tabs.len() < wv_core::MAX_TABS) {
-                    self.tabs
-                        .push((pos / 20.0).round().clamp(0.0, 65535.0) as u16);
+                if let (Some(kind), Some(pos), true) =
+                    (kind, pos, self.tabs.len() < wv_core::MAX_TABS)
+                {
+                    self.tabs.push(wv_core::TabStop {
+                        pos: (pos / 20.0).round().clamp(0.0, 65535.0) as u16,
+                        kind,
+                    });
                 }
             }
             b"spacing" if self.in_paragraph_props => {
