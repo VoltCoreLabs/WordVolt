@@ -527,3 +527,60 @@ fn rotated_and_cropped_pictures_round_trip() {
         }
     }
 }
+
+#[test]
+fn footnotes_round_trip_through_footnotes_xml() {
+    let mut e = Editor::new(Document::from_text("Text with notes\nsecond paragraph"));
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 4));
+    e.insert_footnote();
+    e.insert_text("First note");
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(1, 6));
+    e.insert_footnote();
+    e.insert_text("Second note");
+    let bytes = encode(&e.doc).unwrap();
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs[0].text(), e.doc.paragraphs[0].text());
+    assert_eq!(back.paragraphs[1].text(), e.doc.paragraphs[1].text());
+    // The notes follow the text, in order, with their text and no number in it.
+    let notes: Vec<String> = back
+        .paragraphs
+        .iter()
+        .filter(|p| p.style.note.is_some())
+        .map(|p| p.text())
+        .collect();
+    assert_eq!(notes, ["First note", "Second note"]);
+    assert_eq!(back.note_numbers().len(), 2);
+    // Word sees the reference and the note parts.
+    let zip_has = |name: &str| {
+        let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+        z.by_name(name).is_ok()
+    };
+    assert!(zip_has("word/footnotes.xml"));
+}
+
+#[test]
+fn reads_word_footnotes() {
+    let document = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:t>Body</w:t></w:r><w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="2"/></w:r><w:r><w:t> text</w:t></w:r></w:p></w:body></w:document>"#;
+    let notes = r#"<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>
+<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote>
+<w:footnote w:id="2"><w:p><w:pPr><w:pStyle w:val="FootnoteText"/></w:pPr><w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> The note.</w:t></w:r></w:p></w:footnote></w:footnotes>"#;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("word/document.xml", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(document.as_bytes()).unwrap();
+    zip.start_file("word/footnotes.xml", SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(notes.as_bytes()).unwrap();
+    let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
+    assert_eq!(
+        doc.paragraphs.len(),
+        2,
+        "the text and one note, no separators"
+    );
+    assert_eq!(doc.paragraphs[0].text(), "Body\u{FFFC} text");
+    assert_eq!(doc.paragraphs[1].text(), "The note.");
+    assert_eq!(doc.paragraphs[1].style.note, Some(2));
+    assert_eq!(doc.note_numbers().get(&2), Some(&1));
+}

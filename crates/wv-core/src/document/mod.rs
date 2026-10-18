@@ -7,7 +7,7 @@ mod run;
 mod table_look;
 
 pub use band::{BAND_SIZE_PT, Band, BandVariants};
-pub use doc::{DocSettings, Document};
+pub use doc::{DocSettings, Document, NOTE_MARK};
 pub use image::{ImageData, ImageFormat};
 pub use page::{BAND_DISTANCE, MAX_COLUMNS, Margins, PageSpec};
 pub use paragraph::Paragraph;

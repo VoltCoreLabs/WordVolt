@@ -5,6 +5,7 @@ use wv_core::{Align, Paragraph};
 
 use crate::Measurer;
 use crate::line::Line;
+use crate::measure::run_width;
 use boxes::Boxes;
 pub use boxes::Obstacle;
 use build::build;
@@ -108,7 +109,8 @@ pub fn layout_paragraph_around(
     obstacles: &[Obstacle],
 ) -> ParagraphLayout {
     let quote = if p.style.quote { QUOTE_INDENT } else { 0.0 };
-    let list_gap = if p.style.list.is_some() {
+    // A footnote hangs its number to the left like a list item.
+    let list_gap = if p.style.list.is_some() || p.style.note.is_some() {
         LIST_HANGING
     } else {
         0.0
@@ -255,7 +257,7 @@ fn pieces(
                 width: if p.style.toc && &text[part.clone()] == "\t" {
                     0.0
                 } else {
-                    m.width(&text[part.clone()], &p.runs[run].style)
+                    run_width(m, &text[part.clone()], &p.runs[run].style)
                 },
                 range: part,
                 run,
@@ -278,7 +280,7 @@ fn split_graphemes<'a>(
             Piece {
                 range: start..start + g.len(),
                 run: piece.run,
-                width: m.width(g, &p.runs[piece.run].style),
+                width: run_width(m, g, &p.runs[piece.run].style),
                 space: false,
             }
         })

@@ -73,11 +73,22 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
+    let notes = block_group(
+        t(this.lang, Key::GroupNotes),
+        vec![
+            button("ins-footnote", "AB¹", ButtonKind::Default, cx)
+                .tip(t(this.lang, Key::TipFootnote))
+                .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_footnote())))
+                .into_any_element(),
+        ],
+        cx,
+    );
     let mut groups = vec![
         pages.into_any_element(),
         objects.into_any_element(),
         bands.into_any_element(),
         toc.into_any_element(),
+        notes.into_any_element(),
     ];
     if this.editor.read(cx).core.image_at_caret().is_some() {
         let picture = block_group(

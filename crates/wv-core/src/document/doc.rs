@@ -43,7 +43,52 @@ pub struct DocSettings {
     pub table_looks: BTreeMap<u32, TableLook>,
 }
 
+/// The character that stands for a footnote mark in the text (the number is drawn instead).
+pub const NOTE_MARK: char = '\u{FFFC}';
+
 impl Document {
+    /// Footnote numbers: the marks in the text, counted in order.
+    pub fn note_numbers(&self) -> std::collections::HashMap<u32, usize> {
+        let mut out = std::collections::HashMap::new();
+        for p in self.paragraphs.iter().filter(|p| p.style.note.is_none()) {
+            for id in p.runs.iter().filter_map(|r| r.style.note) {
+                let next = out.len() + 1;
+                out.entry(id).or_insert(next);
+            }
+        }
+        out
+    }
+
+    /// An id no footnote has.
+    pub fn next_note_id(&self) -> u32 {
+        let in_text = self
+            .paragraphs
+            .iter()
+            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.note));
+        let notes = self.paragraphs.iter().filter_map(|p| p.style.note);
+        in_text.chain(notes).max().map_or(1, |m| m + 1)
+    }
+
+    /// Index of the first paragraph of footnote `id`.
+    pub fn note_paragraph(&self, id: u32) -> Option<usize> {
+        self.paragraphs
+            .iter()
+            .position(|p| p.style.note == Some(id))
+    }
+
+    /// Position just after the mark of footnote `id` in the text.
+    pub fn note_mark_position(&self, id: u32) -> Option<crate::position::Position> {
+        for (i, p) in self.paragraphs.iter().enumerate() {
+            let mut offset = 0;
+            for run in &p.runs {
+                offset += run.text.len();
+                if run.style.note == Some(id) && p.style.note.is_none() {
+                    return Some(crate::position::Position::new(i, offset));
+                }
+            }
+        }
+        None
+    }
     pub fn settings(&self) -> DocSettings {
         DocSettings {
             header: self.header.clone(),
@@ -73,6 +118,40 @@ impl Document {
             paragraphs,
             ..Self::default()
         }
+    }
+
+    /// The document with footnotes written into the text, for formats that have none: a mark
+    /// becomes `[n]` and a note starts with `[n] `. `None` when there are no footnotes.
+    pub fn with_inline_notes(&self) -> Option<Document> {
+        let numbers = self.note_numbers();
+        if numbers.is_empty() && self.paragraphs.iter().all(|p| p.style.note.is_none()) {
+            return None;
+        }
+        let mut out = self.clone();
+        let mut previous = None;
+        for p in &mut out.paragraphs {
+            for run in &mut p.runs {
+                if let Some(n) = run.style.note.and_then(|id| numbers.get(&id)) {
+                    run.text = format!("[{n}]");
+                    run.style.note = None;
+                }
+            }
+            if let Some(id) = p.style.note.take() {
+                if previous != Some(id) {
+                    let label = numbers
+                        .get(&id)
+                        .map_or(String::from("[?] "), |n| format!("[{n}] "));
+                    p.insert_runs(
+                        0,
+                        vec![crate::document::Run::new(label, Default::default())],
+                    );
+                }
+                previous = Some(id);
+            } else {
+                previous = None;
+            }
+        }
+        Some(out)
     }
 
     /// Plain text, paragraphs joined by `\n`.

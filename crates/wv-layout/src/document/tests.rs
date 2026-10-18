@@ -651,3 +651,57 @@ fn text_that_continues_onto_a_page_with_a_square_picture_goes_around_it() {
         "the first line beside the picture is indented"
     );
 }
+
+fn with_note(text: &str, mark_at: (usize, usize)) -> Document {
+    let mut e = wv_core::Editor::new(Document::from_text(text));
+    e.sel = wv_core::Selection::caret(Position::new(mark_at.0, mark_at.1));
+    e.insert_footnote();
+    e.insert_text("n");
+    e.doc.clone()
+}
+
+#[test]
+fn a_footnote_goes_to_the_bottom_of_the_page_of_its_mark() {
+    let doc = with_note("a\nb", (0, 1));
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let page = &l.pages[0];
+    // The note paragraph (the last one) is drawn at the bottom of the text area, below the
+    // separator, and its number is 1.
+    let note = page
+        .slices
+        .iter()
+        .find(|s| s.para == 2)
+        .expect("the note is on the page");
+    let top = page.note_top.expect("a separator");
+    assert!(note.y > top && note.y + note.height <= 80.0 + 0.01);
+    assert_eq!(l.note_numbers.values().copied().collect::<Vec<_>>(), [1]);
+    assert_eq!(l.paragraphs[2].marker.as_deref(), Some("1"));
+    // The text itself is where it was.
+    assert_eq!(page.slices.iter().find(|s| s.para == 0).unwrap().y, 0.0);
+}
+
+#[test]
+fn a_line_with_a_mark_moves_to_the_next_page_when_its_note_does_not_fit() {
+    // Five lines fill a page; the note (16 px + 12 px gap) must fit with the line it belongs to.
+    let doc = with_note("a\nb\nc\nd\ne", (4, 1));
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let page_of = |para: usize| {
+        l.pages
+            .iter()
+            .position(|p| p.slices.iter().any(|s| s.para == para))
+            .unwrap()
+    };
+    assert_eq!(page_of(3), 0);
+    assert_eq!(page_of(4), 1, "the line with the mark leaves page 1");
+    assert_eq!(page_of(5), 1, "and its note goes with it");
+}
+
+#[test]
+fn a_note_without_a_mark_is_not_shown() {
+    let mut doc = with_note("a\nb", (0, 1));
+    // Delete the mark: the note stays in the document (undo can bring the mark back) but is hidden.
+    doc.paragraphs[0].runs.retain(|r| r.style.note.is_none());
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert!(l.pages[0].slices.iter().all(|s| s.para != 2));
+    assert!(l.pages[0].note_top.is_none());
+}

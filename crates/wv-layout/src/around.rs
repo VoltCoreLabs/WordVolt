@@ -5,6 +5,7 @@ use std::rc::Rc;
 use wv_core::{Document, Wrap};
 
 use crate::Measurer;
+use crate::notes::NoteSet;
 use crate::page::{Page, PageSetup, PlacedFloat};
 use crate::paginate::paginate;
 use crate::paragraph::{Obstacle, Options, ParagraphLayout, layout_paragraph_around};
@@ -24,17 +25,31 @@ pub(crate) struct Source {
     pub marker: Option<String>,
 }
 
+/// What laying paragraphs out again around pictures needs of the document.
+#[derive(Clone, Copy)]
+pub(crate) struct Around<'a> {
+    pub doc: &'a Document,
+    pub setup: &'a PageSetup,
+    pub blocks: &'a [Block],
+    pub sources: &'a [Source],
+    pub notes: &'a NoteSet,
+}
+
 /// Lays the paragraphs beside pictures with a square or tight wrap out again so that the text goes around the pictures,
 /// and flows the pages again. Only paragraphs that touch such a picture are laid out again.
 pub(crate) fn wrap_around(
-    doc: &Document,
-    setup: &PageSetup,
-    blocks: &[Block],
-    sources: &[Source],
+    ctx: &Around,
     paragraphs: &mut [Rc<ParagraphLayout>],
     pages: &mut Vec<Page>,
     m: &dyn Measurer,
 ) {
+    let Around {
+        doc,
+        setup,
+        blocks,
+        sources,
+        notes,
+    } = *ctx;
     let base: Vec<Rc<ParagraphLayout>> = paragraphs.to_vec();
     let mut current: HashMap<usize, Vec<Obstacle>> = HashMap::new();
     for _ in 0..PASSES {
@@ -66,7 +81,7 @@ pub(crate) fn wrap_around(
             };
         }
         current = next;
-        *pages = paginate(paragraphs, blocks, setup);
+        *pages = paginate(paragraphs, blocks, setup, notes);
     }
 }
 

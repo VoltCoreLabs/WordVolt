@@ -112,6 +112,10 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipIndent => "Increase indent (Tab in a list)",
         Key::TipOutdent => "Decrease indent (Shift+Tab)",
         Key::TipLineSpacing => "Paragraph spacing and indents",
+        Key::GroupNotes => "Footnotes",
+        Key::TipFootnote => {
+            "Insert footnote: a mark in the text and the note at the bottom of the page (Ctrl+click a mark to go to the note and back)"
+        }
         Key::WrapSquare => "Square (text around)",
         Key::WrapTight => "Tight (follow outline)",
         Key::CtxRotateRight => "Rotate right",

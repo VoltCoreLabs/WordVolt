@@ -28,6 +28,20 @@ pub fn script_shift(style: &CharStyle) -> f32 {
     }
 }
 
+/// Width of a footnote mark: room for two digits in the superscript size (the number is drawn there).
+pub fn note_width(style: &CharStyle) -> f32 {
+    base_px(style) * 0.75
+}
+
+/// Width of `text` in `style`: a footnote mark has the width of its number, whatever the font says.
+pub fn run_width(m: &dyn Measurer, text: &str, style: &CharStyle) -> f32 {
+    if style.note.is_some() {
+        note_width(style) * text.chars().count() as f32
+    } else {
+        m.width(text, style)
+    }
+}
+
 /// Text metrics supplied by the UI (or a fake in tests). Lengths in logical pixels.
 pub trait Measurer {
     /// Advance width of `text` set in `style`.

@@ -24,12 +24,28 @@ pub fn decode(bytes: &[u8]) -> Document {
 }
 
 pub fn encode(doc: &Document) -> Vec<u8> {
-    doc.text().into_bytes()
+    match doc.with_inline_notes() {
+        Some(plain) => plain.text().into_bytes(),
+        None => doc.text().into_bytes(),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn footnotes_are_written_as_numbers_in_the_text() {
+        let mut e = wv_core::Editor::new(Document::from_text("Hello world"));
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 5));
+        e.insert_footnote();
+        e.insert_text("the note");
+        assert_eq!(
+            String::from_utf8(encode(&e.doc)).unwrap(),
+            "Hello[1] world
+[1] the note"
+        );
+    }
 
     #[test]
     fn decodes_utf8_bom_crlf_and_utf16() {

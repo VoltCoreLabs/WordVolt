@@ -4,6 +4,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use wv_core::CharStyle;
 
 use crate::Measurer;
+use crate::measure::run_width;
 
 /// A stretch of text of one run on a line. `x` is relative to the line's content start.
 #[derive(Clone, Debug, PartialEq)]
@@ -51,7 +52,7 @@ impl Line {
         }
         self.x
             + f.x
-            + m.width(&text[f.range.start..b], &f.style)
+            + run_width(m, &text[f.range.start..b], &f.style)
             + self.space_extra * self.spaces(text, f.range.start, b) as f32
     }
 

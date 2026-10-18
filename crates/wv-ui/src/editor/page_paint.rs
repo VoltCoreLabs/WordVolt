@@ -1,50 +1,9 @@
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::time::Instant;
-
 use gpui_kit::*;
-use wv_core::{Band, BandVariants, Position};
-use wv_layout::{DocLayout, Measurer, script_shift};
+use wv_layout::{Measurer, script_shift};
 
-use super::measure::{GpuiMeasurer, MeasureCache};
+use super::measure::GpuiMeasurer;
+pub use super::page_view::PageView;
 use super::paint_parts::{paint_caret, revealed, spell_marks};
-
-/// Everything needed to paint one page; cheap to clone into the canvas closure.
-pub struct PageView {
-    pub layout: Rc<DocLayout>,
-    pub measure: Rc<RefCell<MeasureCache>>,
-    pub page: usize,
-    pub selection: (Position, Position),
-    pub head: Position,
-    pub focused: bool,
-    pub text: Rgba,
-    pub selection_color: Rgba,
-    /// A block of table cells is selected (drawn as cells instead of text lines).
-    pub cell_selection: Option<wv_core::CellSelection>,
-    pub epoch: Rc<Cell<Instant>>,
-    pub code_bg: Rgba,
-    pub spoiler_color: Rgba,
-    pub link_color: Rgba,
-    pub bar_color: Rgba,
-    /// Search matches (all, and which one is current) with their colours.
-    pub find: Rc<Vec<(Position, Position)>>,
-    pub find_current: Option<usize>,
-    pub find_color: Rgba,
-    pub find_current_color: Rgba,
-    /// Table borders.
-    pub table_color: Rgba,
-    /// Wavy underline of misspelled words.
-    pub misspell_color: Rgba,
-    /// The selected picture's handles cut its sides.
-    pub cropping: bool,
-    /// Header and footer text, and their colour.
-    pub bands: Rc<(Band, Band, BandVariants)>,
-    /// Pictures of the document by `ImageRef::id`.
-    pub images: Rc<super::image_paint::PictureSet>,
-    pub band_color: Rgba,
-    /// Display scale (1.0 = 100%).
-    pub zoom: f32,
-}
 
 /// More matches than this are still found and counted, but not all highlighted.
 const MAX_HIGHLIGHTS: usize = 2000;
@@ -121,6 +80,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
         }
     }
 
+    super::note_paint::paint_note_separator(v, &at, window);
     super::table_paint::paint_tables(v, &at, &visible, window);
 
     super::band_paint::paint_bands(v, &m, &at, window, cx);
@@ -208,6 +168,21 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                         Bounds::new(at(x, top), sz(f.width, line.height)),
                         background,
                     ));
+                }
+                // A footnote mark: its number is drawn instead of the character.
+                if let Some(id) = f.style.note {
+                    if let Some(n) = v.layout.note_numbers.get(&id) {
+                        super::note_paint::paint_note_mark(
+                            v,
+                            &m,
+                            (&f.style, *n, color),
+                            (x, top, line.baseline),
+                            &at,
+                            window,
+                            cx,
+                        );
+                    }
+                    continue;
                 }
                 if f.style.spoiler && !revealed(v, slice.para, &f.range) {
                     let block = Bounds::new(at(x, top + 2.0), sz(f.width, line.height - 4.0));

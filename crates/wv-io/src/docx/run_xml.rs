@@ -3,6 +3,13 @@ use wv_core::{CharStyle, Run, Script};
 use super::writer::{escape, escape_attr};
 
 pub(super) fn write_run(xml: &mut String, run: &Run) {
+    // A footnote mark is a reference to the note (Word draws the number).
+    if let Some(id) = run.style.note {
+        xml.push_str(&format!(
+            "<w:r><w:rPr><w:rStyle w:val=\"FootnoteReference\"/></w:rPr><w:footnoteReference w:id=\"{id}\"/></w:r>"
+        ));
+        return;
+    }
     xml.push_str("<w:r>");
     write_properties(xml, &run.style);
     for (i, piece) in run.text.split('\t').enumerate() {

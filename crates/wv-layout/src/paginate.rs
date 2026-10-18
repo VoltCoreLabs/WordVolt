@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use wv_core::Wrap;
 
+use crate::notes::NoteSet;
 use crate::page::{COLUMN_GAP, EPS, Page, PageSetup, PlacedFloat, Slice};
 use crate::paragraph::ParagraphLayout;
 use crate::table::{Block, TABLE_GAP};
@@ -26,9 +27,10 @@ pub fn paginate(
     paragraphs: &[Rc<ParagraphLayout>],
     blocks: &[Block],
     setup: &PageSetup,
+    notes: &NoteSet,
 ) -> Vec<Page> {
     let mut bands: Vec<Band> = Vec::new();
-    let mut result = pass(paragraphs, blocks, setup, &bands);
+    let mut result = pass(paragraphs, blocks, setup, notes, &bands);
     for _ in 0..3 {
         let next: Vec<Band> = result
             .1
@@ -44,7 +46,7 @@ pub fn paginate(
             break;
         }
         bands = next;
-        result = pass(paragraphs, blocks, setup, &bands);
+        result = pass(paragraphs, blocks, setup, notes, &bands);
     }
     let (mut pages, floats) = result;
     for (page, float) in floats {
@@ -60,12 +62,13 @@ fn pass(
     paragraphs: &[Rc<ParagraphLayout>],
     blocks: &[Block],
     setup: &PageSetup,
+    notes: &NoteSet,
     bands: &[Band],
 ) -> (Vec<Page>, Vec<(usize, PlacedFloat)>) {
     let columns = usize::from(setup.columns.max(1));
     let mut floats = Vec::new();
     if columns == 1 {
-        let pages = flow(paragraphs, blocks, setup, 1, bands, &mut floats);
+        let pages = flow(paragraphs, blocks, setup, notes, 1, bands, &mut floats);
         return (pages, floats);
     }
     // Flow the text through column-wide "pages", then set each run of `columns` of them side by
@@ -75,24 +78,32 @@ fn pass(
         ..setup.clone()
     };
     let step = setup.column_width() + COLUMN_GAP;
-    let pages = flow(paragraphs, blocks, &narrow, columns, bands, &mut floats)
-        .chunks(columns)
-        .map(|group| {
-            let mut page = Page::default();
-            for (i, part) in group.iter().enumerate() {
-                let dx = i as f32 * step;
-                page.slices.extend(part.slices.iter().cloned().map(|mut s| {
-                    s.x += dx;
-                    s
-                }));
-                page.tables.extend(part.tables.iter().cloned().map(|mut t| {
-                    t.shift(dx);
-                    t
-                }));
-            }
-            page
-        })
-        .collect();
+    let pages = flow(
+        paragraphs,
+        blocks,
+        &narrow,
+        notes,
+        columns,
+        bands,
+        &mut floats,
+    )
+    .chunks(columns)
+    .map(|group| {
+        let mut page = Page::default();
+        for (i, part) in group.iter().enumerate() {
+            let dx = i as f32 * step;
+            page.slices.extend(part.slices.iter().cloned().map(|mut s| {
+                s.x += dx;
+                s
+            }));
+            page.tables.extend(part.tables.iter().cloned().map(|mut t| {
+                t.shift(dx);
+                t
+            }));
+        }
+        page
+    })
+    .collect();
     (pages, floats)
 }
 
@@ -103,6 +114,7 @@ fn flow(
     paragraphs: &[Rc<ParagraphLayout>],
     blocks: &[Block],
     setup: &PageSetup,
+    notes: &NoteSet,
     columns: usize,
     bands: &[Band],
     floats: &mut Vec<(usize, PlacedFloat)>,
@@ -111,6 +123,8 @@ fn flow(
     let content_width = setup.content_width();
     let mut pages = vec![Page::default()];
     let mut y = 0.0;
+    // The footnotes with a mark on each page (they take room at its bottom).
+    let mut page_notes: Vec<Vec<u32>> = vec![Vec::new()];
     for block in blocks {
         match block {
             Block::Para(para_ix) => {
@@ -130,7 +144,10 @@ fn flow(
                         } else {
                             0.0
                         };
+                    let marks = notes.refs_in(line);
                     loop {
+                        page_notes.resize_with(pages.len(), Vec::new);
+                        let reserve = notes.reserved(&page_notes[pages.len() - 1], &marks);
                         let real = (pages.len() - 1) / columns;
                         // Text does not run into a picture that has the page to itself in that band.
                         if line.height > 0.0 {
@@ -141,7 +158,7 @@ fn flow(
                                 lead = 0.0;
                             }
                         }
-                        if y + lead + line.height > limit + EPS
+                        if y + lead + line.height + reserve > limit + EPS
                             && !pages.last().is_some_and(Page::is_empty)
                         {
                             // The next page may have a picture in the way too: look again there.
@@ -152,6 +169,12 @@ fn flow(
                         }
                         y += lead;
                         break;
+                    }
+                    for id in marks {
+                        let on_page = &mut page_notes[pages.len() - 1];
+                        if !on_page.contains(&id) {
+                            on_page.push(id);
+                        }
                     }
                     let page = pages.last_mut().expect("at least one page");
                     match page.slices.last_mut() {
@@ -202,6 +225,8 @@ fn flow(
             }
         }
     }
+    page_notes.resize_with(pages.len(), Vec::new);
+    notes.place(&mut pages, &page_notes, paragraphs, limit, content_width);
     pages
 }
 

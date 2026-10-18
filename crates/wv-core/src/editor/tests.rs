@@ -1025,3 +1025,92 @@ fn resetting_the_crop_restores_the_full_picture() {
     assert_eq!((i.width, i.height), (100.0, 50.0));
     assert!(i.crop.is_none());
 }
+
+#[test]
+fn a_footnote_is_a_mark_in_the_text_and_a_note_at_the_end() {
+    let mut e = Editor::new(Document::from_text("Hello world\nsecond"));
+    e.sel = Selection::caret(Position::new(0, 5));
+    e.insert_footnote();
+    // The mark sits in the text, the empty note is the last paragraph and holds the caret.
+    assert_eq!(e.doc.paragraphs.len(), 3);
+    assert_eq!(e.doc.paragraphs[0].text(), "Hello\u{FFFC} world");
+    let mark = e.doc.paragraphs[0]
+        .runs
+        .iter()
+        .find(|r| r.style.note.is_some())
+        .expect("a run with the mark");
+    assert_eq!(mark.text, "\u{FFFC}");
+    assert_eq!(e.doc.paragraphs[2].style.note, mark.style.note);
+    assert_eq!(e.sel.head, Position::new(2, 0));
+    assert_eq!(e.doc.note_numbers().len(), 1);
+    // Text typed next to the mark is not part of it.
+    e.sel = Selection::caret(Position::new(0, 8));
+    e.insert_text("x");
+    assert!(
+        e.doc.paragraphs[0]
+            .runs
+            .iter()
+            .filter(|r| r.style.note.is_some())
+            .count()
+            == 1
+    );
+    assert!(e.undo());
+    assert!(e.undo());
+    assert_eq!(
+        e.doc.paragraphs.len(),
+        2,
+        "the whole footnote is one undo step"
+    );
+    assert_eq!(e.doc.paragraphs[0].text(), "Hello world");
+}
+
+#[test]
+fn footnotes_are_numbered_in_text_order_and_jump_both_ways() {
+    let mut e = Editor::new(Document::from_text("one two three"));
+    e.sel = Selection::caret(Position::new(0, 7));
+    e.insert_footnote();
+    e.sel = Selection::caret(Position::new(0, 3));
+    e.insert_footnote();
+    let numbers = e.doc.note_numbers();
+    let ids: Vec<u32> = e.doc.paragraphs[0]
+        .runs
+        .iter()
+        .filter_map(|r| r.style.note)
+        .collect();
+    // The mark that stands first in the text is number 1, whenever it was made.
+    assert_eq!((numbers[&ids[0]], numbers[&ids[1]]), (1, 2));
+    // From the mark (the caret after it) to its note and back to just after the mark.
+    let first_mark_end = e.doc.note_mark_position(ids[0]).unwrap();
+    let mark_len = wv_core_mark_len();
+    let note = e
+        .note_target(Position::new(0, first_mark_end.offset - mark_len))
+        .unwrap();
+    // A click just after the mark finds it too.
+    assert_eq!(e.note_target(first_mark_end), Some(note));
+    assert_eq!(e.doc.paragraphs[note.para].style.note, Some(ids[0]));
+    assert_eq!(e.note_target(note), Some(first_mark_end));
+}
+
+#[test]
+fn pasting_text_with_a_footnote_drops_the_mark() {
+    let mut e = Editor::new(Document::from_text("abc"));
+    e.sel = Selection::caret(Position::new(0, 1));
+    e.insert_footnote();
+    e.sel = Selection {
+        anchor: Position::new(0, 0),
+        head: Position::new(0, e.doc.paragraphs[0].len()),
+    };
+    let fragment = e.copy_fragment();
+    e.sel = Selection::caret(Position::new(0, e.doc.paragraphs[0].len()));
+    e.paste_fragment(&fragment);
+    let marks = e.doc.paragraphs[0]
+        .runs
+        .iter()
+        .filter(|r| r.style.note.is_some())
+        .count();
+    assert_eq!(marks, 1, "the pasted copy has no mark");
+}
+
+fn wv_core_mark_len() -> usize {
+    crate::NOTE_MARK.len_utf8()
+}

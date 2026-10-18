@@ -31,11 +31,17 @@ impl Editor {
         {
             return;
         }
-        // Pictures and contents lines are not carried over.
+        // Pictures are not carried over, and neither are footnotes (a copy of a mark would share
+        // the note with the original): marks go, a pasted note becomes a plain paragraph.
         let mut frag: Vec<Paragraph> = fragment
             .iter()
             .filter(|p| p.style.image.is_none())
             .cloned()
+            .map(|mut p| {
+                p.runs.retain(|r| r.style.note.is_none());
+                p.style.note = None;
+                p
+            })
             .collect();
         if frag.is_empty() {
             return;

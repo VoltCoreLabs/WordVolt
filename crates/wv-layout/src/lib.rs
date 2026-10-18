@@ -7,6 +7,7 @@ mod layout_cache;
 mod leader;
 mod line;
 mod measure;
+mod notes;
 mod numbering;
 mod page;
 mod paginate;
@@ -20,7 +21,10 @@ pub use document::{CaretRect, DocLayout, SelectionRect};
 pub use layout_cache::LayoutCache;
 pub use leader::leader;
 pub use line::{Fragment, Line};
-pub use measure::{DEFAULT_SIZE_PT, Measurer, base_px, font_px, script_shift};
+pub use measure::{
+    DEFAULT_SIZE_PT, Measurer, base_px, font_px, note_width, run_width, script_shift,
+};
+pub use notes::{NOTES_GAP, NoteBox, NoteSet};
 pub use page::{Page, PageSetup, PlacedFloat, Slice};
 pub use paragraph::{
     INDENT_STEP, ImageBox, LIST_HANGING, Obstacle, Options, ParagraphLayout, QUOTE_INDENT,

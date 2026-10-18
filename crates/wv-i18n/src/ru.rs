@@ -112,6 +112,10 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipIndent => "Увеличить отступ (Tab в списке)",
         Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
         Key::TipLineSpacing => "Интервалы и отступы абзаца",
+        Key::GroupNotes => "Сноски",
+        Key::TipFootnote => {
+            "Вставить сноску: метка в тексте и текст сноски внизу страницы (Ctrl+щелчок по метке — перейти к сноске и обратно)"
+        }
         Key::WrapSquare => "Вокруг рамки",
         Key::WrapTight => "По контуру",
         Key::CtxRotateRight => "Повернуть вправо",

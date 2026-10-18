@@ -21,6 +21,7 @@ impl File {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
                 toc: p.style.toc,
+                note: p.style.note,
                 image: p.style.image.map(|i| ImageRefDto {
                     id: i.id,
                     width: i.width,
@@ -129,6 +130,7 @@ impl File {
                     align: align_from(&p.align),
                     quote: p.quote,
                     toc: p.toc,
+                    note: p.note,
                     image: p.image.map(|i| ImageRef {
                         id: i.id,
                         width: i.width,
