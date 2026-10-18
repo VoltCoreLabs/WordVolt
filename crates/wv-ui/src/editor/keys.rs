@@ -42,15 +42,7 @@ impl EditorView {
             ("x", true) => self.cut_selection(cx),
             ("v", true) if shift => self.paste_plain(cx),
             ("v", true) => self.paste_clipboard(cx),
-            (_, false) => {
-                if let Some(text) = k
-                    .key_char
-                    .as_deref()
-                    .filter(|t| !t.chars().any(char::is_control))
-                {
-                    self.apply(cx, |c| c.insert_text(text));
-                }
-            }
+            // Typed characters arrive through the text input (`ime.rs`).
             _ => {}
         }
     }

@@ -48,7 +48,9 @@ pub struct EditorView {
     find_current: Option<usize>,
     layout_key: (u64, u64),
     doc_epoch: u64,
-    measure_cache: Rc<RefCell<MeasureCache>>,
+    pub(super) measure_cache: Rc<RefCell<MeasureCache>>,
+    /// Text being composed by an input method: paragraph and byte range.
+    pub(super) marked: Option<(usize, std::ops::Range<usize>)>,
     /// Window bounds of every page, written while painting (used for mouse hit-testing).
     pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
     focused_once: bool,
@@ -83,6 +85,7 @@ impl EditorView {
             doc_epoch: 0,
             measure_cache: Rc::default(),
             page_bounds: Rc::default(),
+            marked: None,
             focused_once: false,
             zoom: 1.0,
             multi_page: crate::settings::load_multi_page(),
@@ -325,12 +328,20 @@ impl Render for EditorView {
         .top_0()
         .left_0()
         .size_full();
+        let (input_focus, input_view) = (self.focus.clone(), cx.entity());
         let viewport_probe = canvas(
             move |b, _, _| {
                 viewport_scroll.set_viewport(b);
                 (viewport_scroll, b)
             },
-            move |_, (scroll, b), window, _| scroll.paint_scrollbar(b, thumb, window),
+            move |_, (scroll, b), window, cx| {
+                scroll.paint_scrollbar(b, thumb, window);
+                window.handle_input(
+                    &input_focus,
+                    ElementInputHandler::new(b, input_view.clone()),
+                    cx,
+                );
+            },
         )
         .absolute()
         .top_0()
