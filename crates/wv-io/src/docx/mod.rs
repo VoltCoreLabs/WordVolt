@@ -14,6 +14,7 @@ mod parts;
 mod picture;
 mod read_util;
 mod run_xml;
+mod section_xml;
 mod table_read;
 mod table_xml;
 mod writer;

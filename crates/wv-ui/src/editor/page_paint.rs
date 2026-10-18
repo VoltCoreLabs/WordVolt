@@ -26,7 +26,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     };
 
     // A page that is off screen paints nothing (only the caret may still ask to be scrolled to).
-    if !visible(0.0, v.layout.setup.height) {
+    if !visible(0.0, v.layout.setup_of(v.page).height) {
         paint_caret(v, &m, &at, &sz, window);
         return;
     }
@@ -87,7 +87,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
     super::image_paint::paint_floats(v, &at, true, window, cx);
     super::image_paint::paint_images(v, &at, &visible, window, cx);
 
-    let setup = &v.layout.setup;
+    let setup = v.layout.setup_of(v.page);
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let first_y = para.lines[slice.lines.start].y;
@@ -260,7 +260,12 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                 super::format_marks::paint_line_marks(
                     v,
                     &m,
-                    (line, &para.text, para.toc),
+                    (
+                        line,
+                        &para.text,
+                        para.toc,
+                        v.section_ends.contains(&slice.para),
+                    ),
                     (left, top),
                     &at,
                     (window, cx),

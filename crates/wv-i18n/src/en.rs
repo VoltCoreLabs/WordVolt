@@ -146,6 +146,12 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::RejectChange => "Reject",
         Key::AcceptAll => "Accept all",
         Key::RejectAll => "Reject all",
+        Key::GroupSections => "Sections",
+        Key::SectionBreak => "Section break",
+        Key::RemoveSectionBreak => "Remove break",
+        Key::TipSectionBreak => {
+            "Section break (next page): every section has its own page size and orientation, margins and columns (they change for the section the caret is in)"
+        }
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

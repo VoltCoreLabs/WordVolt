@@ -82,11 +82,19 @@ impl Editor {
         self.change_settings(settings);
     }
 
-    /// Sets page size and margins (one undo step).
+    /// Sets page size and margins of the section the caret is in (one undo step).
     pub fn set_page(&mut self, page: PageSpec) {
         let mut settings = self.doc.settings();
-        settings.page = page;
+        match self.doc.section_end(self.sel.head.para) {
+            Some(id) => _ = settings.sections.insert(id, page),
+            None => settings.page = page,
+        }
         self.change_settings(settings);
+    }
+
+    /// Page setup of the section the caret is in.
+    pub fn page_here(&self) -> PageSpec {
+        self.doc.page_of(self.sel.head.para)
     }
 
     pub(super) fn change_settings(&mut self, settings: DocSettings) {

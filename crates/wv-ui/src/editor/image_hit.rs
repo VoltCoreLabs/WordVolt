@@ -63,8 +63,8 @@ impl EditorView {
         let b = *self.page_bounds.borrow().get(image.page)?;
         let z = self.zoom;
         Some((
-            f32::from(b.origin.x) + (layout.setup.margin_left + image.x) * z,
-            f32::from(b.origin.y) + (layout.setup.margin_top + image.y) * z,
+            f32::from(b.origin.x) + (layout.setup_of(image.page).margin_left + image.x) * z,
+            f32::from(b.origin.y) + (layout.setup_of(image.page).margin_top + image.y) * z,
             image.width * z,
             image.height * z,
         ))

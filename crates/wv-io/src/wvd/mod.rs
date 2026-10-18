@@ -175,6 +175,18 @@ mod tests {
     }
 
     #[test]
+    fn sections_round_trip() {
+        let mut e = Editor::new(Document::from_text("Раздел один два"));
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, "Раздел один".len()));
+        e.insert_section_break();
+        let landscape = e.page_here().with_landscape(true);
+        e.set_page(landscape);
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.sections.len(), 1);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

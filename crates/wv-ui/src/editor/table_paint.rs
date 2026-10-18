@@ -12,7 +12,10 @@ pub fn paint_tables(
     window: &mut Window,
 ) {
     let z = v.zoom;
-    let (left, top) = (v.layout.setup.margin_left, v.layout.setup.margin_top);
+    let (left, top) = (
+        v.layout.setup_of(v.page).margin_left,
+        v.layout.setup_of(v.page).margin_top,
+    );
     let mouse = window.mouse_position();
     for table in &v.layout.pages[v.page].tables {
         let (first, last) = (table.row_y[0], table.row_y[table.row_y.len() - 1]);
@@ -64,7 +67,7 @@ pub fn paint_tables(
         // A border under the pointer can be dragged.
         let origin = (f32::from(at(0.0, 0.0).x), f32::from(at(0.0, 0.0).y));
         let pointer = (f32::from(mouse.x), f32::from(mouse.y));
-        match grab_at(table, &v.layout.setup, origin, z, pointer) {
+        match grab_at(table, v.layout.setup_of(v.page), origin, z, pointer) {
             Some((Grab::Column(_), _)) => {
                 window.set_window_cursor_style(CursorStyle::ResizeLeftRight)
             }

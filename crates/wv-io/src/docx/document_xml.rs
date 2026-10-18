@@ -69,6 +69,11 @@ struct State {
     links: HashMap<String, String>,
     link: Option<String>,
     comment: Option<u32>,
+    /// Page setup before a `w:sectPr` inside a paragraph (its values are read into `page`).
+    saved_page: Option<PageSpec>,
+    /// The section the paragraph being read ends.
+    pending_section: Option<PageSpec>,
+    sections: std::collections::BTreeMap<u32, PageSpec>,
     /// Inside `w:ins` / `w:del`.
     change: Option<wv_core::Change>,
     revisions: Vec<wv_core::Revision>,
@@ -135,6 +140,10 @@ impl State {
             }
             b"pPr" => self.in_paragraph_props = false,
             b"hyperlink" => self.link = None,
+            b"sectPr" if self.saved_page.is_some() => {
+                let restored = self.saved_page.take().unwrap_or_default();
+                self.pending_section = Some(std::mem::replace(&mut self.page, restored));
+            }
             b"rPr" => self.in_run_props = false,
             b"t" | b"delText" => self.in_text = false,
             b"ins" | b"del" if !self.in_paragraph_props && !self.in_run_props => self.change = None,
@@ -184,6 +193,11 @@ impl State {
             p.style.space_after = self.space_after;
             p.style.cell = self.table.cell;
             p.style.image = self.image.take();
+            if let Some(spec) = self.pending_section.take() {
+                let id = self.sections.len() as u32 + 1;
+                self.sections.insert(id, spec);
+                p.style.section = Some(id);
+            }
             self.paragraphs.push(p);
         }
     }
@@ -263,6 +277,11 @@ impl State {
         };
         doc.revisions = self.revisions;
         doc.page = self.page.snapped();
+        doc.sections = self
+            .sections
+            .into_iter()
+            .map(|(id, spec)| (id, spec.snapped()))
+            .collect();
         // Table sizes are fractions of the text width, known now that the page is.
         let page = &doc.page;
         let text_width = (page.width - page.margin_left - page.margin_right - page.gutter) * 15.0;

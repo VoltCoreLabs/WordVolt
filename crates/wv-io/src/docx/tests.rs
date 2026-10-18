@@ -643,3 +643,25 @@ fn tracked_changes_are_written_as_ins_and_del_and_read_back() {
     assert_eq!(back.revisions.len(), 2);
     assert!(back.revisions.iter().all(|r| r.author == "Ann"));
 }
+
+#[test]
+fn sections_are_written_in_the_last_paragraph_of_each_and_read_back() {
+    let mut e = Editor::new(Document::from_text("One section break two"));
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, "One section".len()));
+    e.insert_section_break();
+    let landscape = e.page_here().with_landscape(true);
+    e.set_page(landscape);
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut body = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/document.xml").unwrap(), &mut body).unwrap();
+    assert_eq!(body.matches("<w:sectPr>").count(), 2);
+    assert!(body.contains("<w:type w:val=\"nextPage\"/>"));
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs.len(), 2);
+    assert_eq!(back.sections.len(), 1);
+    // The first section keeps the portrait setup, the document (last section) is landscape.
+    let first = back.page_of(0);
+    assert!(first.height > first.width);
+    assert!(back.page.width > back.page.height);
+}

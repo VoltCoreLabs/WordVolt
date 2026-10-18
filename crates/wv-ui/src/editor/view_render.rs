@@ -21,8 +21,9 @@ impl Render for EditorView {
         let bands = Rc::new((doc.header.clone(), doc.footer.clone(), doc.variants.clone()));
         // Only the rows of pages near the viewport become elements; the rest is two spacers of the
         // exact height (so a document of thousands of pages costs no more than a screenful).
-        let setup = &layout.setup;
-        let (page_w, page_h) = (setup.width * self.zoom, setup.height * self.zoom);
+        // Pages of different sections may differ in size: the grid is as big as the biggest.
+        let (max_w, max_h) = layout.max_page_size();
+        let (page_w, page_h) = (max_w * self.zoom, max_h * self.zoom);
         let pad = f32::from(space::xl());
         let viewport_w = self.scroll.viewport_width().max(page_w + 2.0 * FIT_PADDING);
         let viewport_h = if self.scroll.viewport_height() > 0.0 {
@@ -57,6 +58,14 @@ impl Render for EditorView {
             bounds.clear();
             bounds.resize(count, Bounds::default());
         }
+        let section_ends: Rc<Vec<usize>> = Rc::new(
+            doc.paragraphs
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.style.section.is_some())
+                .map(|(i, _)| i)
+                .collect(),
+        );
         let cell_selection = self.core.cell_selection();
         let build_page = |ix: usize| {
             let view = PageView {
@@ -87,13 +96,14 @@ impl Render for EditorView {
                 band_color: theme.text_muted,
                 zoom: self.zoom,
                 show_marks: self.show_marks,
+                section_ends: section_ends.clone(),
             };
             let bounds_store = self.page_bounds.clone();
             div()
                 .relative()
                 .flex_none()
-                .w(px(layout.setup.width * self.zoom))
-                .h(px(layout.setup.height * self.zoom))
+                .w(px(layout.setup_of(ix).width * self.zoom))
+                .h(px(layout.setup_of(ix).height * self.zoom))
                 .bg(page_bg)
                 .border_1()
                 .border_color(border)
@@ -131,6 +141,7 @@ impl Render for EditorView {
                     .flex_row()
                     .flex_none()
                     .justify_center()
+                    .items_start()
                     .gap(px(PAGE_GAP))
                     .children(in_row)
                     .into_any_element(),
@@ -195,7 +206,7 @@ impl Render for EditorView {
                     let step = if dy > 0.0 { 1.1 } else { 1.0 / 1.1 };
                     this.set_zoom(this.zoom * step, cx);
                 } else if ev.modifiers.shift || dx.abs() > dy.abs() {
-                    let content = this.core.doc.page.width * this.zoom + 2.0 * FIT_PADDING;
+                    let content = this.widest_page() * this.zoom + 2.0 * FIT_PADDING;
                     let max = (content - this.scroll.viewport_width()).max(0.0);
                     let step = if dx != 0.0 { dx } else { dy };
                     this.scroll_x = (this.scroll_x - step).clamp(0.0, max);
@@ -213,7 +224,7 @@ impl Render for EditorView {
                 div()
                     .relative()
                     .w_full()
-                    .min_w(px(layout.setup.width * self.zoom + 2.0 * FIT_PADDING))
+                    .min_w(px(max_w * self.zoom + 2.0 * FIT_PADDING))
                     .ml(px(-self.scroll_x))
                     // Rows of pages (several per row while they fit, like in Word, or one).
                     .flex()

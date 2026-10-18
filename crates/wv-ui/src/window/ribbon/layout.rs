@@ -1,12 +1,12 @@
 use gpui_kit::*;
 use wv_i18n::{Key, t};
 
-use crate::ui_kit::{Icon, Tip, block_group, icon_button};
+use crate::ui_kit::{ButtonKind, Icon, Tip, block_group, button, icon_button};
 use crate::window::state::MainWindow;
 
 /// Layout tab: paper size, margins and orientation of the document's pages.
 pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement> {
-    let spec = this.editor.read(cx).core.doc.page;
+    let spec = this.editor.read(cx).core.page_here();
     let landscape = spec.is_landscape();
     this.page_setup
         .update(cx, |editor, _| editor.set_current(spec));
@@ -19,7 +19,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             .tip(t(this.lang, tip))
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.edit(cx, move |c| {
-                    c.set_page(c.doc.page.with_landscape(to_landscape))
+                    c.set_page(c.page_here().with_landscape(to_landscape))
                 })
             }))
             .into_any_element()
@@ -48,5 +48,28 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
-    vec![page.into_any_element()]
+    let sections = block_group(
+        t(this.lang, Key::GroupSections),
+        vec![
+            button(
+                "section-break",
+                t(this.lang, Key::SectionBreak),
+                ButtonKind::Default,
+                cx,
+            )
+            .tip(t(this.lang, Key::TipSectionBreak))
+            .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_section_break())))
+            .into_any_element(),
+            button(
+                "section-unbreak",
+                t(this.lang, Key::RemoveSectionBreak),
+                ButtonKind::Default,
+                cx,
+            )
+            .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.remove_section_break())))
+            .into_any_element(),
+        ],
+        cx,
+    );
+    vec![page.into_any_element(), sections.into_any_element()]
 }

@@ -20,7 +20,6 @@ impl EditorView {
         let Some(caret) = layout.caret(head, &m) else {
             return;
         };
-        let setup = &layout.setup;
         let x = self.goal_x.unwrap_or(caret.x);
         let (mut page, mut y) = (
             caret.page,
@@ -30,16 +29,20 @@ impl EditorView {
                 caret.y - 1.0
             },
         );
+        let setup = layout.setup_of(page);
         if dir > 0 && y >= setup.height - setup.margin_bottom {
             if page + 1 >= layout.pages.len() {
                 return self.apply(cx, |c| c.move_doc_end(extend));
             }
-            (page, y) = (page + 1, setup.margin_top + 1.0);
+            page += 1;
+            y = layout.setup_of(page).margin_top + 1.0;
         } else if dir < 0 && y < setup.margin_top {
             if page == 0 {
                 return self.apply(cx, |c| c.move_doc_start(extend));
             }
-            (page, y) = (page - 1, setup.height - setup.margin_bottom - 1.0);
+            page -= 1;
+            let above = layout.setup_of(page);
+            y = above.height - above.margin_bottom - 1.0;
         }
         let target = layout.position_at(page, x, y, &m);
         if target == head {

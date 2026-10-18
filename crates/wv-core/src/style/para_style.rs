@@ -195,6 +195,9 @@ pub struct ParaStyle {
     pub note: Option<u32>,
     /// Line of the table of contents (replaced when the contents are updated).
     pub toc: bool,
+    /// The paragraph ends a section (a section break, next page): the page setup of that section
+    /// is `Document::sections[id]`. The paragraphs after the last break use `Document::page`.
+    pub section: Option<u32>,
 }
 
 // Sizes hash by their bits (an exact match is what the layout cache needs).

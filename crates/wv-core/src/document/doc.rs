@@ -36,6 +36,8 @@ pub struct Document {
     pub page: PageSpec,
     /// Sizes of tables by table id (absent = equal columns, rows as tall as their text).
     pub table_looks: BTreeMap<u32, TableLook>,
+    /// Page setup of the sections that end with a break, by `ParaStyle::section` id.
+    pub sections: BTreeMap<u32, PageSpec>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -52,6 +54,7 @@ impl Default for Document {
             images: Vec::new(),
             page: PageSpec::default(),
             table_looks: BTreeMap::new(),
+            sections: BTreeMap::new(),
             comments: Vec::new(),
             revisions: Vec::new(),
         }
@@ -66,6 +69,7 @@ pub struct DocSettings {
     pub variants: BandVariants,
     pub page: PageSpec,
     pub table_looks: BTreeMap<u32, TableLook>,
+    pub sections: BTreeMap<u32, PageSpec>,
 }
 
 /// The character that stands for a footnote mark in the text (the number is drawn instead).
@@ -189,6 +193,7 @@ impl Document {
             variants: self.variants.clone(),
             page: self.page,
             table_looks: self.table_looks.clone(),
+            sections: self.sections.clone(),
         }
     }
 
@@ -198,6 +203,29 @@ impl Document {
         self.variants = settings.variants.clone();
         self.page = settings.page;
         self.table_looks = settings.table_looks.clone();
+        self.sections = settings.sections.clone();
+    }
+
+    /// The section break (id) that ends the section paragraph `para` is in; `None` in the last one.
+    pub fn section_end(&self, para: usize) -> Option<u32> {
+        self.paragraphs[para..]
+            .iter()
+            .find_map(|p| p.style.section)
+            .filter(|id| self.sections.contains_key(id))
+    }
+
+    /// Page setup of the section paragraph `para` is in.
+    pub fn page_of(&self, para: usize) -> PageSpec {
+        self.section_end(para)
+            .and_then(|id| self.sections.get(&id).copied())
+            .unwrap_or(self.page)
+    }
+
+    /// An id no section break has.
+    pub fn next_section_id(&self) -> u32 {
+        let used = self.paragraphs.iter().filter_map(|p| p.style.section);
+        let known = self.sections.keys().copied();
+        used.chain(known).max().map_or(1, |m| m + 1)
     }
 
     /// The (header, footer) shown on page `page` (0-based).

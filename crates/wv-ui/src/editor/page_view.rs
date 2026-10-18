@@ -47,4 +47,6 @@ pub struct PageView {
     pub zoom: f32,
     /// Draw the non-printing characters (¶, dots, arrows).
     pub show_marks: bool,
+    /// Paragraphs that end a section.
+    pub section_ends: Rc<Vec<usize>>,
 }

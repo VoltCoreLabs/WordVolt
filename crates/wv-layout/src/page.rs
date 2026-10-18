@@ -98,6 +98,8 @@ pub struct Slice {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Page {
+    /// Page size and margins of the section the page belongs to.
+    pub setup: PageSetup,
     pub slices: Vec<Slice>,
     pub tables: Vec<TableBox>,
     /// Floating pictures of the page (their paragraphs take no room in the text).

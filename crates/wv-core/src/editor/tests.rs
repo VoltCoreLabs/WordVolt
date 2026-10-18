@@ -1255,3 +1255,40 @@ fn untracked_edits_are_plain() {
     e.insert_text("x");
     assert!(e.doc.changes().is_empty());
 }
+
+#[test]
+fn a_section_break_splits_the_text_and_sections_have_their_own_page_setup() {
+    let mut e = Editor::new(Document::from_text("Первый раздел второй"));
+    e.sel = Selection::caret(Position::new(0, "Первый раздел".len()));
+    e.insert_section_break();
+    assert_eq!(e.doc.paragraphs.len(), 2);
+    assert_eq!(e.section_count(), 2);
+    assert_eq!(e.doc.paragraphs[0].text(), "Первый раздел");
+    assert_eq!(e.doc.paragraphs[1].text(), " второй");
+    // The caret is in the second section; make it landscape.
+    let portrait = e.page_here();
+    e.set_page(portrait.with_landscape(true));
+    assert!(e.page_here().width > e.page_here().height);
+    assert_eq!(e.doc.page_of(0), portrait, "the first section is unchanged");
+    e.sel = Selection::caret(Position::new(0, 0));
+    assert_eq!(e.page_here(), portrait);
+    e.undo();
+    e.undo();
+    assert_eq!(e.section_count(), 1);
+    assert!(e.doc.sections.is_empty());
+}
+
+#[test]
+fn enter_in_a_break_paragraph_keeps_one_break_at_the_end() {
+    let mut e = Editor::new(Document::from_text("ab"));
+    e.sel = Selection::caret(Position::new(0, 2));
+    e.insert_section_break();
+    e.sel = Selection::caret(Position::new(0, 1));
+    e.enter();
+    assert_eq!(e.section_count(), 2);
+    assert!(e.doc.paragraphs[0].style.section.is_none());
+    assert!(e.doc.paragraphs[1].style.section.is_some());
+    e.sel = Selection::caret(Position::new(0, 0));
+    e.remove_section_break();
+    assert_eq!(e.section_count(), 1);
+}

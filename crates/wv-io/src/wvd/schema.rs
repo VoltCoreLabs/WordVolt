@@ -21,6 +21,7 @@ impl File {
                 align: align_name(p.style.align).to_string(),
                 quote: p.style.quote,
                 toc: p.style.toc,
+                section: p.style.section,
                 note: p.style.note,
                 image: p.style.image.map(|i| ImageRefDto {
                     id: i.id,
@@ -106,18 +107,15 @@ impl File {
                     rows: look.rows.clone(),
                 })
                 .collect(),
-            page: (doc.page != PageSpec::default()).then_some(PageDto {
-                width: doc.page.width,
-                height: doc.page.height,
-                top: doc.page.margin_top,
-                right: doc.page.margin_right,
-                bottom: doc.page.margin_bottom,
-                left: doc.page.margin_left,
-                gutter: doc.page.gutter,
-                header_distance: doc.page.header_distance,
-                footer_distance: doc.page.footer_distance,
-                columns: doc.page.columns,
-            }),
+            page: (doc.page != PageSpec::default()).then(|| PageDto::of(&doc.page)),
+            sections: doc
+                .sections
+                .iter()
+                .map(|(id, page)| SectionDto {
+                    id: *id,
+                    page: PageDto::of(page),
+                })
+                .collect(),
             images: doc
                 .images
                 .iter()
@@ -150,6 +148,7 @@ impl File {
                     align: align_from(&p.align),
                     quote: p.quote,
                     toc: p.toc,
+                    section: p.section,
                     note: p.note,
                     image: p.image.map(|i| ImageRef {
                         id: i.id,
@@ -218,20 +217,14 @@ impl File {
                 p.style.image = None;
             }
         }
-        if let Some(p) = self.page.filter(|p| p.width >= 100.0 && p.height >= 100.0) {
-            doc.page = PageSpec {
-                width: p.width,
-                height: p.height,
-                margin_top: p.top.max(0.0),
-                margin_right: p.right.max(0.0),
-                margin_bottom: p.bottom.max(0.0),
-                margin_left: p.left.max(0.0),
-                gutter: p.gutter.max(0.0),
-                header_distance: p.header_distance.max(0.0),
-                footer_distance: p.footer_distance.max(0.0),
-                columns: p.columns.clamp(1, wv_core::MAX_COLUMNS),
-            };
+        if let Some(spec) = self.page.and_then(PageDto::spec) {
+            doc.page = spec;
         }
+        doc.sections = self
+            .sections
+            .into_iter()
+            .filter_map(|s| Some((s.id, s.page.spec()?)))
+            .collect();
         doc.header = band_of(self.header, self.header_runs, &self.header_align);
         doc.footer = band_of(self.footer, self.footer_runs, &self.footer_align);
         doc.comments = self
