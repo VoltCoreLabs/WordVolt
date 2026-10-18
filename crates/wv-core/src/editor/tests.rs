@@ -809,3 +809,24 @@ fn copy_and_paste_keep_formatting() {
     assert!(e.undo());
     assert_eq!(e.doc.paragraphs.len(), 2);
 }
+
+#[test]
+fn paragraph_dialog_values_round_trip() {
+    let mut e = Editor::new(Document::from_text("one\ntwo"));
+    let m = crate::ParaMetrics {
+        left_pt: 100,
+        first_line: 20,
+        space_before: Some(6),
+        space_after: Some(12),
+        line_spacing: Some(1.5),
+        tabs: vec![144, 36, 36],
+    };
+    e.set_para_metrics(&m);
+    let got = e.para_metrics();
+    assert_eq!((got.left_pt, got.first_line), (100, 20));
+    assert_eq!(got.tabs, vec![36, 144], "sorted, no duplicates");
+    assert_eq!(e.doc.paragraphs[0].style.indent, 2);
+    assert_eq!(e.doc.paragraphs[0].style.left_extra, 28);
+    assert!(e.undo());
+    assert_eq!(e.para_metrics(), crate::ParaMetrics::default());
+}

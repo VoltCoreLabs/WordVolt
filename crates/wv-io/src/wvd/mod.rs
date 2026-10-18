@@ -47,7 +47,9 @@ mod tests {
         e.doc.paragraphs[0].style.list = Some(wv_core::ListKind::Number);
         e.doc.paragraphs[0].style.indent = 2;
         e.doc.paragraphs[0].style.line_spacing = Some(1.5);
-        e.doc.paragraphs[0].style.first_line = 3;
+        e.doc.paragraphs[0].style.first_line = 27;
+        e.doc.paragraphs[0].style.left_extra = 5;
+        e.doc.paragraphs[0].style.tabs = vec![36, 108];
         e.doc.paragraphs[0].style.space_before = Some(6);
         e.doc.paragraphs[0].style.space_after = Some(0);
         e.doc.paragraphs[0].runs[0].style.highlight = Some(0xFFFF00);

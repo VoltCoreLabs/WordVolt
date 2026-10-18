@@ -52,6 +52,8 @@ struct State {
     indent: u8,
     line_spacing: Option<f32>,
     first_line: u8,
+    left_extra: u8,
+    tabs: Vec<u16>,
     space_before: Option<u8>,
     space_after: Option<u8>,
     links: HashMap<String, String>,
@@ -218,15 +220,27 @@ impl State {
                 self.list = attr(e, b"val").and_then(|id| self.numbering.get(&id).copied());
             }
             b"ind" if self.in_paragraph_props => {
-                self.first_line = attr(e, b"firstLine")
-                    .and_then(|v| v.parse::<f32>().ok())
-                    .map_or(0, |twips| (twips / 360.0).round().clamp(0.0, 8.0) as u8);
+                let twips = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
+                self.first_line =
+                    twips(b"firstLine").map_or(0, |t| (t / 20.0).round().clamp(0.0, 255.0) as u8);
                 if self.list.is_none() {
-                    let left = attr(e, b"left")
-                        .or_else(|| attr(e, b"start"))
-                        .and_then(|v| v.parse::<f32>().ok())
-                        .unwrap_or(0.0);
-                    self.indent = (left / 720.0).round().clamp(0.0, 8.0) as u8;
+                    let left = twips(b"left")
+                        .or_else(|| twips(b"start"))
+                        .unwrap_or(0.0)
+                        .max(0.0);
+                    // Whole 0.5 inch steps are the indent level, the rest is kept in points.
+                    let steps = (left / 720.0).floor().min(8.0);
+                    self.indent = steps as u8;
+                    self.left_extra =
+                        ((left - steps * 720.0) / 20.0).round().clamp(0.0, 255.0) as u8;
+                }
+            }
+            b"tab" if self.in_paragraph_props => {
+                let left = attr(e, b"val").is_none_or(|v| matches!(v.as_str(), "left" | "start"));
+                let pos = attr(e, b"pos").and_then(|v| v.parse::<f32>().ok());
+                if let (true, Some(pos), true) = (left, pos, self.tabs.len() < wv_core::MAX_TABS) {
+                    self.tabs
+                        .push((pos / 20.0).round().clamp(0.0, 65535.0) as u16);
                 }
             }
             b"spacing" if self.in_paragraph_props => {
@@ -338,6 +352,8 @@ impl State {
         self.indent = 0;
         self.line_spacing = None;
         self.first_line = 0;
+        self.left_extra = 0;
+        self.tabs.clear();
         self.space_before = None;
         self.space_after = None;
     }
@@ -354,6 +370,10 @@ impl State {
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
             p.style.first_line = self.first_line;
+            p.style.left_extra = self.left_extra;
+            p.style.tabs = std::mem::take(&mut self.tabs);
+            p.style.tabs.sort_unstable();
+            p.style.tabs.dedup();
             p.style.space_before = self.space_before;
             p.style.space_after = self.space_after;
             p.style.cell = self.table.cell;

@@ -41,6 +41,18 @@ impl Line {
         text[from..to].bytes().filter(|b| *b == b' ').count()
     }
 
+    /// X of the caret before byte `b` of fragment `f`. A tab has a width of its own (not what the
+    /// font measures): inside it only its two edges are caret places.
+    fn frag_x(&self, text: &str, f: &Fragment, b: usize, m: &dyn Measurer) -> f32 {
+        if b >= f.range.end && text[f.range.clone()].contains('\t') {
+            return self.x + f.x + f.width;
+        }
+        self.x
+            + f.x
+            + m.width(&text[f.range.start..b], &f.style)
+            + self.space_extra * self.spaces(text, f.range.start, b) as f32
+    }
+
     /// X (from the paragraph's left edge) of the caret before byte `byte` of the paragraph text.
     pub fn x_at(&self, text: &str, byte: usize, m: &dyn Measurer) -> f32 {
         let Some(f) = self
@@ -52,11 +64,7 @@ impl Line {
             return self.x;
         };
         let byte = byte.clamp(f.range.start, f.range.end);
-        let before = &text[f.range.start..byte];
-        self.x
-            + f.x
-            + m.width(before, &f.style)
-            + self.space_extra * self.spaces(text, f.range.start, byte) as f32
+        self.frag_x(text, f, byte, m)
     }
 
     /// Byte offset of the caret position nearest to `x` (from the paragraph's left edge).
@@ -76,10 +84,7 @@ impl Line {
                 if b > limit {
                     break;
                 }
-                let bx = self.x
-                    + f.x
-                    + m.width(&text[f.range.start..b], &f.style)
-                    + self.space_extra * self.spaces(text, f.range.start, b) as f32;
+                let bx = self.frag_x(text, f, b, m);
                 let distance = (bx - x).abs();
                 if distance < best.1 {
                     best = (b, distance);

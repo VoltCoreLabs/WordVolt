@@ -16,4 +16,7 @@ pub use editor::MAX_IMAGE_WIDTH;
 pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;
-pub use style::{Align, Cell, CharStyle, ImageRef, ListKind, NamedStyle, ParaStyle, Script};
+pub use style::{
+    Align, Cell, CharStyle, ImageRef, ListKind, MAX_TABS, NamedStyle, ParaMetrics, ParaStyle,
+    Script,
+};

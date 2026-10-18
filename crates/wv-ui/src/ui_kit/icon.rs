@@ -55,6 +55,7 @@ pub enum Icon {
     PagePortrait,
     PageLandscape,
     PageMargins,
+    Paragraph,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -119,6 +120,7 @@ impl Icon {
             Icon::PagePortrait => "page-portrait",
             Icon::PageLandscape => "page-landscape",
             Icon::PageMargins => "page-margins",
+            Icon::Paragraph => "paragraph",
         }
     }
 }

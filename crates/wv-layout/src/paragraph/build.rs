@@ -37,6 +37,7 @@ pub(super) fn build(
     ParagraphLayout {
         text,
         quote: false,
+        toc: false,
         indent: 0.0,
         marker: None,
         space_before: 0.0,
@@ -99,15 +100,17 @@ fn build_line(
                 .count() as f32
             * f32::from(piece.range.end <= visible_end);
         let tab = is_tab(piece);
+        let split = !p.style.toc && text[piece.range.clone()].contains('\t');
         let width = piece.width + extra + if tab { tab_extra } else { 0.0 };
         let after_tab = fragments
             .last()
-            .is_some_and(|f| text[f.range.clone()].ends_with('\t'));
+            .is_some_and(|f| text[f.range.clone()].contains('\t'));
         match fragments.last_mut() {
             Some(f)
                 if f.range.end == piece.range.start
                     && f.style == p.runs[piece.run].style
                     && !tab
+                    && !split
                     && !after_tab =>
             {
                 f.range.end = piece.range.end;
