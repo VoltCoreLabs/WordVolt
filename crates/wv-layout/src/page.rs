@@ -98,6 +98,8 @@ pub struct Slice {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Page {
+    /// The page number as written (restarts and formats of the sections applied).
+    pub number: String,
     /// The section break that ends the section of the page (`None` = the last section).
     pub section: Option<u32>,
     /// Page size and margins of the section the page belongs to.

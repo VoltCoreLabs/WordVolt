@@ -27,8 +27,9 @@ impl BandLine {
     }
 }
 
-/// Lays out `band` for page `page` (1-based) of `pages`; `None` when it shows nothing.
-pub fn band_line(band: &Band, page: usize, pages: usize, m: &dyn Measurer) -> Option<BandLine> {
+/// Lays out `band` for the page numbered `page` (as written) of `pages`; `None` when it shows
+/// nothing.
+pub fn band_line(band: &Band, page: &str, pages: usize, m: &dyn Measurer) -> Option<BandLine> {
     let (mut parts, mut x) = (Vec::new(), 0.0);
     let (mut ascent, mut descent) = (0.0_f32, 0.0_f32);
     for run in band.render_runs(page, pages) {

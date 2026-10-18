@@ -113,6 +113,45 @@ pub(super) fn make_columns_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Ent
     columns_menu
 }
 
+pub(super) fn make_numbering_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<MenuButton> {
+    let menu = cx.new(|cx| {
+        let items = vec![
+            MenuItem::Tr(Key::PageNumContinue),
+            MenuItem::Tr(Key::PageNumRestart),
+            MenuItem::Text("1, 2, 3"),
+            MenuItem::Text("I, II, III"),
+            MenuItem::Text("i, ii, iii"),
+            MenuItem::Text("A, B, C"),
+            MenuItem::Text("a, b, c"),
+        ];
+        MenuButton::new(
+            "numbering",
+            Icon::Hash,
+            Key::TipPageNumbering,
+            items,
+            lang,
+            cx,
+        )
+    });
+    cx.subscribe(
+        &menu,
+        |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+            let index = *index;
+            this.edit(cx, move |c| {
+                let page = c.page_here();
+                let page = match index {
+                    0 => page.with_page_start(None),
+                    1 => page.with_page_start(Some(1)),
+                    n => page.with_number_format(wv_core::NumberFormat::ALL[(n - 2).min(4)]),
+                };
+                c.set_page(page);
+            });
+        },
+    )
+    .detach();
+    menu
+}
+
 pub(super) fn make_page_setup(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<PageSetupEditor> {
     let page_setup = cx.new(|cx| PageSetupEditor::new(lang, cx));
     cx.subscribe(

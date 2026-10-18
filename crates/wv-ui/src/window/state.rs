@@ -67,6 +67,7 @@ pub struct MainWindow {
     pub paper_menu: Entity<MenuButton>,
     pub margins_menu: Entity<MenuButton>,
     pub columns_menu: Entity<MenuButton>,
+    pub numbering_menu: Entity<MenuButton>,
     pub page_setup: Entity<PageSetupEditor>,
     pub paragraph_dialog: Entity<ParagraphEditor>,
     pub image_dialog: Entity<super::image_dialog::ImageDialog>,
@@ -125,6 +126,7 @@ impl MainWindow {
         let paper_menu = widgets_page::make_paper_menu(lang, cx);
         let margins_menu = widgets_page::make_margins_menu(lang, cx);
         let columns_menu = widgets_page::make_columns_menu(lang, cx);
+        let numbering_menu = widgets_page::make_numbering_menu(lang, cx);
         let page_setup = widgets_page::make_page_setup(lang, cx);
         let image_dialog = widgets_page::make_image_dialog(lang, cx);
         let paragraph_dialog = widgets_page::make_paragraph_dialog(lang, cx);
@@ -150,6 +152,7 @@ impl MainWindow {
             paper_menu,
             margins_menu,
             columns_menu,
+            numbering_menu,
             page_setup,
             paragraph_dialog,
             image_dialog,

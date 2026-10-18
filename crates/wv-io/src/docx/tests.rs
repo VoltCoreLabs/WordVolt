@@ -805,3 +805,23 @@ fn bookmarks_and_internal_links_round_trip_through_docx() {
     assert_eq!(link.as_deref(), Some("#my_mark"));
     assert!(!back.paragraphs[0].runs[0].style.bookmarks.is_empty());
 }
+
+#[test]
+fn page_numbering_is_written_in_pgnumtype_and_read_back() {
+    let mut e = Editor::new(Document::from_text("One two"));
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 3));
+    e.insert_section_break();
+    let first = e.page_here().with_page_start(Some(1));
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+    e.set_page(first.with_number_format(wv_core::NumberFormat::LowerRoman));
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut body = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/document.xml").unwrap(), &mut body).unwrap();
+    assert!(body.contains("<w:pgNumType w:start=\"1\" w:fmt=\"lowerRoman\"/>"));
+    let back = decode(&bytes).unwrap();
+    let spec = back.page_of(0);
+    assert_eq!(spec.page_start, Some(1));
+    assert_eq!(spec.number_format, wv_core::NumberFormat::LowerRoman);
+    assert_eq!(back.page.page_start, None);
+}

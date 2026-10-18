@@ -112,11 +112,12 @@ impl Band {
 
     /// The text for page `page` (1-based) of `pages`.
     pub fn render(&self, page: usize, pages: usize) -> String {
-        replace_tokens(&self.text(), page, pages)
+        replace_tokens(&self.text(), &page.to_string(), pages)
     }
 
-    /// The runs for page `page` of `pages`, tokens replaced (a token split over two runs stays).
-    pub fn render_runs(&self, page: usize, pages: usize) -> Vec<Run> {
+    /// The runs for the page numbered `page` of `pages`, tokens replaced (a token split over two
+    /// runs stays).
+    pub fn render_runs(&self, page: &str, pages: usize) -> Vec<Run> {
         self.runs()
             .iter()
             .map(|r| Run::new(replace_tokens(&r.text, page, pages), r.style.clone()))
@@ -124,8 +125,8 @@ impl Band {
     }
 }
 
-fn replace_tokens(text: &str, page: usize, pages: usize) -> String {
-    text.replace("{page}", &page.to_string())
+fn replace_tokens(text: &str, page: &str, pages: usize) -> String {
+    text.replace("{page}", page)
         .replace("{pages}", &pages.to_string())
 }
 
@@ -195,7 +196,7 @@ mod tests {
         band.restyle(2, 8, |s| s.italic = true);
         assert_eq!(band.runs().len(), 3);
         let shown: String = band
-            .render_runs(3, 9)
+            .render_runs("3", 9)
             .iter()
             .map(|r| r.text.clone())
             .collect();

@@ -23,7 +23,8 @@ pub fn paint_bands(
     let (main_header, main_footer) = own.map_or((&b.header, &b.footer), |(h, f)| (h, f));
     let (header, footer) = b.variants.pick(v.page, main_header, main_footer);
     for (band, is_header) in [(header, true), (footer, false)] {
-        let Some(line) = wv_layout::band_line(band, v.page + 1, pages, m) else {
+        let Some(line) = wv_layout::band_line(band, &v.layout.pages[v.page].number, pages, m)
+        else {
             continue;
         };
         let top = if is_header {
