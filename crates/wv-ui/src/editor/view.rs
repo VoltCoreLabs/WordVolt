@@ -50,6 +50,8 @@ pub struct EditorView {
     doc_epoch: u64,
     pub(super) measure_cache: Rc<RefCell<MeasureCache>>,
     /// Text being composed by an input method: paragraph and byte range.
+    /// Format painter: the formatting picked up, applied to the next selection.
+    pub painter: Option<wv_core::CharStyle>,
     pub(super) marked: Option<(usize, std::ops::Range<usize>)>,
     /// Window bounds of every page, written while painting (used for mouse hit-testing).
     pub(super) page_bounds: Rc<RefCell<Vec<Bounds<Pixels>>>>,
@@ -86,6 +88,7 @@ impl EditorView {
             measure_cache: Rc::default(),
             page_bounds: Rc::default(),
             marked: None,
+            painter: None,
             focused_once: false,
             zoom: 1.0,
             multi_page: crate::settings::load_multi_page(),

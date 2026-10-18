@@ -200,7 +200,28 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         cx,
     );
 
+    let painting = this.editor.read(cx).painter.is_some();
+    let clipboard = block_group(
+        t(lang, Key::GroupClipboard),
+        vec![
+            icon_button("format-painter", Icon::PaintBrush, painting, cx)
+                .tip(t(lang, Key::TipFormatPainter))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.editor.update(cx, |view, cx| {
+                        view.painter = match view.painter {
+                            Some(_) => None,
+                            None => Some(view.core.current_style()),
+                        };
+                        cx.notify();
+                    });
+                    cx.notify();
+                }))
+                .into_any_element(),
+        ],
+        cx,
+    );
     vec![
+        clipboard.into_any_element(),
         font.into_any_element(),
         text_style.into_any_element(),
         paragraph.into_any_element(),

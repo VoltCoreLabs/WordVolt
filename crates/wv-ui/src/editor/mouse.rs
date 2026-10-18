@@ -130,9 +130,14 @@ impl EditorView {
         }
     }
 
-    pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
+    pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.selecting = false;
         self.resizing = None;
         self.border_drag = None;
+        if !self.core.sel.is_collapsed()
+            && let Some(style) = self.painter.take()
+        {
+            self.apply(cx, |c| c.paint_char_style(&style));
+        }
     }
 }
