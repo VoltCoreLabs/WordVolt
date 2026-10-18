@@ -1,3 +1,90 @@
+/// How page numbers are written.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum NumberFormat {
+    #[default]
+    Decimal,
+    UpperRoman,
+    LowerRoman,
+    UpperLetter,
+    LowerLetter,
+}
+
+impl NumberFormat {
+    pub const ALL: [NumberFormat; 5] = [
+        Self::Decimal,
+        Self::UpperRoman,
+        Self::LowerRoman,
+        Self::UpperLetter,
+        Self::LowerLetter,
+    ];
+
+    /// `n` (1-based) written in this format; letters go A..Z, AA..ZZ, AAA.. like Word's.
+    pub fn format(self, n: u32) -> String {
+        match self {
+            Self::Decimal => n.to_string(),
+            Self::UpperRoman => roman(n),
+            Self::LowerRoman => roman(n).to_lowercase(),
+            Self::UpperLetter => letters(n),
+            Self::LowerLetter => letters(n).to_lowercase(),
+        }
+    }
+
+    /// The name Word uses for it in `w:pgNumType w:fmt`.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Decimal => "decimal",
+            Self::UpperRoman => "upperRoman",
+            Self::LowerRoman => "lowerRoman",
+            Self::UpperLetter => "upperLetter",
+            Self::LowerLetter => "lowerLetter",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|f| f.id() == id)
+            .unwrap_or_default()
+    }
+}
+
+fn roman(n: u32) -> String {
+    if n == 0 || n >= 4000 {
+        return n.to_string();
+    }
+    let mut n = n;
+    let mut out = String::new();
+    for (value, text) in [
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    ] {
+        while n >= value {
+            out.push_str(text);
+            n -= value;
+        }
+    }
+    out
+}
+
+fn letters(n: u32) -> String {
+    if n == 0 {
+        return "0".into();
+    }
+    let letter = char::from(b'A' + ((n - 1) % 26) as u8);
+    std::iter::repeat_n(letter, ((n - 1) / 26 + 1) as usize).collect()
+}
+
 /// Page size and margins in px (96 dpi).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PageSpec {
@@ -14,6 +101,9 @@ pub struct PageSpec {
     pub footer_distance: f32,
     /// Text columns (1..=4); they flow top to bottom, left to right.
     pub columns: u8,
+    /// Page numbering restarts at this number in the section (`None` = goes on).
+    pub page_start: Option<u32>,
+    pub number_format: NumberFormat,
 }
 
 /// Margin presets of the "Margins" menu.
@@ -51,6 +141,8 @@ impl PageSpec {
             header_distance: BAND_DISTANCE,
             footer_distance: BAND_DISTANCE,
             columns: 1,
+            page_start: None,
+            number_format: NumberFormat::Decimal,
         }
     }
 
@@ -75,6 +167,17 @@ impl PageSpec {
     /// The same page with `n` text columns (1..=4).
     pub fn with_columns(mut self, n: u8) -> Self {
         self.columns = n.clamp(1, MAX_COLUMNS);
+        self
+    }
+
+    /// The same page with page numbers starting again at `start` (`None` = going on).
+    pub fn with_page_start(mut self, start: Option<u32>) -> Self {
+        self.page_start = start.map(|n| n.max(1));
+        self
+    }
+
+    pub fn with_number_format(mut self, format: NumberFormat) -> Self {
+        self.number_format = format;
         self
     }
 
@@ -147,6 +250,8 @@ impl PageSpec {
             header_distance: header.clamp(0.0, top),
             footer_distance: footer.clamp(0.0, bottom),
             columns: 1,
+            page_start: None,
+            number_format: NumberFormat::Decimal,
         }
     }
 
@@ -172,6 +277,21 @@ impl Default for PageSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn page_numbers_in_every_format() {
+        assert_eq!(NumberFormat::Decimal.format(7), "7");
+        assert_eq!(NumberFormat::UpperRoman.format(1994), "MCMXCIV");
+        assert_eq!(NumberFormat::LowerRoman.format(4), "iv");
+        assert_eq!(NumberFormat::UpperLetter.format(26), "Z");
+        assert_eq!(NumberFormat::UpperLetter.format(27), "AA");
+        assert_eq!(NumberFormat::LowerLetter.format(54), "bbb");
+        assert_eq!(
+            NumberFormat::from_id("lowerRoman"),
+            NumberFormat::LowerRoman
+        );
+        assert_eq!(NumberFormat::from_id("nope"), NumberFormat::Decimal);
+    }
 
     #[test]
     fn paper_orientation_and_margins() {

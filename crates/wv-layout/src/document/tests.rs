@@ -749,3 +749,20 @@ fn a_landscape_section_lays_text_out_wider() {
     assert_eq!(l.paragraphs[0].lines.len(), 1);
     assert_eq!(l.paragraphs[1].lines.len(), 1);
 }
+
+#[test]
+fn page_numbers_restart_and_change_format_per_section() {
+    let mut doc = Document::from_text("a\nb\nc\nd");
+    // Section 1 = "a" and "b" (two pages), section 2 = "c" and "d": numbers restart in roman.
+    doc.paragraphs[1].style.page_break = true;
+    doc.paragraphs[1].style.section = Some(1);
+    doc.sections.insert(1, wv_core::PageSpec::default());
+    doc.paragraphs[3].style.page_break = true;
+    doc.page = doc
+        .page
+        .with_page_start(Some(5))
+        .with_number_format(wv_core::NumberFormat::LowerRoman);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    let numbers: Vec<&str> = l.pages.iter().map(|p| p.number.as_str()).collect();
+    assert_eq!(numbers, ["1", "2", "v", "vi"]);
+}

@@ -30,6 +30,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             this.paper_menu.clone().into_any_element(),
             this.margins_menu.clone().into_any_element(),
             this.columns_menu.clone().into_any_element(),
+            this.numbering_menu.clone().into_any_element(),
             this.page_setup.clone().into_any_element(),
             orientation(
                 "page-portrait",

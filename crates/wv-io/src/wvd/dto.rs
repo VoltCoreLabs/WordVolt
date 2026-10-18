@@ -83,6 +83,11 @@ pub(super) struct PageDto {
     pub(super) footer_distance: f32,
     #[serde(default = "one_column")]
     pub(super) columns: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) page_start: Option<u32>,
+    /// Index into `NumberFormat::ALL` (absent = decimal).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub(super) number_format: u8,
 }
 
 impl PageDto {
@@ -98,6 +103,11 @@ impl PageDto {
             header_distance: page.header_distance,
             footer_distance: page.footer_distance,
             columns: page.columns,
+            page_start: page.page_start,
+            number_format: wv_core::NumberFormat::ALL
+                .iter()
+                .position(|f| *f == page.number_format)
+                .unwrap_or(0) as u8,
         }
     }
 
@@ -114,6 +124,11 @@ impl PageDto {
             header_distance: self.header_distance.max(0.0),
             footer_distance: self.footer_distance.max(0.0),
             columns: self.columns.clamp(1, wv_core::MAX_COLUMNS),
+            page_start: self.page_start,
+            number_format: wv_core::NumberFormat::ALL
+                .get(usize::from(self.number_format))
+                .copied()
+                .unwrap_or_default(),
         })
     }
 }

@@ -97,7 +97,8 @@ fn draw_bands(
 ) {
     let setup = &layout.pages[page].setup;
     for (band, is_header) in [(bands.0, true), (bands.1, false)] {
-        let Some(line) = wv_layout::band_line(band, page + 1, pages, c.fonts) else {
+        let Some(line) = wv_layout::band_line(band, &layout.pages[page].number, pages, c.fonts)
+        else {
             continue;
         };
         let top = if is_header {

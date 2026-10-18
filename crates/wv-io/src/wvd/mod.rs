@@ -229,6 +229,16 @@ mod tests {
     }
 
     #[test]
+    fn page_numbering_round_trips() {
+        let mut doc = Document::from_text("x");
+        doc.page = doc
+            .page
+            .with_page_start(Some(3))
+            .with_number_format(wv_core::NumberFormat::UpperRoman);
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

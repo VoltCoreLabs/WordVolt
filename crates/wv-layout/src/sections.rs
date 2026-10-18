@@ -1,7 +1,7 @@
 use std::ops::Range;
 use std::rc::Rc;
 
-use wv_core::Document;
+use wv_core::{Document, NumberFormat};
 
 use crate::Measurer;
 use crate::around::{Around, Source, wrap_around};
@@ -11,9 +11,15 @@ use crate::paginate::paginate;
 use crate::paragraph::ParagraphLayout;
 use crate::table::Block;
 
+/// How the pages of a section are numbered: where they restart, and how they are written.
+pub(crate) type Numbering = (Option<u32>, NumberFormat);
+
+/// A section: its paragraphs, page setup and page numbering.
+pub(crate) type Section = (Range<usize>, PageSetup, Numbering);
+
 /// The paragraph ranges of the sections and their page setup. `base` (the document's own page
 /// setup and text spacing) is the setup of the last section.
-pub(crate) fn setups(doc: &Document, base: &PageSetup) -> Vec<(Range<usize>, PageSetup)> {
+pub(crate) fn setups(doc: &Document, base: &PageSetup) -> Vec<Section> {
     let mut out = Vec::new();
     let mut start = 0;
     for (i, p) in doc.paragraphs.iter().enumerate() {
@@ -23,12 +29,13 @@ pub(crate) fn setups(doc: &Document, base: &PageSetup) -> Vec<(Range<usize>, Pag
                 line_spacing: base.line_spacing,
                 ..PageSetup::from_spec(spec)
             };
-            out.push((start..i + 1, setup));
+            out.push((start..i + 1, setup, (spec.page_start, spec.number_format)));
             start = i + 1;
         }
     }
     if start < doc.paragraphs.len() || out.is_empty() {
-        out.push((start..doc.paragraphs.len(), base.clone()));
+        let last = (doc.page.page_start, doc.page.number_format);
+        out.push((start..doc.paragraphs.len(), base.clone(), last));
     }
     out
 }
@@ -51,13 +58,14 @@ pub(crate) fn paginate_sections(
     doc: &Document,
     paragraphs: &mut [Rc<ParagraphLayout>],
     blocks: &[Block],
-    sections: &[(Range<usize>, PageSetup)],
+    sections: &[Section],
     (sources, notes): (&[Source], &NoteSet),
     m: &dyn Measurer,
 ) -> Vec<Page> {
     let mut pages: Vec<Page> = Vec::new();
     let mut from = 0;
-    for (range, setup) in sections {
+    let mut number = 1;
+    for (range, setup, (restart, format)) in sections {
         let to = from + blocks[from..].partition_point(|b| first_para(doc, b) < range.end);
         let part_blocks = &blocks[from..to];
         from = to;
@@ -79,13 +87,21 @@ pub(crate) fn paginate_sections(
             wrap_around(&around, paragraphs, &mut part, m);
         }
         let section = doc.paragraphs[range.end - 1].style.section;
-        part.iter_mut().for_each(|p| p.section = section);
+        number = restart.unwrap_or(number);
+        for p in &mut part {
+            p.section = section;
+            p.number = format.format(number);
+            number += 1;
+        }
         pages.extend(part);
     }
     if pages.is_empty()
-        && let Some((_, setup)) = sections.last()
+        && let Some((_, setup, _)) = sections.last()
     {
         pages = paginate(paragraphs, blocks, setup, notes);
+        for (i, p) in pages.iter_mut().enumerate() {
+            p.number = (i + 1).to_string();
+        }
     }
     pages
 }

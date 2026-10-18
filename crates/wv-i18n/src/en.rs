@@ -163,6 +163,11 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipRuler => {
             "Ruler above the page: drag the left and first-line indent markers, click it to set a tab stop (drag one off the ruler to remove it)"
         }
+        Key::PageNumContinue => "Continue numbering",
+        Key::PageNumRestart => "Start at 1",
+        Key::TipPageNumbering => {
+            "Page numbers of the section at the caret: continue or start at 1, number style"
+        }
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

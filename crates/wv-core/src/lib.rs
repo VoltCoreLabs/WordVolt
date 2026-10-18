@@ -15,8 +15,8 @@ pub const DEFAULT_SIZE_PT: u16 = 12;
 
 pub use document::{
     BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, Bookmark, Comment, DocSettings, Document,
-    ImageData, ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph,
-    Revision, Run, TableLook,
+    ImageData, ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, NumberFormat, PageSpec,
+    Paragraph, Revision, Run, TableLook,
 };
 pub use editor::CellSelection;
 pub use editor::MAX_IMAGE_WIDTH;

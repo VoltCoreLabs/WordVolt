@@ -1,4 +1,4 @@
-use wv_core::PageSpec;
+use wv_core::{NumberFormat, PageSpec};
 
 fn twips(px: f32) -> i64 {
     (px * 15.0).round() as i64
@@ -12,13 +12,27 @@ pub(super) fn sect_pr(page: &PageSpec, refs: &str, extra: &str, in_paragraph: bo
     } else {
         String::new()
     };
+    let numbering = if page.page_start.is_some() || page.number_format != NumberFormat::Decimal {
+        format!(
+            "<w:pgNumType{}{}/>",
+            page.page_start
+                .map_or(String::new(), |n| format!(" w:start=\"{n}\"")),
+            if page.number_format == NumberFormat::Decimal {
+                String::new()
+            } else {
+                format!(" w:fmt=\"{}\"", page.number_format.id())
+            }
+        )
+    } else {
+        String::new()
+    };
     let kind = if in_paragraph {
         "<w:type w:val=\"nextPage\"/>"
     } else {
         ""
     };
     format!(
-        "<w:sectPr>{refs}{kind}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{cols}{extra}</w:sectPr>",
+        "<w:sectPr>{refs}{kind}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{numbering}{cols}{extra}</w:sectPr>",
         twips(page.width),
         twips(page.height),
         if page.is_landscape() {
