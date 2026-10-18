@@ -19,7 +19,8 @@ actions!(
         PrintDocument,
         CloseTab,
         NextTab,
-        PrevTab
+        PrevTab,
+        OpenPalette
     ]
 );
 
@@ -36,6 +37,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PrevTab, None),
         KeyBinding::new("secondary-k", InsertLink, None),
+        KeyBinding::new("secondary-shift-p", OpenPalette, None),
         KeyBinding::new("secondary-f", FindInDocument, None),
         KeyBinding::new("secondary-h", ReplaceInDocument, None),
         KeyBinding::new("f3", FindNext, None),
