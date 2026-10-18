@@ -130,29 +130,28 @@ fn flow(
                         } else {
                             0.0
                         };
-                    // Text does not run into a picture that has the page to itself in that band.
-                    while let Some(band) = (line.height > 0.0)
-                        .then(|| {
-                            let real = (pages.len() - 1) / columns;
-                            let (top, bottom) = (y + lead, y + lead + line.height);
-                            bands.iter().find(|b| {
-                                b.page == real
-                                    && top < b.bottom + FLOAT_GAP - EPS
-                                    && bottom > b.top - FLOAT_GAP + EPS
-                            })
-                        })
-                        .flatten()
-                    {
-                        y = band.bottom + FLOAT_GAP;
-                        lead = 0.0;
-                    }
-                    if y + lead + line.height > limit + EPS
-                        && !pages.last().is_some_and(Page::is_empty)
-                    {
-                        pages.push(Page::default());
-                        y = 0.0;
-                    } else {
+                    loop {
+                        let real = (pages.len() - 1) / columns;
+                        // Text does not run into a picture that has the page to itself in that band.
+                        if line.height > 0.0 {
+                            while let Some(band) =
+                                band_at(bands, real, y + lead, y + lead + line.height)
+                            {
+                                y = band.bottom + FLOAT_GAP;
+                                lead = 0.0;
+                            }
+                        }
+                        if y + lead + line.height > limit + EPS
+                            && !pages.last().is_some_and(Page::is_empty)
+                        {
+                            // The next page may have a picture in the way too: look again there.
+                            pages.push(Page::default());
+                            y = 0.0;
+                            lead = 0.0;
+                            continue;
+                        }
                         y += lead;
+                        break;
                     }
                     let page = pages.last_mut().expect("at least one page");
                     match page.slices.last_mut() {
@@ -203,4 +202,11 @@ fn flow(
         }
     }
     pages
+}
+
+/// The band of `page` that a line from `top` to `bottom` runs into.
+fn band_at(bands: &[Band], page: usize, top: f32, bottom: f32) -> Option<&Band> {
+    bands.iter().find(|b| {
+        b.page == page && top < b.bottom + FLOAT_GAP - EPS && bottom > b.top - FLOAT_GAP + EPS
+    })
 }
