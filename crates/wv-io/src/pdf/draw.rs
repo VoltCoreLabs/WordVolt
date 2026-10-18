@@ -16,6 +16,7 @@ const TABLE: u32 = 0x999999;
 const QUOTE_BAR: u32 = 0x9aa0a6;
 const CODE_BG: u32 = 0xf0f0f0;
 const SPOILER: u32 = 0x333333;
+const COMMENT_BG: u32 = 0xfff1b8;
 
 /// One page's content stream and the pictures it uses.
 pub struct PageContent {
@@ -220,7 +221,11 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
                 let text = &para.text[f.range.clone()];
                 let mut x = setup.margin_left + slice.x + line.x + f.x;
                 let baseline = top + line.baseline + script_shift(&f.style);
-                let background = f.style.highlight.or(f.style.mono.then_some(CODE_BG));
+                let background = f
+                    .style
+                    .highlight
+                    .or(f.style.mono.then_some(CODE_BG))
+                    .or(f.style.comment.map(|_| COMMENT_BG));
                 if let Some(background) = background {
                     c.fill(x, top, f.width, line.height, background);
                 }

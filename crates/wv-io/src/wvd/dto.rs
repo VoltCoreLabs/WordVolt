@@ -182,4 +182,6 @@ pub(super) struct CommentDto {
     pub(super) author: String,
     #[serde(default)]
     pub(super) text: String,
+    #[serde(default)]
+    pub(super) date: String,
 }

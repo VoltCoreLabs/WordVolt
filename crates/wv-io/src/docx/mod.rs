@@ -33,6 +33,9 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
     )?;
     attach_images(&mut doc, &rels, &links, bytes);
     attach_footnotes(&mut doc, &links, bytes);
+    if let Some(xml) = package::read_part(bytes, "word/comments.xml") {
+        doc.comments = comments::read(&xml);
+    }
     (doc.header, doc.footer, doc.variants) = bands::read(bytes);
     Ok(doc)
 }

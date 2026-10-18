@@ -77,11 +77,14 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         let core = &this.editor.read(cx).core;
         core.comment_at(core.sel.head).and_then(|id| {
             let c = core.doc.comments.iter().find(|c| c.id == id)?;
-            Some((id, c.text.clone()))
+            let date = c.date.replace('T', " ");
+            let meta = format!("{} {}", c.author, date.trim_end_matches('Z'));
+            Some(((id, c.text.clone()), meta.trim().to_string()))
         })
     };
+    let (at_caret, meta) = at_caret.unzip();
     this.comment_editor
-        .update(cx, |e, _| e.set_current(at_caret));
+        .update(cx, |e, _| e.set_current(at_caret, meta.unwrap_or_default()));
     let notes = block_group(
         t(this.lang, Key::GroupNotes),
         vec![

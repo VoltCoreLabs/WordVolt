@@ -68,6 +68,7 @@ struct State {
     space_after: Option<u8>,
     links: HashMap<String, String>,
     link: Option<String>,
+    comment: Option<u32>,
     paragraphs: Vec<Paragraph>,
     current: Option<Paragraph>,
     align: Align,
@@ -239,6 +240,7 @@ impl State {
         };
         let mut style = self.run.clone();
         style.link = self.link.clone();
+        style.comment = self.comment;
         let clean = text.replace(['\n', '\r'], " ");
         let end = p.len();
         p.insert(end, &clean, &style);

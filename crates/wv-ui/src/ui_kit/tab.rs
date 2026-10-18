@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use gpui_kit::*;
 
-use super::hover::{HoverLook, hover_layer, track_hover};
 use super::pop::track_bounds;
 use crate::theme::{Theme, space};
 
@@ -52,19 +51,14 @@ impl PillState {
     }
 }
 
-/// Label of a pill tab; the capsule behind the active one is drawn by `pill_tabs`.
+/// Label of a pill tab; the capsule behind the active one is drawn by `pill_tabs`. An inactive tab
+/// only darkens its text on hover (no background).
 pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
     let t = cx.global::<Theme>();
-    let (fg, hover) = (if active { t.on_accent } else { t.text_muted }, t.surface);
+    let (fg, hover_fg) = (if active { t.on_accent } else { t.text_muted }, t.text);
     let id = ElementId::from(SharedString::from(format!("tab-{label}")));
-    let look = HoverLook {
-        bg: hover,
-        border: None,
-        radius: px(999.),
-        bleed: px(0.),
-    };
-    let tab = div()
-        .id(id.clone())
+    div()
+        .id(id)
         .relative()
         .px(space::lg())
         .py(px(6.))
@@ -72,10 +66,8 @@ pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
         .text_color(fg)
         .text_sm()
         .when(active, |s| s.font_weight(FontWeight::SEMIBOLD))
-        .cursor_pointer();
-    // The active pill has no hover effect.
-    track_hover(tab, &id)
-        .when(!active, |t| t.child(hover_layer(&id, look, None, cx)))
+        .when(!active, |s| s.hover(move |s| s.text_color(hover_fg)))
+        .cursor_pointer()
         .child(div().relative().child(label))
 }
 

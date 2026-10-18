@@ -6,6 +6,7 @@ pub mod history;
 pub mod position;
 pub mod search;
 pub mod style;
+pub mod time;
 
 pub use document::{
     BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, Comment, DocSettings, Document, ImageData,
