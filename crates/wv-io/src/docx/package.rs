@@ -229,8 +229,7 @@ pub fn write(
     bands: &[BandPart],
     odd_even: bool,
     images: &[ImageData],
-    (footnotes, comments, user_styles): (Option<&str>, Option<&str>, &str),
-    defaults: (&str, u16),
+    (footnotes, comments, user_styles, defaults): (Option<&str>, Option<&str>, &str, (&str, u16)),
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);

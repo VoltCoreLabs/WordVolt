@@ -137,10 +137,10 @@ pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
             footnotes::xml(doc).as_deref(),
             comments::xml(doc).as_deref(),
             &styles_write::xml(doc),
-        ),
-        (
-            doc.default_font.as_deref().unwrap_or(wv_core::DEFAULT_FONT),
-            doc.default_size_pt.unwrap_or(wv_core::DEFAULT_SIZE_PT),
+            (
+                doc.default_font.as_deref().unwrap_or(wv_core::DEFAULT_FONT),
+                doc.default_size_pt.unwrap_or(wv_core::DEFAULT_SIZE_PT),
+            ),
         ),
     )
 }
