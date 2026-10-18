@@ -116,6 +116,21 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipComment => {
             "Примечание: выделите текст, введите замечание и нажмите Enter (у текста с примечанием — изменить или удалить)"
         }
+        Key::CommentsTitle => "Примечания",
+        Key::NoComments => "В документе нет примечаний",
+        Key::TipCommentsPanel => "Список примечаний справа (щелчок — перейти к тексту)",
+        Key::MenuHelp => "Справка",
+        Key::MenuAbout => "О программе",
+        Key::AboutDesc => {
+            "Текстовый редактор уровня MS Word на чистом Rust: страницы, стили, таблицы, рисунки, сноски, примечания."
+        }
+        Key::AboutVersion => "Версия",
+        Key::AboutStack => "Технологии",
+        Key::AboutStackValue => "Rust, GPUI, cosmic-text",
+        Key::AboutFormats => "Форматы",
+        Key::AboutFormatsValue => ".wvd, .docx, .md, .txt, PDF",
+        Key::AboutRepo => "Исходный код",
+        Key::AboutClose => "Закрыть",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

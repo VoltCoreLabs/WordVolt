@@ -116,6 +116,21 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipComment => {
             "Comment: select text, type the remark and press Enter (on commented text: edit or delete)"
         }
+        Key::CommentsTitle => "Comments",
+        Key::NoComments => "The document has no comments",
+        Key::TipCommentsPanel => "List of comments on the right (click to go to the text)",
+        Key::MenuHelp => "Help",
+        Key::MenuAbout => "About",
+        Key::AboutDesc => {
+            "A Word-class text editor in pure Rust: pages, styles, tables, pictures, footnotes, comments."
+        }
+        Key::AboutVersion => "Version",
+        Key::AboutStack => "Built with",
+        Key::AboutStackValue => "Rust, GPUI, cosmic-text",
+        Key::AboutFormats => "Formats",
+        Key::AboutFormatsValue => ".wvd, .docx, .md, .txt, PDF",
+        Key::AboutRepo => "Source code",
+        Key::AboutClose => "Close",
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

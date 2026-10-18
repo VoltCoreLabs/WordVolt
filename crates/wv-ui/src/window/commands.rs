@@ -20,6 +20,10 @@ impl MainWindow {
             Command::Print => self.print_document(window, cx),
             Command::Undo => self.edit(cx, |c| _ = c.undo()),
             Command::Redo => self.edit(cx, |c| _ = c.redo()),
+            Command::About => {
+                self.about_open = true;
+                cx.notify();
+            }
             Command::Find => self
                 .find_bar
                 .update(cx, |bar, cx| bar.open(false, window, cx)),

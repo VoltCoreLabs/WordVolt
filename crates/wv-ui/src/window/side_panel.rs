@@ -36,6 +36,46 @@ fn snippet(text: &str, start: usize, end: usize) -> (String, String, String) {
     (before.trim_start().to_string(), hit, after)
 }
 
+/// One row per comment (text with its author), in document order; the target is the comment id.
+fn comment_rows(
+    this: &MainWindow,
+    window: &Window,
+    cx: &mut Context<MainWindow>,
+) -> Vec<(Row, usize)> {
+    let shown: Vec<(u32, String)> = {
+        let doc = &this.editor.read(cx).core.doc;
+        doc.visible_comments()
+            .iter()
+            .map(|c| (c.id, format!("{}: {}", c.author, c.text.replace('\n', " "))))
+            .collect()
+    };
+    let positions: Vec<Position> = {
+        let doc = &this.editor.read(cx).core.doc;
+        shown
+            .iter()
+            .map(|(id, _)| doc.comment_range(*id).map_or(Position::new(0, 0), |r| r.0))
+            .collect()
+    };
+    let pages = this
+        .editor
+        .update(cx, |view, _| view.pages_of(&positions, window));
+    shown
+        .into_iter()
+        .enumerate()
+        .map(|(i, (id, text))| {
+            let row = Row {
+                page: pages[i],
+                indent: 0,
+                before: text,
+                hit: String::new(),
+                after: String::new(),
+                current: false,
+            };
+            (row, id as usize)
+        })
+        .collect()
+}
+
 /// Right-hand navigation pane (like Word's): the matches of the search with their text and page,
 /// or, with no search going on, the headings of the document. Slides in/out with an ease-out
 /// animation; it opens by itself while the search bar is open.
@@ -45,7 +85,8 @@ pub fn side_panel(
     cx: &mut Context<MainWindow>,
 ) -> impl IntoElement {
     let find_open = this.find_bar.read(cx).is_open();
-    let open = this.panel_open || find_open;
+    let comments = this.comments_panel && !find_open;
+    let open = this.panel_open || find_open || this.comments_panel;
     let lang = this.lang;
     let th = cx.global::<Theme>();
     let (muted, hover, subtle, accent) =
@@ -96,6 +137,8 @@ pub fn side_panel(
             })
             .collect();
         (Key::NavResults, rows)
+    } else if comments {
+        (Key::CommentsTitle, comment_rows(this, window, cx))
     } else {
         let headings = this.editor.read(cx).core.headings();
         let positions: Vec<Position> = headings.iter().map(|h| Position::new(h.para, 0)).collect();
@@ -147,6 +190,12 @@ pub fn side_panel(
                     cx.listener(move |this, _, _, cx| {
                         if searching {
                             this.find_bar.update(cx, |bar, cx| bar.go_to(target, cx));
+                        } else if comments {
+                            this.edit(cx, move |c| {
+                                if let Some((start, _)) = c.doc.comment_range(target as u32) {
+                                    c.set_head(start, false);
+                                }
+                            });
                         } else {
                             this.edit(cx, move |c| c.set_head(Position::new(target, 0), false));
                         }
@@ -183,6 +232,8 @@ pub fn side_panel(
     };
     let hint = if searching {
         Key::NavNoResults
+    } else if comments {
+        Key::NoComments
     } else {
         Key::NavNoHeadings
     };
@@ -194,11 +245,14 @@ pub fn side_panel(
         .flex()
         .flex_col()
         .gap(space::sm())
-        .child(
-            div()
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(t(lang, Key::NavTitle)),
-        )
+        .child(div().font_weight(FontWeight::SEMIBOLD).child(t(
+            lang,
+            if comments {
+                Key::CommentsTitle
+            } else {
+                Key::NavTitle
+            },
+        )))
         .child(div().text_xs().text_color(muted).child(heading))
         .child(
             div()
