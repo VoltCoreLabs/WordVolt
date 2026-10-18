@@ -1,3 +1,4 @@
+mod annotations;
 mod band;
 mod doc;
 mod image;
