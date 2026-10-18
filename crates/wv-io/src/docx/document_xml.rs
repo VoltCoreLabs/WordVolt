@@ -52,6 +52,7 @@ struct State {
     indent: u8,
     line_spacing: Option<f32>,
     first_line: u8,
+    page_break: bool,
     left_extra: u8,
     tabs: Vec<u16>,
     space_before: Option<u8>,
@@ -312,7 +313,12 @@ impl State {
             }
             b"t" => self.in_text = !empty,
             b"tab" if !self.in_run_props && !self.in_paragraph_props => self.text("\t"),
-            b"br" | b"cr" if attr(e, b"type").as_deref() != Some("page") => self.line_break(),
+            b"br" if attr(e, b"type").as_deref() == Some("page") => self.line_break(true),
+            b"br" | b"cr" => self.line_break(false),
+            b"pageBreakBefore" if self.in_paragraph_props => {
+                self.page_break =
+                    attr(e, b"val").is_none_or(|v| !matches!(v.as_str(), "0" | "false"));
+            }
             _ => {}
         }
     }
@@ -352,6 +358,7 @@ impl State {
         self.indent = 0;
         self.line_spacing = None;
         self.first_line = 0;
+        self.page_break = false;
         self.left_extra = 0;
         self.tabs.clear();
         self.space_before = None;
@@ -370,6 +377,7 @@ impl State {
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
             p.style.first_line = self.first_line;
+            p.style.page_break = self.page_break;
             p.style.left_extra = self.left_extra;
             p.style.tabs = std::mem::take(&mut self.tabs);
             p.style.tabs.sort_unstable();
@@ -396,7 +404,7 @@ impl State {
         let id = pictures.rels.len() as u32;
         pictures.rels.push(rid);
         if self.current.as_ref().is_some_and(|p| !p.is_empty()) {
-            self.line_break();
+            self.line_break(false);
         }
         self.image = Some(ImageRef { id, width, height });
         let (align, named) = (self.align, self.named);
@@ -437,13 +445,15 @@ impl State {
     }
 
     /// A manual line break splits the paragraph (the model has no soft breaks yet).
-    fn line_break(&mut self) {
+    /// A line break starts a new paragraph (`page`: one that begins a new page).
+    fn line_break(&mut self, page: bool) {
         if self.current.is_some() {
             let (align, named) = (self.align, self.named);
             self.end_paragraph();
             self.current = Some(Paragraph::default());
             self.align = align;
             self.named = named;
+            self.page_break = page;
         }
     }
 

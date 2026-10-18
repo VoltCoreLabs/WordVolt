@@ -141,6 +141,8 @@ struct Para {
     line_spacing: Option<f32>,
     #[serde(default, skip_serializing_if = "is_zero")]
     first_line: u8,
+    #[serde(default, skip_serializing_if = "is_false")]
+    page_break: bool,
     #[serde(default, skip_serializing_if = "is_zero")]
     left_extra: u8,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -236,6 +238,7 @@ impl File {
                 indent: p.style.indent,
                 line_spacing: p.style.line_spacing,
                 first_line: p.style.first_line,
+                page_break: p.style.page_break,
                 left_extra: p.style.left_extra,
                 tabs: p.style.tabs.clone(),
                 space_before: p.style.space_before,
@@ -324,6 +327,7 @@ impl File {
                     indent: p.indent.min(8),
                     line_spacing: p.line_spacing,
                     first_line: p.first_line,
+                    page_break: p.page_break,
                     left_extra: p.left_extra,
                     tabs: p.tabs.iter().copied().take(wv_core::MAX_TABS).collect(),
                     space_before: p.space_before,

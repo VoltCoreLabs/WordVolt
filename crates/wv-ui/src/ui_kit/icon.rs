@@ -56,6 +56,7 @@ pub enum Icon {
     PageLandscape,
     PageMargins,
     Paragraph,
+    PageBreak,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -121,6 +122,7 @@ impl Icon {
             Icon::PageLandscape => "page-landscape",
             Icon::PageMargins => "page-margins",
             Icon::Paragraph => "paragraph",
+            Icon::PageBreak => "page-break",
         }
     }
 }

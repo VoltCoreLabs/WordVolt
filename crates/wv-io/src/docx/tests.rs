@@ -115,6 +115,7 @@ fn lists_indents_and_spacing_round_trip_with_separate_numbered_lists() {
     }
     doc.paragraphs[3].style.line_spacing = Some(2.0);
     doc.paragraphs[4].style.first_line = 18;
+    doc.paragraphs[2].style.page_break = true;
     doc.paragraphs[3].style.left_extra = 7;
     doc.paragraphs[4].style.tabs = vec![36, 144];
     doc.paragraphs[4].style.space_before = Some(12);
@@ -403,4 +404,26 @@ fn deep_headings_round_trip() {
     doc.paragraphs[2].style.named = wv_core::NamedStyle::Heading9;
     let back = decode(&encode(&doc).unwrap()).unwrap();
     assert_eq!(back, doc);
+}
+
+#[test]
+fn reads_word_page_breaks() {
+    let bytes = docx_with(
+        r#"<w:p><w:r><w:t>one</w:t></w:r><w:r><w:br w:type="page"/></w:r><w:r><w:t>two</w:t></w:r></w:p><w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>three</w:t></w:r></w:p><w:p><w:r><w:t>four</w:t></w:r></w:p>"#,
+    );
+    let doc = decode(&bytes).unwrap();
+    let got: Vec<(String, bool)> = doc
+        .paragraphs
+        .iter()
+        .map(|p| (p.text(), p.style.page_break))
+        .collect();
+    assert_eq!(
+        got,
+        [
+            ("one".to_string(), false),
+            ("two".to_string(), true),
+            ("three".to_string(), true),
+            ("four".to_string(), false),
+        ]
+    );
 }

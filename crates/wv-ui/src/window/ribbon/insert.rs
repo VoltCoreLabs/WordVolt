@@ -59,7 +59,22 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         ],
         cx,
     );
+    let pages = block_group(
+        t(this.lang, Key::GroupPages),
+        vec![
+            icon_button("ins-page-break", Icon::PageBreak, false, cx)
+                .tip(t(this.lang, Key::TipPageBreak))
+                .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_page_break())))
+                .into_any_element(),
+            icon_button("ins-blank-page", Icon::PageSingle, false, cx)
+                .tip(t(this.lang, Key::TipBlankPage))
+                .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_blank_page())))
+                .into_any_element(),
+        ],
+        cx,
+    );
     let mut groups = vec![
+        pages.into_any_element(),
         objects.into_any_element(),
         bands.into_any_element(),
         toc.into_any_element(),

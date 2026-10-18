@@ -118,6 +118,7 @@ pub fn write_paragraph(
         || p.style.indent > 0
         || p.style.line_spacing.is_some()
         || p.style.first_line > 0
+        || p.style.page_break
         || p.style.left_extra > 0
         || !p.style.tabs.is_empty()
         || p.style.space_before.is_some()
@@ -130,6 +131,9 @@ pub fn write_paragraph(
             xml.push_str(&format!("<w:pStyle w:val=\"{id}\"/>"));
         } else if p.style.quote {
             xml.push_str("<w:pStyle w:val=\"Quote\"/>");
+        }
+        if p.style.page_break {
+            xml.push_str("<w:pageBreakBefore/>");
         }
         if let Some(num_id) = num_id {
             xml.push_str(&format!(

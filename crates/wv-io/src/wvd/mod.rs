@@ -48,6 +48,7 @@ mod tests {
         e.doc.paragraphs[0].style.indent = 2;
         e.doc.paragraphs[0].style.line_spacing = Some(1.5);
         e.doc.paragraphs[0].style.first_line = 27;
+        e.doc.paragraphs[1].style.page_break = true;
         e.doc.paragraphs[0].style.left_extra = 5;
         e.doc.paragraphs[0].style.tabs = vec![36, 108];
         e.doc.paragraphs[0].style.space_before = Some(6);

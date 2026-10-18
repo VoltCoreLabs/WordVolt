@@ -830,3 +830,41 @@ fn paragraph_dialog_values_round_trip() {
     assert!(e.undo());
     assert_eq!(e.para_metrics(), crate::ParaMetrics::default());
 }
+
+#[test]
+fn page_break_splits_the_paragraph_and_backspace_takes_it_away() {
+    let mut e = Editor::new(Document::from_text("onetwo"));
+    e.sel = Selection::caret(Position::new(0, 3));
+    e.insert_page_break();
+    assert_eq!(e.doc.paragraphs.len(), 2);
+    assert!(!e.doc.paragraphs[0].style.page_break);
+    assert!(e.doc.paragraphs[1].style.page_break);
+    assert_eq!(e.doc.paragraphs[1].text(), "two");
+    // Enter in the flagged paragraph does not flag the paragraph it creates.
+    e.sel = Selection::caret(Position::new(1, 1));
+    e.enter();
+    assert!(!e.doc.paragraphs[2].style.page_break);
+    e.sel = Selection::caret(Position::new(1, 0));
+    e.backspace();
+    assert!(!e.doc.paragraphs[1].style.page_break);
+    assert_eq!(
+        e.doc.paragraphs.len(),
+        3,
+        "the first backspace only removes the break"
+    );
+}
+
+#[test]
+fn blank_page_has_a_break_before_and_after() {
+    let mut e = Editor::new(Document::from_text("ab"));
+    e.sel = Selection::caret(Position::new(0, 1));
+    e.insert_blank_page();
+    let flags: Vec<bool> = e
+        .doc
+        .paragraphs
+        .iter()
+        .map(|p| p.style.page_break)
+        .collect();
+    assert_eq!(flags, [false, true, true]);
+    assert_eq!(e.doc.paragraphs[1].text(), "");
+}
