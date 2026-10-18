@@ -199,6 +199,18 @@ mod tests {
     }
 
     #[test]
+    fn section_headers_round_trip() {
+        let mut e = Editor::new(Document::from_text("Раздел один два"));
+        e.set_header_footer(wv_core::Band::new("Шапка"), wv_core::Band::new("{page}"));
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(0, "Раздел".len()));
+        e.insert_section_break();
+        e.set_header_footer(wv_core::Band::new("Второй"), wv_core::Band::default());
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.section_bands.len(), 1);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

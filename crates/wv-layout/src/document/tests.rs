@@ -727,6 +727,8 @@ fn each_section_starts_a_page_with_its_own_page_setup() {
     assert_eq!(l.pages[0].slices.len(), 1);
     assert_eq!(l.pages[1].slices.len(), 2);
     assert_eq!(l.pages[1].slices[0].para, 1);
+    assert_eq!(l.pages[0].section, Some(1));
+    assert_eq!(l.pages[1].section, None);
 }
 
 #[test]

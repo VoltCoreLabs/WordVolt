@@ -8,6 +8,14 @@ use wv_layout::DocLayout;
 
 use super::measure::MeasureCache;
 
+/// Headers and footers: the main ones, the first/even-page variants and those of the sections.
+pub struct Bands {
+    pub header: Band,
+    pub footer: Band,
+    pub variants: BandVariants,
+    pub sections: std::collections::BTreeMap<u32, (Band, Band)>,
+}
+
 /// Everything needed to paint one page; cheap to clone into the canvas closure.
 pub struct PageView {
     pub layout: Rc<DocLayout>,
@@ -39,7 +47,7 @@ pub struct PageView {
     /// The selected picture's handles cut its sides.
     pub cropping: bool,
     /// Header and footer text, and their colour.
-    pub bands: Rc<(Band, Band, BandVariants)>,
+    pub bands: Rc<Bands>,
     /// Pictures of the document by `ImageRef::id`.
     pub images: Rc<super::image_paint::PictureSet>,
     pub band_color: Rgba,

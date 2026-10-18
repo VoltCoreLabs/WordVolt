@@ -17,6 +17,13 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         revisions: doc.revisions.clone(),
         sections: doc.sections.clone(),
         styles: doc.styles.keys().copied().collect(),
+        band_refs: super::band_parts::parts(doc)
+            .iter()
+            .filter_map(|p| Some((p.section?, p.reference())))
+            .fold(std::collections::BTreeMap::new(), |mut map, (id, r)| {
+                map.entry(id).or_insert_with(String::new).push_str(&r);
+                map
+            }),
         ..Lists::default()
     };
     let paras = &doc.paragraphs;
@@ -58,6 +65,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     // Header/footer parts are written by `package::write` (`band_parts`).
     let refs: String = super::band_parts::parts(doc)
         .iter()
+        .filter(|p| p.section.is_none())
         .map(|p| p.reference())
         .collect();
     let title_page = if doc.variants.different_first {
@@ -84,6 +92,8 @@ pub struct Lists {
     sections: std::collections::BTreeMap<u32, wv_core::PageSpec>,
     /// Ids of the user styles the document has.
     styles: Vec<u32>,
+    /// Header/footer references of the sections that end with a break.
+    band_refs: std::collections::BTreeMap<u32, String>,
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -206,8 +216,17 @@ pub fn write_paragraph(
             xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));
         }
         // The properties of the section this paragraph ends come last.
-        if let Some(page) = p.style.section.and_then(|id| lists.sections.get(&id)) {
-            xml.push_str(&super::section_xml::sect_pr(page, "", "", true));
+        if let Some((id, page)) = p
+            .style
+            .section
+            .and_then(|id| Some((id, lists.sections.get(&id)?)))
+        {
+            xml.push_str(&super::section_xml::sect_pr(
+                page,
+                lists.band_refs.get(&id).map_or("", String::as_str),
+                "",
+                true,
+            ));
         }
         xml.push_str("</w:pPr>");
     }

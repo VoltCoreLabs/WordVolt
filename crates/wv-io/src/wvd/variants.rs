@@ -88,3 +88,25 @@ impl VariantsDto {
         }
     }
 }
+
+/// Header and footer of a section that ends with a break.
+#[derive(Serialize, Deserialize)]
+pub(super) struct SectionBandsDto {
+    id: u32,
+    header: BandDto,
+    footer: BandDto,
+}
+
+impl SectionBandsDto {
+    pub(super) fn of(id: u32, (header, footer): &(Band, Band)) -> Self {
+        Self {
+            id,
+            header: BandDto::of(header),
+            footer: BandDto::of(footer),
+        }
+    }
+
+    pub(super) fn bands(self) -> (u32, (Band, Band)) {
+        (self.id, (self.header.band(), self.footer.band()))
+    }
+}

@@ -68,6 +68,35 @@ pub fn read(bytes: &[u8]) -> (Band, Band, BandVariants) {
     )
 }
 
+/// Headers and footers of the sections that end inside the body (section ids are numbered in the
+/// order of their breaks, as `document_xml` does). A section without references has those of the
+/// section before it.
+pub fn read_sections(bytes: &[u8]) -> std::collections::BTreeMap<u32, (Band, Band)> {
+    let rels = relationships(bytes);
+    let refs = references(bytes);
+    let load = |id: &Option<String>, kind: &str| -> Option<Band> {
+        let target = rels
+            .get(id.as_ref()?)
+            .filter(|(t, _)| t == kind)
+            .map(|(_, v)| v.clone())?;
+        let xml = read_part(bytes, &format!("word/{}", target.trim_start_matches('/')))?;
+        let (runs, align) = part_text(&xml);
+        Some(Band::from_runs(runs).aligned(align))
+    };
+    let mut out = std::collections::BTreeMap::new();
+    let mut previous = (Band::default(), Band::default());
+    let inner = refs.sections.len().saturating_sub(1);
+    for (i, (header, footer)) in refs.sections.iter().take(inner).enumerate() {
+        let bands = (
+            load(header, HEADER_TYPE).unwrap_or_else(|| previous.0.clone()),
+            load(footer, FOOTER_TYPE).unwrap_or_else(|| previous.1.clone()),
+        );
+        previous = bands.clone();
+        out.insert(i as u32 + 1, bands);
+    }
+    out
+}
+
 /// `<w:evenAndOddHeaders/>` in word/settings.xml.
 fn even_and_odd(bytes: &[u8]) -> bool {
     let Some(xml) = read_part(bytes, "word/settings.xml") else {
@@ -122,6 +151,8 @@ struct Refs {
     header: [Option<String>; 3],
     footer: [Option<String>; 3],
     title_page: bool,
+    /// Default header/footer reference of every `w:sectPr`, in order (the last one is the body's).
+    sections: Vec<(Option<String>, Option<String>)>,
 }
 
 fn references(bytes: &[u8]) -> Refs {
@@ -131,9 +162,13 @@ fn references(bytes: &[u8]) -> Refs {
     let mut reader = Reader::from_reader(xml.as_slice());
     let mut buf = Vec::new();
     let mut refs = Refs::default();
+    let mut current: (Option<String>, Option<String>) = (None, None);
     while let Ok(event) = reader.read_event_into(&mut buf) {
         match event {
             Event::Eof => break,
+            Event::End(e) if e.local_name().as_ref() == b"sectPr" => {
+                refs.sections.push(std::mem::take(&mut current));
+            }
             Event::Start(e) | Event::Empty(e) => {
                 let slot = match attr(&e, b"type").as_deref() {
                     None | Some("default") => Some(0),
@@ -142,8 +177,18 @@ fn references(bytes: &[u8]) -> Refs {
                     _ => None,
                 };
                 match (e.local_name().as_ref(), slot) {
-                    (b"headerReference", Some(i)) => refs.header[i] = attr(&e, b"id"),
-                    (b"footerReference", Some(i)) => refs.footer[i] = attr(&e, b"id"),
+                    (b"headerReference", Some(i)) => {
+                        refs.header[i] = attr(&e, b"id");
+                        if i == 0 {
+                            current.0 = attr(&e, b"id");
+                        }
+                    }
+                    (b"footerReference", Some(i)) => {
+                        refs.footer[i] = attr(&e, b"id");
+                        if i == 0 {
+                            current.1 = attr(&e, b"id");
+                        }
+                    }
                     (b"titlePg", _) => {
                         refs.title_page =
                             !matches!(attr(&e, b"val").as_deref(), Some("0" | "false" | "off"));

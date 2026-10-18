@@ -16,7 +16,12 @@ pub fn paint_bands(
     let setup = v.layout.setup_of(v.page);
     let pages = v.layout.pages.len();
     let z = v.zoom;
-    let (header, footer) = v.bands.2.pick(v.page, &v.bands.0, &v.bands.1);
+    let b = &v.bands;
+    let own = v.layout.pages[v.page]
+        .section
+        .and_then(|id| b.sections.get(&id));
+    let (main_header, main_footer) = own.map_or((&b.header, &b.footer), |(h, f)| (h, f));
+    let (header, footer) = b.variants.pick(v.page, main_header, main_footer);
     for (band, is_header) in [(header, true), (footer, false)] {
         let Some(line) = wv_layout::band_line(band, v.page + 1, pages, m) else {
             continue;

@@ -43,6 +43,7 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
         doc.comments = comments::read(&xml);
     }
     (doc.header, doc.footer, doc.variants) = bands::read(bytes);
+    doc.section_bands = bands::read_sections(bytes);
     Ok(doc)
 }
 

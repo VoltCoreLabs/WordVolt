@@ -15,6 +15,8 @@ pub struct BandPart {
     /// Relationship id (rIdH1, rIdF2, ...).
     pub rid: String,
     pub band: Band,
+    /// The section break whose section the part belongs to (`None` = the document's own).
+    pub section: Option<u32>,
 }
 
 /// The parts to write: the main header/footer, plus the first-page and even-page ones when their
@@ -44,8 +46,27 @@ pub fn parts(doc: &Document) -> Vec<BandPart> {
                     name: format!("{kind}{n}.xml"),
                     rid: format!("rId{letter}{n}"),
                     band: band.clone(),
+                    section: None,
                 });
             }
+        }
+    }
+    // Sections that end with a break have parts of their own (also empty ones: a missing reference
+    // would mean "same as the previous section").
+    for (id, (header, footer)) in &doc.section_bands {
+        for (band, root, kind, letter) in [
+            (header, "hdr", "header", 'H'),
+            (footer, "ftr", "footer", 'F'),
+        ] {
+            out.push(BandPart {
+                root,
+                kind,
+                slot: "default",
+                name: format!("{kind}s{id}.xml"),
+                rid: format!("rId{letter}s{id}"),
+                band: band.clone(),
+                section: Some(*id),
+            });
         }
     }
     out

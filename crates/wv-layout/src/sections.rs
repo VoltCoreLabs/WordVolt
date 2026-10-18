@@ -78,6 +78,8 @@ pub(crate) fn paginate_sections(
             };
             wrap_around(&around, paragraphs, &mut part, m);
         }
+        let section = doc.paragraphs[range.end - 1].style.section;
+        part.iter_mut().for_each(|p| p.section = section);
         pages.extend(part);
     }
     if pages.is_empty()

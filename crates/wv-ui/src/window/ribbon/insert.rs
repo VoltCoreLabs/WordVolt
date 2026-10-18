@@ -22,13 +22,10 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
         cx,
     );
     let (header, footer, variants, numbered) = {
-        let doc = &this.editor.read(cx).core.doc;
-        (
-            doc.header.clone(),
-            doc.footer.clone(),
-            doc.variants.clone(),
-            doc.footer.has_page_number(),
-        )
+        let core = &this.editor.read(cx).core;
+        let (header, footer) = core.bands_here();
+        let numbered = footer.has_page_number();
+        (header, footer, core.doc.variants.clone(), numbered)
     };
     this.band_editor.update(cx, |editor, _| {
         editor.set_current(&header, &footer, &variants)
