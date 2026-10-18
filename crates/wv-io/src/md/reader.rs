@@ -35,11 +35,7 @@ pub(super) fn paragraph(block: &str) -> Paragraph {
     }
     let hashes = block.chars().take_while(|c| *c == '#').count();
     let (text, named) = if (1..=6).contains(&hashes) && block[hashes..].starts_with(' ') {
-        let style = match hashes {
-            1 => NamedStyle::Heading1,
-            2 => NamedStyle::Heading2,
-            _ => NamedStyle::Heading3,
-        };
+        let style = NamedStyle::heading(hashes as u8);
         (block[hashes..].trim_start(), style)
     } else {
         (block, NamedStyle::Normal)

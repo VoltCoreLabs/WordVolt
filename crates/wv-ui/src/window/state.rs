@@ -109,6 +109,7 @@ pub struct MainWindow {
     pub ribbon_open: bool,
     pub tab_pills: crate::ui_kit::PillState,
     pub panel_open: bool,
+    pub styles_open: bool,
 }
 
 impl MainWindow {
@@ -461,6 +462,7 @@ impl MainWindow {
             ribbon_open: true,
             tab_pills: crate::ui_kit::PillState::new(Tab::ALL.len()),
             panel_open: false,
+            styles_open: false,
         }
     }
 

@@ -38,7 +38,7 @@ pub(super) fn flag(e: &BytesStart) -> bool {
     )
 }
 
-/// Word's built-in style ids ("Heading1", "heading 2", "Title", ...) -> our styles; deeper headings map to Heading 3.
+/// Word's built-in style ids ("Heading1", "heading 2", "Title", ...) -> our styles; headings 1-9.
 pub(super) fn named_from_docx(id: &str) -> NamedStyle {
     let key: String = id
         .chars()
@@ -48,9 +48,9 @@ pub(super) fn named_from_docx(id: &str) -> NamedStyle {
     match key.as_str() {
         "title" => NamedStyle::Title,
         "subtitle" => NamedStyle::Subtitle,
-        "heading1" => NamedStyle::Heading1,
-        "heading2" => NamedStyle::Heading2,
-        k if k.starts_with("heading") => NamedStyle::Heading3,
+        k if k.starts_with("heading") => k["heading".len()..]
+            .parse::<u8>()
+            .map_or(NamedStyle::Heading3, NamedStyle::heading),
         _ => NamedStyle::Normal,
     }
 }

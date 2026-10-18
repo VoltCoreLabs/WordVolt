@@ -11,17 +11,42 @@ pub enum NamedStyle {
     Heading1,
     Heading2,
     Heading3,
+    Heading4,
+    Heading5,
+    Heading6,
+    Heading7,
+    Heading8,
+    Heading9,
 }
 
 impl NamedStyle {
-    pub const ALL: [NamedStyle; 6] = [
+    pub const ALL: [NamedStyle; 12] = [
         Self::Normal,
         Self::Title,
         Self::Subtitle,
         Self::Heading1,
         Self::Heading2,
         Self::Heading3,
+        Self::Heading4,
+        Self::Heading5,
+        Self::Heading6,
+        Self::Heading7,
+        Self::Heading8,
+        Self::Heading9,
     ];
+
+    /// 1..=9 for the headings.
+    pub fn heading_level(self) -> Option<u8> {
+        Self::ALL[3..]
+            .iter()
+            .position(|s| *s == self)
+            .map(|i| i as u8 + 1)
+    }
+
+    /// Heading `level` (1..=9; deeper levels give Heading 9).
+    pub fn heading(level: u8) -> Self {
+        Self::ALL[3 + usize::from(level.clamp(1, 9)) - 1]
+    }
 
     pub fn size_pt(self) -> Option<u16> {
         match self {
@@ -31,15 +56,23 @@ impl NamedStyle {
             Self::Heading1 => Some(20),
             Self::Heading2 => Some(16),
             Self::Heading3 => Some(14),
+            Self::Heading4 => Some(12),
+            Self::Heading5 | Self::Heading6 | Self::Heading7 | Self::Heading8 | Self::Heading9 => {
+                None
+            }
         }
     }
 
     pub fn bold(self) -> bool {
-        matches!(self, Self::Heading1 | Self::Heading2 | Self::Heading3)
+        self.heading_level().is_some()
     }
 
     pub fn color(self) -> Option<u32> {
-        (self == Self::Subtitle).then_some(0x6B7280)
+        match self {
+            Self::Subtitle => Some(0x6B7280),
+            Self::Heading6 | Self::Heading7 | Self::Heading8 | Self::Heading9 => Some(0x4B5563),
+            _ => None,
+        }
     }
 
     /// Gap above the paragraph in px (dropped at the top of a page).
@@ -48,6 +81,8 @@ impl NamedStyle {
             Self::Heading1 => 18.0,
             Self::Heading2 => 14.0,
             Self::Heading3 => 10.0,
+            Self::Heading4 | Self::Heading5 | Self::Heading6 => 8.0,
+            Self::Heading7 | Self::Heading8 | Self::Heading9 => 6.0,
             _ => 0.0,
         }
     }
@@ -58,7 +93,7 @@ impl NamedStyle {
             Self::Normal => None,
             Self::Title | Self::Subtitle => Some(12.0),
             Self::Heading1 => Some(6.0),
-            Self::Heading2 | Self::Heading3 => Some(4.0),
+            _ => Some(4.0),
         }
     }
 
@@ -87,6 +122,12 @@ impl NamedStyle {
             Self::Heading1 => "heading1",
             Self::Heading2 => "heading2",
             Self::Heading3 => "heading3",
+            Self::Heading4 => "heading4",
+            Self::Heading5 => "heading5",
+            Self::Heading6 => "heading6",
+            Self::Heading7 => "heading7",
+            Self::Heading8 => "heading8",
+            Self::Heading9 => "heading9",
         }
     }
 
@@ -111,6 +152,16 @@ mod tests {
         };
         NamedStyle::Subtitle.apply(&mut direct);
         assert_eq!((direct.size_pt, direct.color), (Some(11), Some(1)));
+    }
+
+    #[test]
+    fn heading_levels() {
+        assert_eq!(NamedStyle::Normal.heading_level(), None);
+        assert_eq!(NamedStyle::Title.heading_level(), None);
+        for level in 1..=9 {
+            assert_eq!(NamedStyle::heading(level).heading_level(), Some(level));
+        }
+        assert_eq!(NamedStyle::heading(20), NamedStyle::Heading9);
     }
 
     #[test]
