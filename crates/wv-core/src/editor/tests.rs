@@ -868,3 +868,55 @@ fn blank_page_has_a_break_before_and_after() {
     assert_eq!(flags, [false, true, true]);
     assert_eq!(e.doc.paragraphs[1].text(), "");
 }
+
+#[test]
+fn ime_composition_is_one_undo_step_and_commits_multibyte_text() {
+    let mut e = Editor::new(Document::from_text("ab"));
+    e.sel = Selection::caret(Position::new(0, 2));
+    e.ime_replace(None, "ni", true);
+    assert_eq!(e.doc.paragraphs[0].text(), "abni");
+    assert_eq!(e.ime_marked(), Some(2..4));
+    // The input method rewrites the whole composition on every keystroke.
+    e.ime_replace(None, "nihao", true);
+    assert_eq!(e.doc.paragraphs[0].text(), "abnihao");
+    assert_eq!(e.ime_marked(), Some(2..7));
+    // Committing replaces it with the final text.
+    e.ime_replace(None, "你好", false);
+    assert_eq!(e.doc.paragraphs[0].text(), "ab你好");
+    assert_eq!(e.ime_marked(), None);
+    assert_eq!(e.sel.head, Position::new(0, 8));
+    // UTF-16 offsets: "你好" are two units.
+    assert_eq!(e.ime_text(2..4), ("你好".to_string(), 2..4));
+    assert_eq!(e.ime_selection(), (4..4, false));
+    // The whole composition is a single undo step.
+    assert!(e.undo());
+    assert_eq!(e.doc.paragraphs[0].text(), "ab");
+}
+
+#[test]
+fn ime_composition_over_a_selection_and_cancel() {
+    let mut e = Editor::new(Document::from_text("hello"));
+    e.sel = Selection {
+        anchor: Position::new(0, 1),
+        head: Position::new(0, 4),
+    };
+    e.ime_replace(None, "x", true);
+    assert_eq!(e.doc.paragraphs[0].text(), "hxo");
+    e.ime_replace(None, "xy", true);
+    assert_eq!(e.doc.paragraphs[0].text(), "hxyo");
+    // Cancelling the composition (an empty commit) brings back what it replaced.
+    e.ime_replace(None, "", false);
+    assert_eq!(e.doc.paragraphs[0].text(), "hello");
+    assert_eq!(e.ime_marked(), None);
+}
+
+#[test]
+fn plain_typing_through_the_text_input_replaces_the_selection() {
+    let mut e = Editor::new(Document::from_text("hello"));
+    e.sel = Selection {
+        anchor: Position::new(0, 1),
+        head: Position::new(0, 4),
+    };
+    e.ime_replace(None, "i", false);
+    assert_eq!(e.doc.paragraphs[0].text(), "hio");
+}

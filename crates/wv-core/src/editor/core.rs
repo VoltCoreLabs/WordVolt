@@ -12,6 +12,8 @@ pub struct Editor {
     pub(super) history: History,
     revision: u64,
     saved_revision: u64,
+    /// Text being composed by an input method.
+    pub(super) marked: Option<super::ime_ops::Marked>,
 }
 
 impl Default for Editor {
@@ -29,6 +31,7 @@ impl Editor {
             history: History::default(),
             revision: 0,
             saved_revision: 0,
+            marked: None,
         }
     }
 
