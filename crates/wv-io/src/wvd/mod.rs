@@ -160,6 +160,21 @@ mod tests {
     }
 
     #[test]
+    fn tracked_changes_round_trip() {
+        let mut e = Editor::new(Document::from_text("Старый текст"));
+        e.set_author("Ann");
+        e.set_tracking(true);
+        e.sel = wv_core::Selection {
+            anchor: wv_core::Position::new(0, 0),
+            head: wv_core::Position::new(0, 12),
+        };
+        e.insert_text("Новый");
+        let doc = decode(&encode(&e.doc).unwrap()).unwrap();
+        assert_eq!(doc, e.doc);
+        assert_eq!(doc.changes().len(), 2);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

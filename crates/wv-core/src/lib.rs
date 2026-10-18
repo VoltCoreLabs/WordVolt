@@ -10,7 +10,8 @@ pub mod time;
 
 pub use document::{
     BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, Comment, DocSettings, Document, ImageData,
-    ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph, Run, TableLook,
+    ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph, Revision, Run,
+    TableLook,
 };
 pub use editor::CellSelection;
 pub use editor::MAX_IMAGE_WIDTH;
@@ -18,6 +19,6 @@ pub use editor::{CaseKind, Editor, Heading, TableInfo, TocEntry};
 pub use position::{Position, Selection};
 pub use search::SearchOptions;
 pub use style::{
-    Align, Cell, CharStyle, Crop, Float, ImageRef, ListKind, MAX_TABS, NamedStyle, ParaMetrics,
-    ParaStyle, Script, Wrap, turned_box,
+    Align, Cell, Change, CharStyle, Crop, Float, ImageRef, ListKind, MAX_TABS, NamedStyle,
+    ParaMetrics, ParaStyle, Script, Wrap, turned_box,
 };

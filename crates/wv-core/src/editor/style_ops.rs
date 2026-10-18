@@ -89,6 +89,7 @@ impl Editor {
             link: self.uniform(|c| c.link.clone()).flatten(),
             note: None,
             comment: None,
+            change: None,
         }
     }
 

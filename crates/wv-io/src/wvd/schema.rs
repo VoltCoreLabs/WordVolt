@@ -86,6 +86,16 @@ impl File {
                     date: c.date.clone(),
                 })
                 .collect(),
+            revisions: doc
+                .revisions
+                .iter()
+                .map(|r| CommentDto {
+                    id: r.id,
+                    author: r.author.clone(),
+                    text: String::new(),
+                    date: r.date.clone(),
+                })
+                .collect(),
             table_looks: doc
                 .table_looks
                 .iter()
@@ -232,6 +242,15 @@ impl File {
                 author: c.author,
                 text: c.text,
                 date: c.date,
+            })
+            .collect();
+        doc.revisions = self
+            .revisions
+            .into_iter()
+            .map(|r| wv_core::Revision {
+                id: r.id,
+                author: r.author,
+                date: r.date,
             })
             .collect();
         for (table, widths) in self.table_widths {

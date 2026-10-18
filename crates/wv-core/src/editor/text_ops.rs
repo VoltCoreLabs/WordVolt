@@ -27,6 +27,9 @@ impl Editor {
         if !text.is_empty() && self.doc.paragraphs[start.para].style.image.is_some() {
             return;
         }
+        if self.tracked_replace((start, end), text, page_break) {
+            return;
+        }
         let mut style = self
             .pending_style
             .take()
@@ -164,6 +167,9 @@ impl Editor {
         }
         if let Some(prev) = self.prev_position(at) {
             self.replace_range(prev, at, "");
+            if self.track_changes {
+                self.sel = Selection::caret(prev);
+            }
         }
     }
 

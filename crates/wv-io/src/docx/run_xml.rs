@@ -1,8 +1,8 @@
-use wv_core::{CharStyle, Run, Script};
+use wv_core::{CharStyle, Revision, Run, Script};
 
 use super::writer::{escape, escape_attr};
 
-pub(super) fn write_run(xml: &mut String, run: &Run) {
+pub(super) fn write_run(xml: &mut String, run: &Run, revisions: &[Revision]) {
     // A footnote mark is a reference to the note (Word draws the number).
     if let Some(id) = run.style.note {
         xml.push_str(&format!(
@@ -10,6 +10,24 @@ pub(super) fn write_run(xml: &mut String, run: &Run) {
         ));
         return;
     }
+    // A tracked change wraps the run in `w:ins` / `w:del` (deleted text is `w:delText`).
+    let change = run.style.change;
+    if let Some(c) = change {
+        let rev = revisions.iter().find(|r| r.id == c.id);
+        let (author, date) = rev.map_or(("", ""), |r| (r.author.as_str(), r.date.as_str()));
+        let tag = if c.deleted { "del" } else { "ins" };
+        xml.push_str(&format!(
+            "<w:{tag} w:id=\"{}\" w:author=\"{}\" w:date=\"{}\">",
+            c.id,
+            escape_attr(author),
+            escape_attr(date)
+        ));
+    }
+    let text_tag = if change.is_some_and(|c| c.deleted) {
+        "delText"
+    } else {
+        "t"
+    };
     xml.push_str("<w:r>");
     write_properties(xml, &run.style);
     for (i, piece) in run.text.split('\t').enumerate() {
@@ -18,12 +36,15 @@ pub(super) fn write_run(xml: &mut String, run: &Run) {
         }
         if !piece.is_empty() {
             xml.push_str(&format!(
-                "<w:t xml:space=\"preserve\">{}</w:t>",
+                "<w:{text_tag} xml:space=\"preserve\">{}</w:{text_tag}>",
                 escape(piece)
             ));
         }
     }
     xml.push_str("</w:r>");
+    if let Some(c) = change {
+        xml.push_str(if c.deleted { "</w:del>" } else { "</w:ins>" });
+    }
 }
 
 /// Child order follows the schema: rStyle, rFonts, b, i, caps, strike, color, sz, u, shd, vertAlign.

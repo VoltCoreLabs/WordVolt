@@ -14,6 +14,15 @@ pub struct Comment {
     pub date: String,
 }
 
+/// Who made a tracked change and when (the text carries `CharStyle::change`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Revision {
+    pub id: u32,
+    pub author: String,
+    /// `YYYY-MM-DDTHH:MM:SSZ`; empty when unknown.
+    pub date: String,
+}
+
 /// A document: a list of paragraphs (never empty).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
@@ -29,6 +38,8 @@ pub struct Document {
     pub table_looks: BTreeMap<u32, TableLook>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
+    /// Authors and dates of tracked changes by `Change::id`.
+    pub revisions: Vec<Revision>,
 }
 
 impl Default for Document {
@@ -42,6 +53,7 @@ impl Default for Document {
             page: PageSpec::default(),
             table_looks: BTreeMap::new(),
             comments: Vec::new(),
+            revisions: Vec::new(),
         }
     }
 }
@@ -68,6 +80,31 @@ impl Document {
             .flat_map(|p| p.runs.iter().filter_map(|r| r.style.comment));
         let known = self.comments.iter().map(|c| c.id);
         anchored.chain(known).max().map_or(1, |m| m + 1)
+    }
+
+    /// An id no tracked change has.
+    pub fn next_revision_id(&self) -> u32 {
+        let used = self
+            .paragraphs
+            .iter()
+            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.change.map(|c| c.id)));
+        let known = self.revisions.iter().map(|r| r.id);
+        used.chain(known).max().map_or(1, |m| m + 1)
+    }
+
+    /// The tracked changes that still have text, as (id, deleted), in document order.
+    pub fn changes(&self) -> Vec<(u32, bool)> {
+        let mut out: Vec<(u32, bool)> = Vec::new();
+        for c in self
+            .paragraphs
+            .iter()
+            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.change))
+        {
+            if !out.contains(&(c.id, c.deleted)) {
+                out.push((c.id, c.deleted));
+            }
+        }
+        out
     }
 
     /// Comments that have text anchored to them, in the order of their anchors in the document.

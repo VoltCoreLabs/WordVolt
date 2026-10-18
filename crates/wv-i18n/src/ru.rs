@@ -133,6 +133,19 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::AboutClose => "Закрыть",
         Key::GroupShow => "Показать",
         Key::TipShowMarks => "Непечатаемые символы: ¶ конец абзаца, · пробел, → табуляция",
+        Key::TabReview => "Рецензирование",
+        Key::GroupTracking => "Исправления",
+        Key::GroupChanges => "Изменения",
+        Key::TrackChanges => "Запись исправлений",
+        Key::TipTrackChanges => {
+            "Запись исправлений: набранный текст подчёркивается, удалённый зачёркивается и остаётся, пока исправление не принято"
+        }
+        Key::TipPrevChange => "Предыдущее исправление",
+        Key::TipNextChange => "Следующее исправление",
+        Key::AcceptChange => "Принять",
+        Key::RejectChange => "Отклонить",
+        Key::AcceptAll => "Принять все",
+        Key::RejectAll => "Отклонить все",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

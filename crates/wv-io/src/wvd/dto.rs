@@ -39,6 +39,9 @@ pub(super) struct File {
     /// Comments (the text they are about carries their id).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) comments: Vec<CommentDto>,
+    /// Authors and dates of tracked changes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) revisions: Vec<CommentDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

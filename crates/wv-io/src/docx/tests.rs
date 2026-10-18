@@ -59,14 +59,19 @@ fn reads_a_word_style_document() {
 <w:p><w:r><w:t>one</w:t><w:br/><w:t>two</w:t></w:r></w:p>
 <w:sectPr/></w:body></w:document>"#;
     let doc = decode(&docx_with(xml)).unwrap();
-    assert_eq!(doc.text(), "Title\nplain under\n\none\ntwo");
+    assert_eq!(doc.text(), "Title\nplain removedunder\n\none\ntwo");
+    assert_eq!(
+        doc.changes().len(),
+        1,
+        "deleted text stays as a tracked deletion"
+    );
     assert_eq!(doc.paragraphs[0].style.align, Align::Center);
     assert_eq!(doc.paragraphs[0].style.named, wv_core::NamedStyle::Heading1);
     let second = &doc.paragraphs[1].runs;
     assert!(!second[0].style.bold && second[0].style.italic);
     assert_eq!(second[0].style.size_pt, Some(14));
     assert_eq!(second[0].style.color, Some(0xFF0000));
-    assert!(second[1].style.underline);
+    assert!(second[2].style.underline);
 }
 
 #[test]
@@ -614,4 +619,27 @@ fn comments_are_written_with_their_range_and_part() {
     assert_eq!(back.comments[0].author, "Ann");
     assert!(back.comments[0].date.ends_with('Z'));
     assert_eq!(back.comment_range(1), e.doc.comment_range(1));
+}
+
+#[test]
+fn tracked_changes_are_written_as_ins_and_del_and_read_back() {
+    let mut e = Editor::new(Document::from_text("Old text"));
+    e.set_author("Ann");
+    e.set_tracking(true);
+    e.sel = wv_core::Selection {
+        anchor: wv_core::Position::new(0, 0),
+        head: wv_core::Position::new(0, 3),
+    };
+    e.insert_text("New");
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut body = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/document.xml").unwrap(), &mut body).unwrap();
+    assert!(body.contains("<w:del ") && body.contains("<w:delText"));
+    assert!(body.contains("<w:ins ") && body.contains("w:author=\"Ann\""));
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs[0].text(), e.doc.paragraphs[0].text());
+    assert_eq!(back.changes().len(), 2);
+    assert_eq!(back.revisions.len(), 2);
+    assert!(back.revisions.iter().all(|r| r.author == "Ann"));
 }

@@ -133,6 +133,19 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::AboutClose => "Close",
         Key::GroupShow => "Show",
         Key::TipShowMarks => "Formatting marks: ¶ paragraph end, · space, → tab",
+        Key::TabReview => "Review",
+        Key::GroupTracking => "Tracking",
+        Key::GroupChanges => "Changes",
+        Key::TrackChanges => "Track changes",
+        Key::TipTrackChanges => {
+            "Track changes: typed text is underlined, deleted text is struck through and stays until the change is accepted"
+        }
+        Key::TipPrevChange => "Previous change",
+        Key::TipNextChange => "Next change",
+        Key::AcceptChange => "Accept",
+        Key::RejectChange => "Reject",
+        Key::AcceptAll => "Accept all",
+        Key::RejectAll => "Reject all",
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

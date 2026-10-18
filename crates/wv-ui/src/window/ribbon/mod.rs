@@ -3,6 +3,7 @@
 mod home;
 mod insert;
 mod layout;
+mod review;
 mod tabs;
 pub(crate) mod view;
 
@@ -25,6 +26,7 @@ pub fn ribbon(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl IntoEleme
         Tab::Home => home::groups(this, cx),
         Tab::Insert => insert::groups(this, cx),
         Tab::Layout => layout::groups(this, cx),
+        Tab::Review => review::groups(this, cx),
         Tab::View => view::groups(this, cx),
     };
     let row = div()
