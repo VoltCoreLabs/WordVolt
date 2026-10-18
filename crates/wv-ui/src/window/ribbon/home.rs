@@ -183,7 +183,16 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
 
     let styles = block_group(
         t(lang, Key::GroupStyles),
-        vec![this.style_combo.clone().into_any_element()],
+        vec![
+            this.style_combo.clone().into_any_element(),
+            icon_button("styles-panel", Icon::Rows, this.styles_open, cx)
+                .tip(t(lang, Key::TipStylesPanel))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.styles_open = !this.styles_open;
+                    cx.notify();
+                }))
+                .into_any_element(),
+        ],
         cx,
     );
 

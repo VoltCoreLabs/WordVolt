@@ -9,6 +9,12 @@ pub fn style_key(style: NamedStyle) -> Key {
         NamedStyle::Heading1 => Key::StyleHeading1,
         NamedStyle::Heading2 => Key::StyleHeading2,
         NamedStyle::Heading3 => Key::StyleHeading3,
+        NamedStyle::Heading4 => Key::StyleHeading4,
+        NamedStyle::Heading5 => Key::StyleHeading5,
+        NamedStyle::Heading6 => Key::StyleHeading6,
+        NamedStyle::Heading7 => Key::StyleHeading7,
+        NamedStyle::Heading8 => Key::StyleHeading8,
+        NamedStyle::Heading9 => Key::StyleHeading9,
     }
 }
 

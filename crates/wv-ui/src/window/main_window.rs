@@ -5,6 +5,7 @@ use super::ribbon::{ribbon, tab_bar};
 use super::side_panel::side_panel;
 pub use super::state::MainWindow;
 use super::status_bar::status_bar;
+use super::styles_panel::styles_panel;
 use super::tab_menu::tab_menu;
 use super::titlebar::titlebar;
 use crate::actions::{
@@ -39,6 +40,7 @@ impl Render for MainWindow {
             .flex()
             .gap(space::md())
             .overflow_hidden()
+            .child(styles_panel(self, cx))
             .child(
                 block(cx)
                     .flex_1()

@@ -47,6 +47,12 @@ pub fn encode(doc: &Document) -> String {
                     NamedStyle::Title | NamedStyle::Heading1 => format!("# {text}"),
                     NamedStyle::Heading2 => format!("## {text}"),
                     NamedStyle::Heading3 => format!("### {text}"),
+                    n if n.heading_level().is_some() => {
+                        format!(
+                            "{} {text}",
+                            "#".repeat(usize::from(n.heading_level().unwrap_or(6)).min(6))
+                        )
+                    }
                     _ if p.style.quote => format!("> {text}"),
                     _ => text,
                 }

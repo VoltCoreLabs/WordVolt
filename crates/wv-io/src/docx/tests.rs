@@ -392,3 +392,13 @@ fn merged_cells_round_trip() {
     };
     assert_eq!(cells(&back), cells(&doc));
 }
+
+#[test]
+fn deep_headings_round_trip() {
+    let mut doc = Document::from_text("a\nb\nc");
+    doc.paragraphs[0].style.named = wv_core::NamedStyle::Heading4;
+    doc.paragraphs[1].style.named = wv_core::NamedStyle::Heading6;
+    doc.paragraphs[2].style.named = wv_core::NamedStyle::Heading9;
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert_eq!(back, doc);
+}

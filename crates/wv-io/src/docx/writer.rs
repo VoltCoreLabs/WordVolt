@@ -309,5 +309,11 @@ fn docx_style_id(style: NamedStyle) -> Option<&'static str> {
         NamedStyle::Heading1 => Some("Heading1"),
         NamedStyle::Heading2 => Some("Heading2"),
         NamedStyle::Heading3 => Some("Heading3"),
+        NamedStyle::Heading4 => Some("Heading4"),
+        NamedStyle::Heading5 => Some("Heading5"),
+        NamedStyle::Heading6 => Some("Heading6"),
+        NamedStyle::Heading7 => Some("Heading7"),
+        NamedStyle::Heading8 => Some("Heading8"),
+        NamedStyle::Heading9 => Some("Heading9"),
     }
 }
