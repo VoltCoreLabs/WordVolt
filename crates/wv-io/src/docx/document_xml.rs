@@ -69,6 +69,9 @@ struct State {
     links: HashMap<String, String>,
     link: Option<String>,
     comment: Option<u32>,
+    /// Inside `w:ins` / `w:del`.
+    change: Option<wv_core::Change>,
+    revisions: Vec<wv_core::Revision>,
     paragraphs: Vec<Paragraph>,
     current: Option<Paragraph>,
     align: Align,
@@ -133,7 +136,8 @@ impl State {
             b"pPr" => self.in_paragraph_props = false,
             b"hyperlink" => self.link = None,
             b"rPr" => self.in_run_props = false,
-            b"t" => self.in_text = false,
+            b"t" | b"delText" => self.in_text = false,
+            b"ins" | b"del" if !self.in_paragraph_props && !self.in_run_props => self.change = None,
             _ => {}
         }
     }
@@ -241,6 +245,7 @@ impl State {
         let mut style = self.run.clone();
         style.link = self.link.clone();
         style.comment = self.comment;
+        style.change = self.change;
         let clean = text.replace(['\n', '\r'], " ");
         let end = p.len();
         p.insert(end, &clean, &style);
@@ -256,6 +261,7 @@ impl State {
                 ..Document::default()
             }
         };
+        doc.revisions = self.revisions;
         doc.page = self.page.snapped();
         // Table sizes are fractions of the text width, known now that the page is.
         let page = &doc.page;

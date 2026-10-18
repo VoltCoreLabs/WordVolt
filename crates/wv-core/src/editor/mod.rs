@@ -21,6 +21,7 @@ mod table_rowcol;
 mod tests;
 mod text_ops;
 mod toc_ops;
+mod track_ops;
 
 pub use case_ops::CaseKind;
 pub use core::Editor;

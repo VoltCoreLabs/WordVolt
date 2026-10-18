@@ -13,7 +13,10 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
 <w:document xmlns:w=\"{NS}\" xmlns:r=\"{REL_NS}\"><w:body>"
     );
     let mut links: Vec<String> = Vec::new();
-    let mut lists = Lists::default();
+    let mut lists = Lists {
+        revisions: doc.revisions.clone(),
+        ..Lists::default()
+    };
     let paras = &doc.paragraphs;
     // Text width in twips (tables are laid out in it).
     let page = &doc.page;
@@ -89,6 +92,8 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
 #[derive(Default)]
 pub struct Lists {
     pictures: u32,
+    /// Authors and dates of the tracked changes (copied from the document).
+    revisions: Vec<wv_core::Revision>,
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -234,7 +239,7 @@ pub fn write_paragraph(
             }
             open_link = link;
         }
-        write_run(xml, run);
+        write_run(xml, run, &lists.revisions);
     }
     if open_link.is_some() {
         xml.push_str("</w:hyperlink>");

@@ -1165,3 +1165,93 @@ fn deleting_a_comment_takes_the_anchor_off_and_undo_brings_it_back() {
     e.clear_formatting();
     assert_eq!(e.doc.visible_comments().len(), 1);
 }
+
+fn tracked(text: &str) -> Editor {
+    let mut e = Editor::new(Document::from_text(text));
+    e.set_author("Ann");
+    e.set_tracking(true);
+    e
+}
+
+fn select(e: &mut Editor, from: usize, to: usize) {
+    e.sel = Selection {
+        anchor: Position::new(0, from),
+        head: Position::new(0, to),
+    };
+}
+
+#[test]
+fn tracked_typing_is_marked_as_inserted_and_can_be_rejected() {
+    let mut e = tracked("Привет мир");
+    let at = "Привет".len();
+    e.sel = Selection::caret(Position::new(0, at));
+    e.insert_text("!!");
+    e.insert_text("?");
+    assert_eq!(e.doc.paragraphs[0].text(), "Привет!!? мир");
+    assert_eq!(e.doc.changes(), [(1, false)], "typing continues one change");
+    e.reject_all_changes();
+    assert_eq!(e.doc.paragraphs[0].text(), "Привет мир");
+    assert!(e.doc.changes().is_empty());
+    e.undo();
+    assert_eq!(e.doc.paragraphs[0].text(), "Привет!!? мир");
+}
+
+#[test]
+fn tracked_deletion_keeps_the_text_until_accepted() {
+    let mut e = tracked("Hello");
+    select(&mut e, 1, 4);
+    e.delete_selection();
+    assert_eq!(e.doc.paragraphs[0].text(), "Hello");
+    assert_eq!(e.doc.changes(), [(1, true)]);
+    let before = e.doc.clone();
+    e.reject_all_changes();
+    assert_eq!(e.doc.paragraphs[0].text(), "Hello");
+    assert!(e.doc.changes().is_empty());
+    e.undo();
+    assert_eq!(e.doc, before);
+    e.accept_all_changes();
+    assert_eq!(e.doc.paragraphs[0].text(), "Ho");
+}
+
+#[test]
+fn deleting_own_insertion_leaves_no_trace_and_replacing_marks_both() {
+    let mut e = tracked("ab");
+    e.sel = Selection::caret(Position::new(0, 1));
+    e.insert_text("x");
+    e.backspace();
+    assert_eq!(e.doc.paragraphs[0].text(), "ab");
+    assert!(e.doc.changes().is_empty());
+    select(&mut e, 0, 1);
+    e.insert_text("Z");
+    assert_eq!(e.doc.paragraphs[0].text(), "aZb");
+    assert_eq!(e.doc.changes().len(), 2);
+    e.accept_all_changes();
+    assert_eq!(e.doc.paragraphs[0].text(), "Zb");
+}
+
+#[test]
+fn changes_here_and_navigation() {
+    let mut e = tracked("one two");
+    select(&mut e, 4, 7);
+    e.delete_selection();
+    e.sel = Selection::caret(Position::new(0, 0));
+    e.insert_text("A");
+    assert!(e.goto_change(true));
+    assert_eq!(e.selected_text(), "two");
+    assert!(e.goto_change(true), "wraps around");
+    assert_eq!(e.selected_text(), "A");
+    assert!(e.goto_change(false));
+    assert_eq!(e.selected_text(), "two");
+    assert_eq!(e.changes_here().len(), 1);
+    e.reject_changes_here();
+    assert_eq!(e.doc.changes().len(), 1, "only the insertion is left");
+    assert_eq!(e.doc.paragraphs[0].text(), "Aone two");
+}
+
+#[test]
+fn untracked_edits_are_plain() {
+    let mut e = Editor::new(Document::from_text("abc"));
+    e.sel = Selection::caret(Position::new(0, 1));
+    e.insert_text("x");
+    assert!(e.doc.changes().is_empty());
+}

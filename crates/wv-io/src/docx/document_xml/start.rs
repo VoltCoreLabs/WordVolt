@@ -221,7 +221,19 @@ impl State {
                 self.run.color = attr(e, b"val")
                     .and_then(|v| u32::from_str_radix(&v, 16).ok().filter(|_| v.len() == 6));
             }
-            b"t" => self.in_text = !empty,
+            b"t" | b"delText" => self.in_text = !empty,
+            b"ins" | b"del" if !empty && !self.in_paragraph_props && !self.in_run_props => {
+                let id = attr(e, b"id").and_then(|v| v.parse().ok()).unwrap_or(0);
+                let deleted = name.as_ref() == b"del";
+                self.change = Some(wv_core::Change { id, deleted });
+                if !self.revisions.iter().any(|r| r.id == id) {
+                    self.revisions.push(wv_core::Revision {
+                        id,
+                        author: attr(e, b"author").unwrap_or_default(),
+                        date: attr(e, b"date").unwrap_or_default(),
+                    });
+                }
+            }
             b"tab" if !self.in_run_props && !self.in_paragraph_props => self.text("\t"),
             b"br" if attr(e, b"type").as_deref() == Some("page") => self.line_break(true),
             b"br" | b"cr" => self.line_break(false),

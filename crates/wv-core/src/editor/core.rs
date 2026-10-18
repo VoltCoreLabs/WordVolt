@@ -14,6 +14,10 @@ pub struct Editor {
     saved_revision: u64,
     /// Text being composed by an input method.
     pub(super) marked: Option<super::ime_ops::Marked>,
+    /// Edits are recorded as tracked changes.
+    pub(super) track_changes: bool,
+    /// Author of the tracked changes.
+    pub(super) author: String,
 }
 
 impl Default for Editor {
@@ -32,6 +36,8 @@ impl Editor {
             revision: 0,
             saved_revision: 0,
             marked: None,
+            track_changes: false,
+            author: String::new(),
         }
     }
 

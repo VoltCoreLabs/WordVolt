@@ -7,6 +7,14 @@ pub enum Script {
     Sub,
 }
 
+/// A tracked change the text belongs to (see `Document::revisions`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Change {
+    pub id: u32,
+    /// The text was deleted (it stays, struck through, until the change is accepted).
+    pub deleted: bool,
+}
+
 /// Character formatting of a run.
 #[derive(Clone, Debug, Default, PartialEq, Hash)]
 pub struct CharStyle {
@@ -35,4 +43,6 @@ pub struct CharStyle {
     pub note: Option<u32>,
     /// The text is the anchor of comment `id` (see `Document::comments`).
     pub comment: Option<u32>,
+    /// The text was inserted or deleted with change tracking on.
+    pub change: Option<Change>,
 }

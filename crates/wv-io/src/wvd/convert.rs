@@ -30,6 +30,11 @@ pub(super) struct RunDto {
     /// The text is the anchor of this comment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     comment: Option<u32>,
+    /// Tracked change: its id, and whether the text was deleted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    change: Option<u32>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    deleted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     size_pt: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -126,6 +131,8 @@ pub(super) fn run_dto(r: &Run) -> RunDto {
         link: r.style.link.clone(),
         note: r.style.note,
         comment: r.style.comment,
+        change: r.style.change.map(|c| c.id),
+        deleted: r.style.change.is_some_and(|c| c.deleted),
         size_pt: r.style.size_pt,
         color: r.style.color,
         font: r.style.font.clone(),
@@ -146,6 +153,10 @@ pub(super) fn run_of(r: RunDto) -> Run {
         link: r.link,
         note: r.note,
         comment: r.comment,
+        change: r.change.map(|id| wv_core::Change {
+            id,
+            deleted: r.deleted,
+        }),
         size_pt: r.size_pt,
         color: r.color,
         font: r.font,

@@ -1,5 +1,5 @@
 use super::Run;
-use crate::style::{CharStyle, ParaStyle};
+use crate::style::{Change, CharStyle, ParaStyle};
 
 /// Size (pt) of the text of a footnote unless it says otherwise.
 pub const NOTE_SIZE_PT: u16 = 10;
@@ -67,12 +67,22 @@ impl Paragraph {
     /// `None` for Normal paragraphs, which need no change. Text and offsets stay the same.
     pub fn with_named_style(&self) -> Option<Paragraph> {
         let note = self.style.note.is_some();
-        if self.style.named == crate::style::NamedStyle::Normal && !note {
+        let tracked = self.runs.iter().any(|r| r.style.change.is_some());
+        if self.style.named == crate::style::NamedStyle::Normal && !note && !tracked {
             return None;
         }
         let mut resolved = self.clone();
         for run in &mut resolved.runs {
             self.style.named.apply(&mut run.style);
+            // Tracked changes show as coloured: inserted text underlined, deleted text struck.
+            if let Some(change) = run.style.change {
+                run.style.color = Some(CHANGE_COLOR);
+                if change.deleted {
+                    run.style.strike = true;
+                } else {
+                    run.style.underline = true;
+                }
+            }
             // The text of a footnote is smaller than the text.
             if note && run.style.size_pt.is_none() {
                 run.style.size_pt = Some(NOTE_SIZE_PT);
@@ -163,6 +173,36 @@ impl Paragraph {
         self.normalize();
     }
 
+    /// Tracked deletion of `start..end`: text inserted by `own` changes is removed for good, the
+    /// rest stays, marked as deleted by change `id`. Returns how many bytes were removed.
+    pub fn track_delete(
+        &mut self,
+        (start, end): (usize, usize),
+        id: u32,
+        own: &dyn Fn(u32) -> bool,
+    ) -> usize {
+        if start >= end {
+            return 0;
+        }
+        let a = self.split_at(start);
+        let b = self.split_at(end);
+        let mut removed = 0;
+        let mut kept = Vec::with_capacity(b - a);
+        for mut run in self.runs.drain(a..b) {
+            match run.style.change {
+                Some(c) if !c.deleted && own(c.id) => removed += run.text.len(),
+                Some(_) => kept.push(run),
+                None => {
+                    run.style.change = Some(Change { id, deleted: true });
+                    kept.push(run);
+                }
+            }
+        }
+        self.runs.splice(a..a, kept);
+        self.normalize();
+        removed
+    }
+
     /// Cuts everything from `offset` on and returns it as a new paragraph with the same style.
     pub fn split_off(&mut self, offset: usize) -> Paragraph {
         let i = self.split_at(offset);
@@ -218,9 +258,13 @@ impl Paragraph {
 }
 
 /// The style of text typed next to a run with `style` (it is not a footnote mark itself).
+/// Colour of tracked changes (Word's default red).
+const CHANGE_COLOR: u32 = 0xC0392B;
+
 fn typed(style: &CharStyle) -> CharStyle {
     CharStyle {
         note: None,
+        change: None,
         ..style.clone()
     }
 }
