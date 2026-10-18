@@ -260,7 +260,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                 super::format_marks::paint_line_marks(
                     v,
                     &m,
-                    (line, &para.text),
+                    (line, &para.text, para.toc),
                     (left, top),
                     &at,
                     (window, cx),

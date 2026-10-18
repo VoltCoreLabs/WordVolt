@@ -11,7 +11,7 @@ use super::page_view::PageView;
 pub(super) fn paint_line_marks(
     v: &PageView,
     m: &GpuiMeasurer,
-    (line, text): (&Line, &str),
+    (line, text, leader): (&Line, &str, bool),
     place: (f32, f32),
     at: &dyn Fn(f32, f32) -> Point<Pixels>,
     (window, cx): (&mut Window, &mut App),
@@ -45,7 +45,7 @@ pub(super) fn paint_line_marks(
         for (i, ch) in piece.char_indices() {
             let glyph = match ch {
                 ' ' => "·",
-                '\t' => "→",
+                '\t' if !leader => "→",
                 _ => continue,
             };
             let before = m.width(&piece[..i], &f.style);
