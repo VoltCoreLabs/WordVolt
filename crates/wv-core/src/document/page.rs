@@ -12,6 +12,8 @@ pub struct PageSpec {
     /// Distance from the top edge to the header text and from the bottom edge to the footer text.
     pub header_distance: f32,
     pub footer_distance: f32,
+    /// Text columns (1..=4); they flow top to bottom, left to right.
+    pub columns: u8,
 }
 
 /// Margin presets of the "Margins" menu.
@@ -24,6 +26,9 @@ pub enum Margins {
 }
 
 const INCH: f32 = 96.0;
+
+/// Most text columns of a page.
+pub const MAX_COLUMNS: u8 = 4;
 
 /// Word's default header/footer distance: 1.25 cm (709 twips).
 pub const BAND_DISTANCE: f32 = 709.0 / 15.0;
@@ -45,6 +50,7 @@ impl PageSpec {
             gutter: 0.0,
             header_distance: BAND_DISTANCE,
             footer_distance: BAND_DISTANCE,
+            columns: 1,
         }
     }
 
@@ -63,6 +69,12 @@ impl PageSpec {
             let (_, w, h) = Self::SIZES[index];
             (self.width, self.height) = if self.is_landscape() { (h, w) } else { (w, h) };
         }
+        self
+    }
+
+    /// The same page with `n` text columns (1..=4).
+    pub fn with_columns(mut self, n: u8) -> Self {
+        self.columns = n.clamp(1, MAX_COLUMNS);
         self
     }
 
@@ -134,6 +146,7 @@ impl PageSpec {
             gutter,
             header_distance: header.clamp(0.0, top),
             footer_distance: footer.clamp(0.0, bottom),
+            columns: 1,
         }
     }
 

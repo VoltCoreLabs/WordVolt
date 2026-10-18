@@ -58,6 +58,7 @@ pub enum Icon {
     Paragraph,
     PageBreak,
     PaintBrush,
+    Columns,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -125,6 +126,7 @@ impl Icon {
             Icon::Paragraph => "paragraph",
             Icon::PageBreak => "page-break",
             Icon::PaintBrush => "paint-brush",
+            Icon::Columns => "columns",
         }
     }
 }

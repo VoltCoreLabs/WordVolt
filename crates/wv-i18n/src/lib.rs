@@ -121,6 +121,10 @@ pub enum Key {
     TipIndent,
     TipOutdent,
     TipLineSpacing,
+    TipColumns,
+    ColumnsOne,
+    ColumnsTwo,
+    ColumnsThree,
     GroupClipboard,
     TipFormatPainter,
     GroupPages,
@@ -339,6 +343,10 @@ fn ru(key: Key) -> &'static str {
         Key::TipIndent => "Увеличить отступ (Tab в списке)",
         Key::TipOutdent => "Уменьшить отступ (Shift+Tab)",
         Key::TipLineSpacing => "Интервалы и отступы абзаца",
+        Key::TipColumns => "Колонки текста",
+        Key::ColumnsOne => "Одна колонка",
+        Key::ColumnsTwo => "Две колонки",
+        Key::ColumnsThree => "Три колонки",
         Key::GroupClipboard => "Буфер обмена",
         Key::TipFormatPainter => {
             "Формат по образцу: выделите текст с нужным видом, нажмите, затем выделите, куда перенести"
@@ -553,6 +561,10 @@ fn en(key: Key) -> &'static str {
         Key::TipIndent => "Increase indent (Tab in a list)",
         Key::TipOutdent => "Decrease indent (Shift+Tab)",
         Key::TipLineSpacing => "Paragraph spacing and indents",
+        Key::TipColumns => "Text columns",
+        Key::ColumnsOne => "One column",
+        Key::ColumnsTwo => "Two columns",
+        Key::ColumnsThree => "Three columns",
         Key::GroupClipboard => "Clipboard",
         Key::TipFormatPainter => {
             "Format painter: select text with the look you want, click, then select where to apply it"

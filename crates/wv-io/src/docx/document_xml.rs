@@ -210,6 +210,10 @@ impl State {
                 p.header_distance = px(b"header", p.header_distance);
                 p.footer_distance = px(b"footer", p.footer_distance);
             }
+            b"cols" => {
+                let num = attr(e, b"num").and_then(|v| v.parse::<u8>().ok());
+                self.page.columns = num.unwrap_or(1).clamp(1, wv_core::MAX_COLUMNS);
+            }
             b"pPr" => self.in_paragraph_props = true,
             b"ilvl" if self.in_paragraph_props => {
                 self.indent = attr(e, b"val")

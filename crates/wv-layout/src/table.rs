@@ -157,3 +157,12 @@ pub struct TableBox {
     /// Row boundaries on this page, `rows + 1` values starting at the table's top.
     pub row_y: Vec<f32>,
 }
+
+impl TableBox {
+    /// Moves the part of the table `dx` px to the right (it sits in a later column).
+    pub fn shift(&mut self, dx: f32) {
+        self.col_x.iter_mut().for_each(|x| *x += dx);
+        self.cells.iter_mut().for_each(|c| c.x += dx);
+        self.shades.iter_mut().for_each(|s| s.x += dx);
+    }
+}

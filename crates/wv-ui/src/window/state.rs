@@ -85,6 +85,7 @@ pub struct MainWindow {
     pub table_edit_menu: Entity<MenuButton>,
     pub paper_menu: Entity<MenuButton>,
     pub margins_menu: Entity<MenuButton>,
+    pub columns_menu: Entity<MenuButton>,
     pub page_setup: Entity<PageSetupEditor>,
     pub paragraph_dialog: Entity<ParagraphEditor>,
     pub menu_bar: Entity<MenuBar>,
@@ -376,6 +377,20 @@ impl MainWindow {
             },
         )
         .detach();
+        let columns_menu = cx.new(|cx| {
+            let items = [Key::ColumnsOne, Key::ColumnsTwo, Key::ColumnsThree]
+                .map(MenuItem::Tr)
+                .to_vec();
+            MenuButton::new("columns", Icon::Columns, Key::TipColumns, items, lang, cx)
+        });
+        cx.subscribe(
+            &columns_menu,
+            |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
+                let n = (*index as u8 + 1).min(3);
+                this.edit(cx, move |c| c.set_page(c.doc.page.with_columns(n)));
+            },
+        )
+        .detach();
         let page_setup = cx.new(|cx| PageSetupEditor::new(lang, cx));
         cx.subscribe(
             &page_setup,
@@ -451,6 +466,7 @@ impl MainWindow {
             table_edit_menu,
             paper_menu,
             margins_menu,
+            columns_menu,
             page_setup,
             paragraph_dialog,
             menu_bar,

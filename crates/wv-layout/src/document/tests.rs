@@ -16,6 +16,7 @@ fn small() -> PageSetup {
         footer_distance: 5.0,
         paragraph_spacing: 0.0,
         line_spacing: 1.0,
+        columns: 1,
     }
 }
 
@@ -411,4 +412,44 @@ fn a_page_break_at_the_top_adds_no_blank_page() {
     doc.paragraphs[0].style.page_break = true;
     let l = DocLayout::new(&doc, small(), &Fixed);
     assert_eq!(l.pages.len(), 1);
+}
+
+fn two_columns() -> PageSetup {
+    PageSetup {
+        columns: 2,
+        ..small()
+    }
+}
+
+#[test]
+fn text_fills_the_first_column_then_the_second() {
+    // Content 80 x 80, gap 48, two columns of 16 px each: 2 chars per line, 5 lines per column.
+    let doc = Document::from_text("a\nb\nc\nd\ne\nf\ng");
+    let l = DocLayout::new(&doc, two_columns(), &Fixed);
+    assert_eq!(l.pages.len(), 1, "both columns are on one page");
+    let slices = &l.pages[0].slices;
+    assert_eq!(slices.len(), 7);
+    // First five paragraphs in column 1 (x = 0), the rest at the top of column 2.
+    assert!(slices[..5].iter().all(|s| s.x == 0.0));
+    let step = two_columns().column_width() + crate::page::COLUMN_GAP;
+    assert_eq!((slices[5].x, slices[5].y), (step, 0.0));
+    assert_eq!(slices[6].x, step);
+}
+
+#[test]
+fn a_page_break_skips_to_the_next_page_not_the_next_column() {
+    let mut doc = Document::from_text("a\nb");
+    doc.paragraphs[1].style.page_break = true;
+    let l = DocLayout::new(&doc, two_columns(), &Fixed);
+    assert_eq!(l.pages.len(), 2);
+    assert_eq!(l.pages[1].slices[0].x, 0.0);
+}
+
+#[test]
+fn caret_in_the_second_column_is_offset() {
+    let doc = Document::from_text("a\nb\nc\nd\ne\nf");
+    let l = DocLayout::new(&doc, two_columns(), &Fixed);
+    let c = l.caret(Position::new(5, 0), &Fixed).unwrap();
+    let step = two_columns().column_width() + crate::page::COLUMN_GAP;
+    assert_eq!(c.x, 10.0 + step);
 }

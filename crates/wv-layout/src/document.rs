@@ -52,7 +52,8 @@ impl DocLayout {
         cache: &mut LayoutCache,
     ) -> Self {
         cache.begin();
-        let content_width = setup.content_width();
+        // Text is laid out for one column; tables and paragraphs in cells likewise.
+        let content_width = setup.column_width();
         let fractions = table::column_fractions(doc);
         let mut counters = Counters::default();
         let paragraphs: Vec<Rc<ParagraphLayout>> = doc
