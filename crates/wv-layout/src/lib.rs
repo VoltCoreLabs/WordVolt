@@ -11,6 +11,7 @@ mod numbering;
 mod page;
 mod paginate;
 mod paragraph;
+mod raster;
 mod table;
 mod table_page;
 
@@ -25,6 +26,7 @@ pub use paragraph::{
     INDENT_STEP, ImageBox, LIST_HANGING, Obstacle, Options, ParagraphLayout, QUOTE_INDENT,
     layout_paragraph, layout_paragraph_around,
 };
+pub use raster::{Strip, silhouette, turned_png, turned_raster};
 pub use table::{CELL_PADDING, CellRect, Shade, TableBox};
 
 #[cfg(test)]

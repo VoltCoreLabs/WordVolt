@@ -19,21 +19,6 @@ pub fn probe_image(bytes: &[u8]) -> Option<(ImageFormat, u32, u32)> {
     Some((format, width, height))
 }
 
-/// The picture turned by `quarters` quarter turns clockwise, as PNG bytes; `None` if it cannot be
-/// read.
-pub fn rotate_image(bytes: &[u8], quarters: u8) -> Option<Vec<u8>> {
-    let decoded = image::load_from_memory(bytes).ok()?;
-    let turned = match quarters % 4 {
-        0 => decoded,
-        1 => decoded.rotate90(),
-        2 => decoded.rotate180(),
-        _ => decoded.rotate270(),
-    };
-    let mut out = Cursor::new(Vec::new());
-    turned.write_to(&mut out, image::ImageFormat::Png).ok()?;
-    Some(out.into_inner())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

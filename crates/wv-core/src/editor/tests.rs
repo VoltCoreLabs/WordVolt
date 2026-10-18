@@ -977,31 +977,37 @@ fn a_picture_moves_to_another_paragraph() {
 }
 
 #[test]
-fn rotating_a_picture_swaps_its_size_and_turns_the_crop() {
+fn turning_a_picture_keeps_its_centre() {
     let mut e = doc_with_picture();
-    e.drag_image_crop(
-        crate::Crop {
-            left: 0.1,
-            top: 0.2,
-            right: 0.0,
-            bottom: 0.0,
-        },
-        90.0,
-        40.0,
-        None,
-        true,
-    );
-    e.rotate_image(1);
+    let float = crate::Float {
+        x: 100.0,
+        y: 100.0,
+        wrap: crate::Wrap::Square,
+    };
+    e.set_image_geometry(100.0, 50.0, Some(float));
+    e.turn_image(90.0);
     let i = e.image_at_caret().unwrap();
-    assert_eq!((i.width, i.height, i.rotation), (40.0, 90.0, 1));
-    // What was cut off the left is now cut off the top, the top cut is now on the right.
-    assert_eq!((i.crop.top, i.crop.right, i.crop.left), (0.1, 0.2, 0.0));
-    e.rotate_image(-1);
+    assert_eq!((i.width, i.height, i.angle), (100.0, 50.0, 90.0));
+    // The box is 50 x 100 now: the centre (150, 125) stays.
+    let f = i.float.unwrap();
+    assert_eq!((f.x, f.y), (125.0, 75.0));
+    e.turn_image(-90.0);
     let i = e.image_at_caret().unwrap();
-    assert_eq!((i.width, i.height, i.rotation), (90.0, 40.0, 0));
-    assert_eq!((i.crop.left, i.crop.top), (0.1, 0.2));
-    e.rotate_image(4);
-    assert_eq!(e.image_at_caret().unwrap().rotation, 0);
+    assert_eq!(i.angle, 0.0);
+    assert_eq!((i.float.unwrap().x, i.float.unwrap().y), (100.0, 100.0));
+    e.turn_image(400.0);
+    assert_eq!(e.image_at_caret().unwrap().angle, 40.0);
+}
+
+#[test]
+fn dragging_the_angle_is_one_undo_step() {
+    let mut e = doc_with_picture();
+    e.drag_image_angle(10.0, true);
+    e.drag_image_angle(20.0, false);
+    e.drag_image_angle(30.0, false);
+    assert_eq!(e.image_at_caret().unwrap().angle, 30.0);
+    assert!(e.undo());
+    assert_eq!(e.image_at_caret().unwrap().angle, 0.0);
 }
 
 #[test]

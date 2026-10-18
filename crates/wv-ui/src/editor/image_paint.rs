@@ -7,34 +7,69 @@ use std::sync::Arc;
 
 use wv_core::{Crop, ImageFormat};
 
-use super::image_handles::{CORNERS, HANDLE, HANDLES, Handle};
+use super::image_handles::{
+    CORNERS, HANDLE, HANDLES, Handle, ROTATE_GAP, ROTATE_RADIUS, rotate_handle,
+};
 use super::page_paint::PageView;
 use super::view::EditorView;
+
+/// How a picture is shown: size before turning, angle (degrees) and the cut.
+#[derive(Clone, Copy)]
+pub struct Look {
+    pub id: u32,
+    pub frame: (f32, f32),
+    pub angle: f32,
+    pub crop: Crop,
+}
+
+/// Key of a turned picture: picture, angle (half degrees), cut (thousandths), frame (px).
+type TurnedKey = (u32, i32, [i32; 4], i32, i32);
 
 /// The document's pictures as GPUI images; a turned picture is made when first needed.
 #[derive(Default)]
 pub struct PictureSet {
     keys: Vec<Arc<Vec<u8>>>,
     base: Vec<Arc<Image>>,
-    turned: RefCell<HashMap<(u32, u8), Arc<Image>>>,
+    turned: RefCell<HashMap<TurnedKey, Arc<Image>>>,
 }
 
 impl PictureSet {
-    /// Picture `id` turned by `rotation` quarter turns clockwise.
-    pub fn get(&self, id: u32, rotation: u8) -> Option<Arc<Image>> {
-        let base = self.base.get(id as usize)?;
-        if rotation.is_multiple_of(4) {
+    /// The picture as it is shown: the stored one when it is not turned (the cut is done when it
+    /// is painted); a turned one is made as a raster of the turned, cut picture.
+    pub fn get(&self, look: &Look) -> Option<Arc<Image>> {
+        let base = self.base.get(look.id as usize)?;
+        if look.angle.rem_euclid(360.0) < 0.01 {
             return Some(base.clone());
         }
+        let c = look.crop;
+        let key = (
+            look.id,
+            (look.angle * 2.0).round() as i32,
+            [c.left, c.top, c.right, c.bottom].map(|v| (v * 1000.0).round() as i32),
+            look.frame.0.round() as i32,
+            look.frame.1.round() as i32,
+        );
         let mut turned = self.turned.borrow_mut();
-        let image = turned.entry((id, rotation % 4)).or_insert_with(|| {
-            wv_io::rotate_image(&self.keys[id as usize], rotation)
-                .map(|png| Arc::new(Image::from_bytes(gpui_kit::ImageFormat::Png, png)))
-                .unwrap_or_else(|| base.clone())
+        if turned.len() > 24 && !turned.contains_key(&key) {
+            turned.clear();
+        }
+        let image = turned.entry(key).or_insert_with(|| {
+            wv_layout::turned_png(
+                &self.keys[look.id as usize],
+                look.frame,
+                look.crop,
+                look.angle,
+                TURNED_SIDE,
+            )
+            .map(|png| Arc::new(Image::from_bytes(gpui_kit::ImageFormat::Png, png)))
+            .unwrap_or_else(|| base.clone())
         });
         Some(image.clone())
     }
 }
+
+/// Longest side (px) of the raster of a turned picture.
+const TURNED_SIDE: u32 = 800;
 
 impl EditorView {
     /// GPUI images for the document's pictures (kept while the stored bytes stay the same).
@@ -71,31 +106,37 @@ impl EditorView {
     }
 }
 
-/// Paints a picture (turned, with its crop cut off) in `bounds`, the visible part of it.
+/// Paints a picture in `bounds`, the box that holds it turned and cut.
 fn paint_picture(
     v: &PageView,
-    image: (u32, u8, Crop),
+    look: &Look,
     bounds: Bounds<Pixels>,
     window: &mut Window,
     cx: &mut App,
 ) {
-    let (id, rotation, crop) = image;
-    let Some(source) = v.images.get(id, rotation) else {
+    let Some(source) = v.images.get(look) else {
         return;
     };
-    // The whole picture is laid out so that its visible part lands in `bounds`.
-    let (vw, vh) = crop.visible();
-    let (full_w, full_h) = (bounds.size.width / vw, bounds.size.height / vh);
-    let full = Bounds::new(
-        point(
-            bounds.origin.x - full_w * crop.left,
-            bounds.origin.y - full_h * crop.top,
-        ),
-        size(full_w, full_h),
-    );
-    if let Some(data) = source.use_render_image(window, cx) {
-        let _ = window.paint_image(bounds, full, Corners::default(), data, 0, false);
-    }
+    let Some(data) = source.use_render_image(window, cx) else {
+        return;
+    };
+    // A turned picture is a raster of exactly the box; an upright one is laid out whole so that
+    // its visible part lands in the box.
+    let full = if look.angle.rem_euclid(360.0) < 0.01 {
+        let crop = look.crop;
+        let (vw, vh) = crop.visible();
+        let (full_w, full_h) = (bounds.size.width / vw, bounds.size.height / vh);
+        Bounds::new(
+            point(
+                bounds.origin.x - full_w * crop.left,
+                bounds.origin.y - full_h * crop.top,
+            ),
+            size(full_w, full_h),
+        )
+    } else {
+        bounds
+    };
+    let _ = window.paint_image(bounds, full, Corners::default(), data, 0, false);
 }
 
 /// Paints the pictures that are in the line of text on this page.
@@ -116,23 +157,22 @@ pub fn paint_images(
             continue;
         };
         let top = setup.margin_top + slice.y;
-        if !visible(top, image.height) {
+        let (box_w, box_h) = image.bounds();
+        if !visible(top, box_h) {
             continue;
         }
         let x = setup.margin_left + slice.x + para.lines[0].x;
-        let bounds = Bounds::new(
-            at(x, top),
-            size(px(image.width * v.zoom), px(image.height * v.zoom)),
-        );
-        paint_picture(
-            v,
-            (image.id, image.rotation, image.crop),
-            bounds,
-            window,
-            cx,
-        );
+        let bounds = Bounds::new(at(x, top), size(px(box_w * v.zoom), px(box_h * v.zoom)));
+        let look = Look {
+            id: image.id,
+            frame: (image.width, image.height),
+            angle: image.angle,
+            crop: image.crop,
+        };
+        paint_picture(v, &look, bounds, window, cx);
         if v.head.para == slice.para {
-            paint_handles(v, bounds, &CORNERS, window);
+            let handles: &[Handle] = if v.cropping { &HANDLES } else { &CORNERS };
+            paint_handles(v, bounds, handles, !v.cropping, window);
         }
     }
 }
@@ -153,24 +193,36 @@ pub fn paint_floats(
             at(setup.margin_left + f.x, setup.margin_top + f.y),
             size(px(f.width * v.zoom), px(f.height * v.zoom)),
         );
+        let look = Look {
+            id: f.id,
+            frame: f.frame,
+            angle: f.angle,
+            crop: f.crop,
+        };
         if behind {
             if is_behind {
-                paint_picture(v, (f.id, f.rotation, f.crop), bounds, window, cx);
+                paint_picture(v, &look, bounds, window, cx);
             }
             continue;
         }
         if !is_behind {
-            paint_picture(v, (f.id, f.rotation, f.crop), bounds, window, cx);
+            paint_picture(v, &look, bounds, window, cx);
         }
         // The handles go over everything, also over the text in front of a "behind" picture.
         if v.head.para == f.para {
-            paint_handles(v, bounds, &HANDLES, window);
+            paint_handles(v, bounds, &HANDLES, !v.cropping, window);
         }
     }
 }
 
 /// Outline and handles of the selected picture.
-fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, handles: &[Handle], window: &mut Window) {
+fn paint_handles(
+    v: &PageView,
+    bounds: Bounds<Pixels>,
+    handles: &[Handle],
+    rotate: bool,
+    window: &mut Window,
+) {
     // Cropping shows dark handles.
     let accent = if v.cropping { v.text } else { v.link_color };
     let line = px(1.5);
@@ -200,5 +252,30 @@ fn paint_handles(v: &PageView, bounds: Bounds<Pixels>, handles: &[Handle], windo
         }
         window.paint_quad(fill(outer, accent));
         window.paint_quad(fill(outer.dilate(px(-2.0)), rgb(0xffffff)));
+    }
+    if rotate {
+        // The handle that turns the picture, above the middle of the top edge.
+        let (hx, hy) = rotate_handle(f32::from(o.x), f32::from(o.y), f32::from(s.width));
+        let r = px(ROTATE_RADIUS);
+        let centre = point(px(hx), px(hy));
+        window.paint_quad(fill(
+            Bounds::new(
+                point(centre.x - line / 2.0, centre.y),
+                size(line, px(ROTATE_GAP)),
+            ),
+            accent,
+        ));
+        let dot = Bounds::new(centre - point(r, r), size(r * 2.0, r * 2.0));
+        if dot.dilate(px(3.0)).contains(&window.mouse_position()) {
+            window.set_window_cursor_style(CursorStyle::Crosshair);
+        }
+        window.paint_quad(quad(
+            dot,
+            Corners::all(r),
+            rgb(0xffffff),
+            line,
+            accent,
+            BorderStyle::default(),
+        ));
     }
 }

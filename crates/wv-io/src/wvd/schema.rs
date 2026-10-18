@@ -30,7 +30,7 @@ impl File {
                         y: f.y,
                         wrap: wrap_name(f.wrap).to_string(),
                     }),
-                    rotation: i.rotation,
+                    angle: i.angle,
                     crop: (!i.crop.is_none()).then_some([
                         i.crop.left,
                         i.crop.top,
@@ -138,7 +138,7 @@ impl File {
                             y: f.y,
                             wrap: wrap_from(&f.wrap),
                         }),
-                        rotation: i.rotation % 4,
+                        angle: i.angle.rem_euclid(360.0),
                         crop: i.crop.map_or(
                             wv_core::Crop::default(),
                             |[left, top, right, bottom]| wv_core::Crop {

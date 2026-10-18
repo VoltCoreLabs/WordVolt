@@ -6,4 +6,5 @@ pub use char_style::{CharStyle, Script};
 pub use named::NamedStyle;
 pub use para_style::{
     Align, Cell, Crop, Float, ImageRef, ListKind, MAX_TABS, ParaMetrics, ParaStyle, Wrap,
+    turned_box,
 };

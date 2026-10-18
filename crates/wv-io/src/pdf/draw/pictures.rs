@@ -6,42 +6,57 @@ use wv_layout::DocLayout;
 
 use super::{Canvas, PT};
 
+/// What a picture looks like on the page: the box it takes up (x, top, width, height in layout
+/// px), its size before turning, the angle (degrees clockwise) and what is cut off its sides.
+pub(super) struct Placed {
+    pub id: u32,
+    pub rect: (f32, f32, f32, f32),
+    pub frame: (f32, f32),
+    pub angle: f32,
+    pub crop: Crop,
+}
+
 impl Canvas<'_> {
-    /// A picture: `x`/`top`/`width`/`height` is the visible part; rotated by quarter turns and with
-    /// `crop` cut off its sides (the whole picture is drawn and clipped to the visible part).
-    pub(super) fn picture(
-        &mut self,
-        id: u32,
-        rect: (f32, f32, f32, f32),
-        rotation: u8,
-        crop: Crop,
-    ) {
-        let (x, top, width, height) = rect;
-        let name = format!("I{id}");
-        let (vw, vh) = crop.visible();
-        let (fw, fh) = (width / vw, height / vh);
-        let (fx, ftop) = (x - crop.left * fw, top - crop.top * fh);
-        let (px, py) = (self.x(fx), self.y(ftop + fh));
+    /// A picture turned about the centre of its box and with `crop` cut off its sides: the whole
+    /// picture is drawn, turned, and clipped to the part that stays.
+    pub(super) fn picture(&mut self, p: &Placed) {
+        let (x, top, bw, bh) = p.rect;
+        let name = format!("I{}", p.id);
+        let (vw, vh) = p.crop.visible();
+        let (fw, fh) = (p.frame.0 / vw, p.frame.1 / vh);
+        // The visible part is centred in the box; the centre of the whole picture is off it by what
+        // was cut on each side, turned with the picture.
+        let (sin, cos) = p.angle.to_radians().sin_cos();
+        let off = (
+            (0.5 - (p.crop.left + vw / 2.0)) * fw,
+            (0.5 - (p.crop.top + vh / 2.0)) * fh,
+        );
+        let (cx, cy) = (
+            x + bw / 2.0 + off.0 * cos - off.1 * sin,
+            top + bh / 2.0 + off.0 * sin + off.1 * cos,
+        );
+        // To PDF: y goes up, so a clockwise turn is a counter-clockwise one by minus the angle.
+        let (c, s) = (cos, -sin);
         let (wd, hd) = (fw * PT, fh * PT);
-        // Maps the unit square of the picture to its place, turned clockwise by `rotation`.
-        let matrix = match rotation % 4 {
-            0 => [wd, 0.0, 0.0, hd, px, py],
-            1 => [0.0, -hd, wd, 0.0, px, py + hd],
-            2 => [-wd, 0.0, 0.0, -hd, px + wd, py + hd],
-            _ => [0.0, hd, -wd, 0.0, px + wd, py],
-        };
+        let (px, py) = (self.x(cx), self.y(cy));
+        let matrix = [
+            wd * c,
+            wd * s,
+            -hd * s,
+            hd * c,
+            px - (wd / 2.0 * c - hd / 2.0 * s),
+            py - (wd / 2.0 * s + hd / 2.0 * c),
+        ];
         self.content.save_state();
-        if !crop.is_none() {
-            let (cx, cy) = (self.x(x), self.y(top + height));
+        self.content.transform(matrix);
+        if !p.crop.is_none() {
+            // In the unit square of the picture: v goes up, so the bottom cut is at the bottom.
             self.content
-                .rect(cx, cy, width * PT, height * PT)
+                .rect(p.crop.left, p.crop.bottom, vw, vh)
                 .clip_nonzero()
                 .end_path();
         }
-        self.content
-            .transform(matrix)
-            .x_object(Name(name.as_bytes()))
-            .restore_state();
+        self.content.x_object(Name(name.as_bytes())).restore_state();
     }
 }
 
@@ -59,17 +74,18 @@ pub(super) fn place_floats(
         .iter()
         .filter(|f| (f.wrap == wv_core::Wrap::Behind) == behind)
     {
-        c.picture(
-            f.id,
-            (
+        c.picture(&Placed {
+            id: f.id,
+            rect: (
                 setup.margin_left + f.x,
                 setup.margin_top + f.y,
                 f.width,
                 f.height,
             ),
-            f.rotation,
-            f.crop,
-        );
+            frame: f.frame,
+            angle: f.angle,
+            crop: f.crop,
+        });
         images.insert(f.id);
     }
 }

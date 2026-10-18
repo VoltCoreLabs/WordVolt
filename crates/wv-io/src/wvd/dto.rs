@@ -94,9 +94,9 @@ pub(super) struct ImageRefDto {
     /// Floating picture: position on the page and how the text goes around it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) float: Option<FloatDto>,
-    /// Quarter turns clockwise.
-    #[serde(default, skip_serializing_if = "is_zero")]
-    pub(super) rotation: u8,
+    /// Degrees clockwise.
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
+    pub(super) angle: f32,
     /// Cut off the left, top, right and bottom (fractions of the picture).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) crop: Option<[f32; 4]>,

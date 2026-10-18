@@ -127,19 +127,16 @@ impl Editor {
         });
     }
 
-    /// Turns the caret's picture by `quarters` quarter turns clockwise (negative: counter-clockwise).
-    pub fn rotate_image(&mut self, quarters: i8) {
-        let turns = quarters.rem_euclid(4) as u8;
-        if turns == 0 {
-            return;
-        }
-        self.edit_image(true, |i| {
-            for _ in 0..turns {
-                (i.width, i.height) = (i.height, i.width);
-                i.crop = i.crop.turned();
-            }
-            i.rotation = (i.rotation + turns) % 4;
-        });
+    /// Turns the caret's picture by `degrees` clockwise (negative: counter-clockwise) around its
+    /// centre. One undo step.
+    pub fn turn_image(&mut self, degrees: f32) {
+        self.edit_image(true, |i| set_angle(i, i.angle + degrees));
+    }
+
+    /// Sets the angle of the caret's picture (a drag: the first call (`first`) starts the undo
+    /// step, the following ones change it). The picture turns around its centre.
+    pub fn drag_image_angle(&mut self, angle: f32, first: bool) {
+        self.edit_image(first, |i| set_angle(i, angle));
     }
 
     /// Cuts `crop` off the picture, which shows `width` x `height` px of it afterwards (and sits at
@@ -235,5 +232,16 @@ impl Editor {
         }
         self.edit_para_styles(para, para, |s| s.image = None);
         true
+    }
+}
+
+/// Turns `i` to `angle` degrees keeping the centre of its box where it is.
+fn set_angle(i: &mut ImageRef, angle: f32) {
+    let before = i.bounds();
+    i.angle = angle.rem_euclid(360.0);
+    let after = i.bounds();
+    if let Some(f) = i.float.as_mut() {
+        f.x += (before.0 - after.0) / 2.0;
+        f.y += (before.1 - after.1) / 2.0;
     }
 }

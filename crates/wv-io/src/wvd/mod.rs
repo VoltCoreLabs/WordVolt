@@ -129,10 +129,10 @@ mod tests {
             bottom: 0.05,
         };
         e.drag_image_crop(crop, 70.0, 47.5, None, true);
-        e.rotate_image(3);
+        e.turn_image(123.0);
         let doc = decode(&encode(&e.doc).unwrap()).unwrap();
         assert_eq!(doc, e.doc);
-        assert_eq!(doc.paragraphs[0].style.image.unwrap().rotation, 3);
+        assert_eq!(doc.paragraphs[0].style.image.unwrap().angle, 123.0);
     }
 
     #[test]

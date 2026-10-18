@@ -66,9 +66,16 @@ pub struct ImageBox {
     pub height: f32,
     /// A floating picture takes no room in the text (the text goes around it, see `Wrap`).
     pub float: Option<wv_core::Float>,
-    /// Quarter turns clockwise and what is cut off (see `wv_core::ImageRef`).
-    pub rotation: u8,
+    /// Degrees clockwise and what is cut off (see `wv_core::ImageRef`).
+    pub angle: f32,
     pub crop: wv_core::Crop,
+}
+
+impl ImageBox {
+    /// The box the turned picture takes up.
+    pub fn bounds(&self) -> (f32, f32) {
+        wv_core::turned_box(self.width, self.height, self.angle)
+    }
 }
 
 impl ParagraphLayout {
@@ -175,7 +182,9 @@ pub fn layout_paragraph_around(
         .or(p.style.named.space_after());
     layout.lines.iter_mut().for_each(|line| line.x += indent);
     if let Some(img) = p.style.image {
-        let free = (opts.width - img.width).max(0.0);
+        // The box of the turned picture is what takes up room.
+        let (box_w, box_h) = img.bounds();
+        let free = (opts.width - box_w).max(0.0);
         let offset = match p.style.align {
             Align::Center => free / 2.0,
             Align::Right => free,
@@ -186,13 +195,13 @@ pub fn layout_paragraph_around(
             width: img.width,
             height: img.height,
             float: img.float,
-            rotation: img.rotation,
+            angle: img.angle,
             crop: img.crop,
         });
         // A floating picture takes no room in the text.
-        let room = if img.float.is_some() { 0.0 } else { img.height };
+        let room = if img.float.is_some() { 0.0 } else { box_h };
         if let Some(line) = layout.lines.first_mut() {
-            (line.x, line.y, line.width) = (indent + offset, 0.0, img.width);
+            (line.x, line.y, line.width) = (indent + offset, 0.0, box_w);
             (line.height, line.baseline) = (room, room);
         }
         layout.height = room;

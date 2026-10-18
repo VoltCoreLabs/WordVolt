@@ -111,6 +111,7 @@ pub enum Key {
     TipOutdent,
     TipLineSpacing,
     WrapSquare,
+    WrapTight,
     CtxRotateRight,
     CtxRotateLeft,
     CtxCrop,

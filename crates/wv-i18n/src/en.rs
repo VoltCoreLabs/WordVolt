@@ -113,6 +113,7 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipOutdent => "Decrease indent (Shift+Tab)",
         Key::TipLineSpacing => "Paragraph spacing and indents",
         Key::WrapSquare => "Square (text around)",
+        Key::WrapTight => "Tight (follow outline)",
         Key::CtxRotateRight => "Rotate right",
         Key::CtxRotateLeft => "Rotate left",
         Key::CtxCrop => "Crop",

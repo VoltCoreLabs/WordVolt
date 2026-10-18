@@ -80,15 +80,24 @@ impl State {
                 self.pictures.embed = None;
                 self.pictures.size = (0.0, 0.0);
                 self.pictures.anchor = None;
-                self.pictures.rotation = 0;
+                self.pictures.angle = 0.0;
+                self.pictures.frame = None;
                 self.pictures.crop = wv_core::Crop::default();
             }
             b"xfrm" if self.pictures.in_drawing => {
-                // Only quarter turns are kept.
                 let rot = attr(e, b"rot")
                     .and_then(|v| v.parse::<f32>().ok())
                     .unwrap_or(0.0);
-                self.pictures.rotation = ((rot / 5_400_000.0).round() as i64).rem_euclid(4) as u8;
+                self.pictures.angle = (rot / 60_000.0).rem_euclid(360.0);
+            }
+            b"ext" if self.pictures.in_drawing => {
+                let px = |name: &[u8]| {
+                    attr(e, name).map_or(0.0, |v| crate::docx::picture::emu_to_px(&v))
+                };
+                let (w, h) = (px(b"cx"), px(b"cy"));
+                if w >= 1.0 && h >= 1.0 {
+                    self.pictures.frame = Some((w, h));
+                }
             }
             b"srcRect" if self.pictures.in_drawing => {
                 let part = |name: &[u8]| {
@@ -126,9 +135,14 @@ impl State {
                     a.wrap = Some(wv_core::Wrap::TopBottom);
                 }
             }
-            b"wrapSquare" | b"wrapTight" | b"wrapThrough" if self.pictures.anchor.is_some() => {
+            b"wrapSquare" if self.pictures.anchor.is_some() => {
                 if let Some(a) = self.pictures.anchor.as_mut() {
                     a.wrap = Some(wv_core::Wrap::Square);
+                }
+            }
+            b"wrapTight" | b"wrapThrough" if self.pictures.anchor.is_some() => {
+                if let Some(a) = self.pictures.anchor.as_mut() {
+                    a.wrap = Some(wv_core::Wrap::Tight);
                 }
             }
             b"extent" if self.pictures.in_drawing && self.pictures.size.0 == 0.0 => {
