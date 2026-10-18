@@ -17,6 +17,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
         revisions: doc.revisions.clone(),
         sections: doc.sections.clone(),
         styles: doc.styles.keys().copied().collect(),
+        bookmarks: doc.bookmarks.clone(),
         band_refs: super::band_parts::parts(doc)
             .iter()
             .filter_map(|p| Some((p.section?, p.reference())))
@@ -92,6 +93,7 @@ pub struct Lists {
     sections: std::collections::BTreeMap<u32, wv_core::PageSpec>,
     /// Ids of the user styles the document has.
     styles: Vec<u32>,
+    bookmarks: Vec<wv_core::Bookmark>,
     /// Header/footer references of the sections that end with a break.
     band_refs: std::collections::BTreeMap<u32, String>,
     number_lists: usize,
@@ -236,7 +238,24 @@ pub fn write_paragraph(
     }
     let mut open_link: Option<&str> = None;
     let mut open_comment: Option<u32> = None;
+    let mut open_bookmark: Option<u32> = None;
     for run in &p.runs {
+        let bookmark = run.style.bookmark;
+        if bookmark != open_bookmark {
+            close_bookmark(xml, open_bookmark);
+            if let Some(id) = bookmark {
+                let name = lists
+                    .bookmarks
+                    .iter()
+                    .find(|b| b.id == id)
+                    .map_or_else(|| format!("bm{id}"), |b| bookmark_name(&b.name));
+                xml.push_str(&format!(
+                    "<w:bookmarkStart w:id=\"{id}\" w:name=\"{}\"/>",
+                    escape_attr(&name)
+                ));
+            }
+            open_bookmark = bookmark;
+        }
         let comment = run.style.comment;
         if comment != open_comment {
             if open_link.take().is_some() {
@@ -253,7 +272,12 @@ pub fn write_paragraph(
             if open_link.is_some() {
                 xml.push_str("</w:hyperlink>");
             }
-            if let Some(url) = link {
+            if let Some(anchor) = link.and_then(|url| url.strip_prefix('#')) {
+                xml.push_str(&format!(
+                    "<w:hyperlink w:anchor=\"{}\" w:history=\"1\">",
+                    escape_attr(&bookmark_name(anchor))
+                ));
+            } else if let Some(url) = link {
                 links.push(url.to_string());
                 xml.push_str(&format!("<w:hyperlink r:id=\"rIdL{}\">", links.len()));
             }
@@ -265,7 +289,19 @@ pub fn write_paragraph(
         xml.push_str("</w:hyperlink>");
     }
     close_comment(xml, open_comment);
+    close_bookmark(xml, open_bookmark);
     xml.push_str("</w:p>");
+}
+
+fn close_bookmark(xml: &mut String, id: Option<u32>) {
+    if let Some(id) = id {
+        xml.push_str(&format!("<w:bookmarkEnd w:id=\"{id}\"/>"));
+    }
+}
+
+/// Word bookmark names have no spaces.
+fn bookmark_name(name: &str) -> String {
+    name.replace(' ', "_")
 }
 
 /// The end of a comment's range and the run that points at the comment.

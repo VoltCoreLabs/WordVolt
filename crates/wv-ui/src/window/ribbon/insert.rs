@@ -82,6 +82,23 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     let (at_caret, meta) = at_caret.unzip();
     this.comment_editor
         .update(cx, |e, _| e.set_current(at_caret, meta.unwrap_or_default()));
+    let items = {
+        let core = &this.editor.read(cx).core;
+        super::super::refs_panel::RefItems {
+            bookmarks: core
+                .doc
+                .visible_bookmarks()
+                .iter()
+                .map(|b| (b.id, b.name.clone()))
+                .collect(),
+            headings: core
+                .headings()
+                .into_iter()
+                .map(|h| (h.para, h.level, h.text))
+                .collect(),
+        }
+    };
+    this.refs_panel.update(cx, |p, _| p.set_items(items));
     let notes = block_group(
         t(this.lang, Key::GroupNotes),
         vec![
@@ -90,6 +107,7 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
                 .on_click(cx.listener(|this, _, _, cx| this.edit(cx, |c| c.insert_footnote())))
                 .into_any_element(),
             this.comment_editor.clone().into_any_element(),
+            this.refs_panel.clone().into_any_element(),
         ],
         cx,
     );

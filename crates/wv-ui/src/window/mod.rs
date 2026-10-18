@@ -25,6 +25,7 @@ mod menu_button;
 mod page_setup;
 mod paragraph_dialog;
 mod print;
+mod refs_panel;
 mod ribbon;
 mod side_panel;
 mod spell;

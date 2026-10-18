@@ -30,9 +30,9 @@ impl Editor {
     /// the format painter.
     pub fn paint_char_style(&mut self, style: &CharStyle) {
         self.apply_char_style(|s| {
-            let (link, note, comment) = (s.link.take(), s.note, s.comment);
+            let (link, note, comment, bookmark) = (s.link.take(), s.note, s.comment, s.bookmark);
             *s = style.clone();
-            (s.link, s.note, s.comment) = (link, note, comment);
+            (s.link, s.note, s.comment, s.bookmark) = (link, note, comment, bookmark);
         });
     }
 
@@ -90,6 +90,7 @@ impl Editor {
             note: None,
             comment: None,
             change: None,
+            bookmark: None,
         }
     }
 
@@ -183,9 +184,9 @@ impl Editor {
     /// Removes all character formatting from the selection (or the next typed text).
     pub fn clear_formatting(&mut self) {
         self.apply_char_style(|s| {
-            let (note, comment) = (s.note, s.comment);
+            let (note, comment, bookmark) = (s.note, s.comment, s.bookmark);
             *s = CharStyle::default();
-            (s.note, s.comment) = (note, comment);
+            (s.note, s.comment, s.bookmark) = (note, comment, bookmark);
         });
     }
 

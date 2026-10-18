@@ -156,6 +156,9 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::NewStyleHint => "Название стиля (по оформлению у курсора), Enter",
         Key::UpdateStyle => "Обновить стиль по образцу",
         Key::DeleteStyle => "Удалить стиль",
+        Key::BookmarkHint => "Закладка на выделенном тексте: введите имя и Enter",
+        Key::BookmarkList => "Закладки (щелчок — перекрёстная ссылка, × — удалить)",
+        Key::HeadingList => "Заголовки (щелчок — ссылка; Ctrl+щелчок по ссылке — перейти)",
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

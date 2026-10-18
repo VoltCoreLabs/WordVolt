@@ -79,7 +79,14 @@ impl EditorView {
                 .style_after(at.offset)
                 .and_then(|s| s.link)
         {
-            cx.open_url(&url);
+            match url.strip_prefix('#') {
+                Some(name) => {
+                    if let Some(target) = self.core.bookmark_position(name) {
+                        self.apply(cx, |core| core.set_head(target, false));
+                    }
+                }
+                None => cx.open_url(&url),
+            }
             return;
         }
         self.apply(cx, |core| match ev.click_count {

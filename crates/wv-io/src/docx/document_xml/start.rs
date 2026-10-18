@@ -92,6 +92,24 @@ impl State {
                 self.comment = attr(e, b"id").and_then(|v| v.parse().ok());
             }
             b"commentRangeEnd" => self.comment = None,
+            b"bookmarkStart" => {
+                let (file_id, name) = (
+                    attr(e, b"id").unwrap_or_default(),
+                    attr(e, b"name").unwrap_or_default(),
+                );
+                let id = self.bookmarks.len() as u32 + 1;
+                self.bookmarks.push(wv_core::Bookmark { id, name });
+                self.bookmark = Some((id, file_id));
+            }
+            b"bookmarkEnd" => {
+                if self
+                    .bookmark
+                    .as_ref()
+                    .is_some_and(|(_, f)| Some(f) == attr(e, b"id").as_ref())
+                {
+                    self.bookmark = None;
+                }
+            }
             b"sectPr" if self.in_paragraph_props && !empty => self.saved_page = Some(self.page),
             b"pgSz" => {
                 let px = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
@@ -171,7 +189,9 @@ impl State {
                 }
             }
             b"hyperlink" if !empty => {
-                self.link = attr(e, b"id").and_then(|id| self.links.get(&id).cloned())
+                self.link = attr(e, b"id")
+                    .and_then(|id| self.links.get(&id).cloned())
+                    .or_else(|| attr(e, b"anchor").map(|a| format!("#{a}")))
             }
             b"jc" if self.in_paragraph_props => {
                 self.align = match attr(e, b"val").as_deref() {

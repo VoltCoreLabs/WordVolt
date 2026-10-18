@@ -1,4 +1,4 @@
-use super::{Comment, Document, PageSpec};
+use super::{Bookmark, Comment, Document, PageSpec};
 use crate::position::Position;
 
 /// Comments, tracked changes and sections: lookups and fresh ids.
@@ -11,6 +11,32 @@ impl Document {
             .flat_map(|p| p.runs.iter().filter_map(|r| r.style.comment));
         let known = self.comments.iter().map(|c| c.id);
         anchored.chain(known).max().map_or(1, |m| m + 1)
+    }
+
+    /// An id no bookmark has.
+    pub fn next_bookmark_id(&self) -> u32 {
+        let anchored = self
+            .paragraphs
+            .iter()
+            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.bookmark));
+        let known = self.bookmarks.iter().map(|b| b.id);
+        anchored.chain(known).max().map_or(1, |m| m + 1)
+    }
+
+    /// The bookmarks that have text, with names the user gave (not `_Ref..`), in document order.
+    pub fn visible_bookmarks(&self) -> Vec<&Bookmark> {
+        let mut ids: Vec<u32> = Vec::new();
+        for p in &self.paragraphs {
+            for id in p.runs.iter().filter_map(|r| r.style.bookmark) {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+        ids.iter()
+            .filter_map(|id| self.bookmarks.iter().find(|b| b.id == *id))
+            .filter(|b| !b.name.starts_with('_'))
+            .collect()
     }
 
     /// An id no tracked change has.

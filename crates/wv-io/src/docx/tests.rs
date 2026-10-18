@@ -781,3 +781,27 @@ fn the_documents_own_defaults_survive_a_save() {
     assert_eq!(back.default_font.as_deref(), Some("Georgia"));
     assert_eq!(back.default_size_pt, Some(10));
 }
+
+#[test]
+fn bookmarks_and_internal_links_round_trip_through_docx() {
+    let mut e = Editor::new(Document::from_text("Target text\nSee: "));
+    e.sel = wv_core::Selection {
+        anchor: wv_core::Position::new(0, 0),
+        head: wv_core::Position::new(0, 6),
+    };
+    e.add_bookmark("my mark");
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(1, 5));
+    e.insert_reference("my mark", "Target");
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut body = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/document.xml").unwrap(), &mut body).unwrap();
+    assert!(body.contains("w:name=\"my_mark\"") && body.contains("w:anchor=\"my_mark\""));
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs[1].text(), "See: Target");
+    assert_eq!(back.bookmarks.len(), 1);
+    assert_eq!(back.bookmarks[0].name, "my_mark");
+    let link = back.paragraphs[1].runs.last().unwrap().style.link.clone();
+    assert_eq!(link.as_deref(), Some("#my_mark"));
+    assert!(back.paragraphs[0].runs[0].style.bookmark.is_some());
+}

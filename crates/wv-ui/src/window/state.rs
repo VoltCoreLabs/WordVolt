@@ -17,6 +17,7 @@ use super::menu_bar::{CommandChosen, MenuBar};
 use super::menu_button::MenuButton;
 use super::page_setup::PageSetupEditor;
 use super::paragraph_dialog::ParagraphEditor;
+use super::refs_panel::RefsPanel;
 use super::style_namer::StyleNamer;
 use super::table_picker::TablePicker;
 use crate::editor::EditorView;
@@ -55,6 +56,7 @@ pub struct MainWindow {
     pub link_editor: Entity<LinkEditor>,
     pub comment_editor: Entity<CommentEditor>,
     pub style_namer: Entity<StyleNamer>,
+    pub refs_panel: Entity<RefsPanel>,
     pub case_menu: Entity<MenuButton>,
     pub spacing_menu: Entity<MenuButton>,
     pub style_combo: Entity<Combo>,
@@ -113,6 +115,7 @@ impl MainWindow {
         let link_editor = widgets::make_link_editor(lang, cx);
         let comment_editor = widgets::make_comment_editor(lang, cx);
         let style_namer = widgets::make_style_namer(lang, cx);
+        let refs_panel = widgets::make_refs_panel(lang, cx);
         let case_menu = widgets::make_case_menu(lang, cx);
         let spacing_menu = widgets::make_spacing_menu(lang, cx);
         let style_combo = widgets::make_style_combo(lang, cx);
@@ -159,6 +162,7 @@ impl MainWindow {
             link_editor,
             comment_editor,
             style_namer,
+            refs_panel,
             file_path: None,
             dirty: false,
             docs: vec![DocSlot::new(editor)],

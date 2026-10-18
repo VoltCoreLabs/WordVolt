@@ -60,6 +60,10 @@ impl Paragraph {
         if style.comment != next {
             style.comment = None;
         }
+        let next = self.style_at_raw(offset).and_then(|s| s.bookmark);
+        if style.bookmark != next {
+            style.bookmark = None;
+        }
         style
     }
 
