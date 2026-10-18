@@ -607,8 +607,11 @@ fn comments_are_written_with_their_range_and_part() {
     assert!(body.contains("commentReference"));
     let part = read("word/comments.xml");
     assert!(part.contains("w:author=\"Ann\"") && part.contains("Check &lt;this&gt;"));
-    assert_eq!(
-        decode(&bytes).unwrap().paragraphs[0].text(),
-        "Comment me please"
-    );
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.paragraphs[0].text(), "Comment me please");
+    assert_eq!(back.comments.len(), 1);
+    assert_eq!(back.comments[0].text, "Check <this>");
+    assert_eq!(back.comments[0].author, "Ann");
+    assert!(back.comments[0].date.ends_with('Z'));
+    assert_eq!(back.comment_range(1), e.doc.comment_range(1));
 }

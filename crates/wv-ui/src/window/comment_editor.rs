@@ -16,6 +16,8 @@ pub enum CommentEvent {
 pub struct CommentEditor {
     lang: Lang,
     current: Option<(u32, String)>,
+    /// Author and date of the comment at the caret.
+    meta: String,
     open: bool,
     /// Bounds of the open panel (see `track_bounds`).
     panel_bounds: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
@@ -32,6 +34,7 @@ impl CommentEditor {
         Self {
             lang,
             current: None,
+            meta: String::new(),
             open: false,
             panel_bounds: Default::default(),
             epoch: 0,
@@ -41,8 +44,9 @@ impl CommentEditor {
     }
 
     /// Comment at the caret (shown as active and pre-filled).
-    pub fn set_current(&mut self, comment: Option<(u32, String)>) {
+    pub fn set_current(&mut self, comment: Option<(u32, String)>, meta: String) {
         self.current = comment;
+        self.meta = meta;
     }
 
     /// Opens the popover, pre-filled with the comment at the caret.
@@ -163,7 +167,11 @@ impl Render for CommentEditor {
                     div()
                         .text_xs()
                         .text_color(muted)
-                        .child(tr(lang, Key::CommentText)),
+                        .child(if self.meta.is_empty() {
+                            tr(lang, Key::CommentText).to_string()
+                        } else {
+                            self.meta.clone()
+                        }),
                 )
                 .child(field)
                 .children(remove);

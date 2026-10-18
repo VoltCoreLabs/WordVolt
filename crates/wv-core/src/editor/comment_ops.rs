@@ -14,6 +14,7 @@ impl Editor {
             id,
             author: author.to_string(),
             text: text.to_string(),
+            date: crate::time::now_iso(),
         });
         self.apply_char_style(|s| s.comment = Some(id));
         Some(id)

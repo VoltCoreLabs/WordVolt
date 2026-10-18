@@ -1,5 +1,8 @@
-use wv_core::Document;
+use quick_xml::Reader;
+use quick_xml::events::Event;
+use wv_core::{Comment, Document};
 
+use super::read_util::attr;
 use super::writer::escape_attr;
 
 pub(super) const COMMENTS_TYPE: &str =
@@ -19,9 +22,14 @@ pub(super) fn xml(doc: &Document) -> Option<String> {
     );
     for c in shown {
         out.push_str(&format!(
-            "<w:comment w:id=\"{}\" w:author=\"{}\">",
+            "<w:comment w:id=\"{}\" w:author=\"{}\"{}>",
             c.id,
-            escape_attr(&c.author)
+            escape_attr(&c.author),
+            if c.date.is_empty() {
+                String::new()
+            } else {
+                format!(" w:date=\"{}\"", escape_attr(&c.date))
+            }
         ));
         for line in c.text.split('\n') {
             out.push_str(&format!(
@@ -49,4 +57,53 @@ pub(super) fn register(content_types: &mut String, rels: &mut String) {
             "<Relationship Id=\"rIdCm1\" Type=\"{COMMENTS_TYPE}\" Target=\"comments.xml\"/></Relationships>"
         ),
     );
+}
+
+/// Reads word/comments.xml: id, author, date and text (paragraphs joined by line breaks).
+pub(super) fn read(xml: &[u8]) -> Vec<Comment> {
+    let mut reader = Reader::from_reader(xml);
+    let mut out: Vec<Comment> = Vec::new();
+    let mut current: Option<Comment> = None;
+    let mut in_text = false;
+    let mut buf = Vec::new();
+    while let Ok(event) = reader.read_event_into(&mut buf) {
+        match event {
+            Event::Eof => break,
+            Event::Start(e) => match e.local_name().as_ref() {
+                b"comment" => {
+                    current = attr(&e, b"id")
+                        .and_then(|v| v.parse().ok())
+                        .map(|id| Comment {
+                            id,
+                            author: attr(&e, b"author").unwrap_or_default(),
+                            text: String::new(),
+                            date: attr(&e, b"date").unwrap_or_default(),
+                        });
+                }
+                b"t" => in_text = true,
+                _ => {}
+            },
+            Event::Text(t) if in_text => {
+                if let (Some(c), Ok(text)) = (current.as_mut(), t.unescape()) {
+                    c.text.push_str(&text);
+                }
+            }
+            Event::End(e) => match e.local_name().as_ref() {
+                b"t" => in_text = false,
+                b"p" => {
+                    if let Some(c) = current.as_mut() {
+                        c.text.push('\n');
+                    }
+                }
+                b"comment" => out.extend(current.take().map(|mut c| {
+                    c.text.truncate(c.text.trim_end().len());
+                    c
+                })),
+                _ => {}
+            },
+            _ => {}
+        }
+        buf.clear();
+    }
+    out
 }

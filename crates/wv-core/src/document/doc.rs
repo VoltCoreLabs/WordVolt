@@ -10,6 +10,8 @@ pub struct Comment {
     pub id: u32,
     pub author: String,
     pub text: String,
+    /// `YYYY-MM-DDTHH:MM:SSZ`; empty when unknown.
+    pub date: String,
 }
 
 /// A document: a list of paragraphs (never empty).

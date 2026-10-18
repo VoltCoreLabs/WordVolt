@@ -88,6 +88,10 @@ impl State {
                     self.note_mark(id);
                 }
             }
+            b"commentRangeStart" => {
+                self.comment = attr(e, b"id").and_then(|v| v.parse().ok());
+            }
+            b"commentRangeEnd" => self.comment = None,
             b"pgSz" => {
                 let px = |name: &[u8]| attr(e, name).and_then(|v| v.parse::<f32>().ok());
                 if let (Some(w), Some(h)) = (px(b"w"), px(b"h"))

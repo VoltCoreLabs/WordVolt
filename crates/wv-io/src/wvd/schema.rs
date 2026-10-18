@@ -83,6 +83,7 @@ impl File {
                     id: c.id,
                     author: c.author.clone(),
                     text: c.text.clone(),
+                    date: c.date.clone(),
                 })
                 .collect(),
             table_looks: doc
@@ -230,6 +231,7 @@ impl File {
                 id: c.id,
                 author: c.author,
                 text: c.text,
+                date: c.date,
             })
             .collect();
         for (table, widths) in self.table_widths {
