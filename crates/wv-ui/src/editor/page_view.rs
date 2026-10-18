@@ -45,4 +45,6 @@ pub struct PageView {
     pub band_color: Rgba,
     /// Display scale (1.0 = 100%).
     pub zoom: f32,
+    /// Draw the non-printing characters (¶, dots, arrows).
+    pub show_marks: bool,
 }

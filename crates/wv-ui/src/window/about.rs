@@ -14,7 +14,7 @@ pub fn about_dialog(this: &MainWindow, cx: &mut Context<MainWindow>) -> Option<A
     }
     let lang = this.lang;
     let th = cx.global::<Theme>();
-    let muted = th.text_muted;
+    let (muted, accent) = (th.text_muted, th.accent);
     let line = |label: Key, value: String| {
         div()
             .flex()
@@ -28,6 +28,28 @@ pub fn about_dialog(this: &MainWindow, cx: &mut Context<MainWindow>) -> Option<A
             )
             .child(div().flex_1().child(value))
     };
+    let repo = div()
+        .flex()
+        .gap(space::md())
+        .child(
+            div()
+                .w(px(110.))
+                .flex_none()
+                .text_color(muted)
+                .child(t(lang, Key::AboutRepo)),
+        )
+        .child(
+            div()
+                .id("about-repo")
+                .text_color(accent)
+                .underline()
+                .cursor_pointer()
+                .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                    cx.stop_propagation();
+                    cx.open_url(REPO);
+                })
+                .child(REPO),
+        );
     let card = block(cx)
         .id("about-card")
         .occlude()
@@ -68,7 +90,7 @@ pub fn about_dialog(this: &MainWindow, cx: &mut Context<MainWindow>) -> Option<A
                     Key::AboutFormats,
                     t(lang, Key::AboutFormatsValue).to_string(),
                 ))
-                .child(line(Key::AboutRepo, REPO.to_string())),
+                .child(repo),
         )
         .child(
             div().flex().justify_end().child(

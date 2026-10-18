@@ -113,6 +113,8 @@ pub enum Key {
     GroupNotes,
     TipFootnote,
     TipComment,
+    GroupShow,
+    TipShowMarks,
     MenuHelp,
     MenuAbout,
     AboutDesc,

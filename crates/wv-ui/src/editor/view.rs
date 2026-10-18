@@ -57,6 +57,8 @@ pub struct EditorView {
     pub zoom: f32,
     /// Pages sit side by side while they fit (else always one per row).
     pub multi_page: bool,
+    /// Non-printing characters are drawn.
+    pub show_marks: bool,
     /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
     pub(super) scroll_x: f32,
     /// Decoded-on-demand pictures of the document (rebuilt when the stored images change).
@@ -89,6 +91,7 @@ impl EditorView {
             focused_once: false,
             zoom: 1.0,
             multi_page: crate::settings::load_multi_page(),
+            show_marks: false,
             scroll_x: 0.0,
             picture_cache: Default::default(),
         }
@@ -103,6 +106,11 @@ impl EditorView {
             self.scroll_x = 0.0;
             cx.notify();
         }
+    }
+
+    pub fn toggle_marks(&mut self, cx: &mut Context<Self>) {
+        self.show_marks = !self.show_marks;
+        cx.notify();
     }
 
     /// Switches between pages side by side and one page per row (remembered).
