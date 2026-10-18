@@ -22,6 +22,7 @@ WordVolt/
 │  ├─ structure.md           этот файл
 │  ├─ decisions.md           ADR
 │  └─ log.md                 журнал сессий
+├─ .github/workflows/        CI (ci.yml)
 ├─ assets/
 │  ├─ fonts/                 встроенные шрифты (fallback)
 │  ├─ icons/                 SVG иконки ribbon
