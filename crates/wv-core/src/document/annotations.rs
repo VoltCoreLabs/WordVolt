@@ -15,10 +15,11 @@ impl Document {
 
     /// An id no bookmark has.
     pub fn next_bookmark_id(&self) -> u32 {
-        let anchored = self
-            .paragraphs
-            .iter()
-            .flat_map(|p| p.runs.iter().filter_map(|r| r.style.bookmark));
+        let anchored = self.paragraphs.iter().flat_map(|p| {
+            p.runs
+                .iter()
+                .flat_map(|r| r.style.bookmarks.iter().copied())
+        });
         let known = self.bookmarks.iter().map(|b| b.id);
         anchored.chain(known).max().map_or(1, |m| m + 1)
     }
@@ -27,7 +28,11 @@ impl Document {
     pub fn visible_bookmarks(&self) -> Vec<&Bookmark> {
         let mut ids: Vec<u32> = Vec::new();
         for p in &self.paragraphs {
-            for id in p.runs.iter().filter_map(|r| r.style.bookmark) {
+            for id in p
+                .runs
+                .iter()
+                .flat_map(|r| r.style.bookmarks.iter().copied())
+            {
                 if !ids.contains(&id) {
                     ids.push(id);
                 }

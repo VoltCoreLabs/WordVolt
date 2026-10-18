@@ -238,23 +238,25 @@ pub fn write_paragraph(
     }
     let mut open_link: Option<&str> = None;
     let mut open_comment: Option<u32> = None;
-    let mut open_bookmark: Option<u32> = None;
+    let mut open_bookmarks: Vec<u32> = Vec::new();
     for run in &p.runs {
-        let bookmark = run.style.bookmark;
-        if bookmark != open_bookmark {
-            close_bookmark(xml, open_bookmark);
-            if let Some(id) = bookmark {
+        let wanted = &run.style.bookmarks;
+        if *wanted != open_bookmarks {
+            for id in open_bookmarks.iter().filter(|id| !wanted.contains(id)) {
+                close_bookmark(xml, *id);
+            }
+            for id in wanted.iter().filter(|id| !open_bookmarks.contains(id)) {
                 let name = lists
                     .bookmarks
                     .iter()
-                    .find(|b| b.id == id)
+                    .find(|b| b.id == *id)
                     .map_or_else(|| format!("bm{id}"), |b| bookmark_name(&b.name));
                 xml.push_str(&format!(
                     "<w:bookmarkStart w:id=\"{id}\" w:name=\"{}\"/>",
                     escape_attr(&name)
                 ));
             }
-            open_bookmark = bookmark;
+            open_bookmarks.clone_from(wanted);
         }
         let comment = run.style.comment;
         if comment != open_comment {
@@ -289,14 +291,14 @@ pub fn write_paragraph(
         xml.push_str("</w:hyperlink>");
     }
     close_comment(xml, open_comment);
-    close_bookmark(xml, open_bookmark);
+    for id in &open_bookmarks {
+        close_bookmark(xml, *id);
+    }
     xml.push_str("</w:p>");
 }
 
-fn close_bookmark(xml: &mut String, id: Option<u32>) {
-    if let Some(id) = id {
-        xml.push_str(&format!("<w:bookmarkEnd w:id=\"{id}\"/>"));
-    }
+fn close_bookmark(xml: &mut String, id: u32) {
+    xml.push_str(&format!("<w:bookmarkEnd w:id=\"{id}\"/>"));
 }
 
 /// Word bookmark names have no spaces.

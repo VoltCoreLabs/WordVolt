@@ -31,7 +31,10 @@ pub(super) struct RunDto {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     comment: Option<u32>,
     /// The text is the anchor of this bookmark.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    bookmarks: Vec<u32>,
+    /// Files of an earlier version had one bookmark per character.
+    #[serde(default, skip_serializing)]
     bookmark: Option<u32>,
     /// Tracked change: its id, and whether the text was deleted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -134,7 +137,8 @@ pub(super) fn run_dto(r: &Run) -> RunDto {
         link: r.style.link.clone(),
         note: r.style.note,
         comment: r.style.comment,
-        bookmark: r.style.bookmark,
+        bookmarks: r.style.bookmarks.clone(),
+        bookmark: None,
         change: r.style.change.map(|c| c.id),
         deleted: r.style.change.is_some_and(|c| c.deleted),
         size_pt: r.style.size_pt,
@@ -157,7 +161,13 @@ pub(super) fn run_of(r: RunDto) -> Run {
         link: r.link,
         note: r.note,
         comment: r.comment,
-        bookmark: r.bookmark,
+        bookmarks: {
+            let mut ids = r.bookmarks;
+            ids.extend(r.bookmark);
+            ids.sort_unstable();
+            ids.dedup();
+            ids
+        },
         change: r.change.map(|id| wv_core::Change {
             id,
             deleted: r.deleted,

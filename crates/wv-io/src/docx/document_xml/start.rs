@@ -99,16 +99,11 @@ impl State {
                 );
                 let id = self.bookmarks.len() as u32 + 1;
                 self.bookmarks.push(wv_core::Bookmark { id, name });
-                self.bookmark = Some((id, file_id));
+                self.bookmark.push((id, file_id));
             }
             b"bookmarkEnd" => {
-                if self
-                    .bookmark
-                    .as_ref()
-                    .is_some_and(|(_, f)| Some(f) == attr(e, b"id").as_ref())
-                {
-                    self.bookmark = None;
-                }
+                let file_id = attr(e, b"id");
+                self.bookmark.retain(|(_, f)| Some(f) != file_id.as_ref());
             }
             b"sectPr" if self.in_paragraph_props && !empty => self.saved_page = Some(self.page),
             b"pgSz" => {

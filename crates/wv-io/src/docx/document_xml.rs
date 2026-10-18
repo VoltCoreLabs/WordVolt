@@ -72,7 +72,7 @@ struct State {
     link: Option<String>,
     comment: Option<u32>,
     /// The bookmark being read (our id, the file's id) and the bookmarks found.
-    bookmark: Option<(u32, String)>,
+    bookmark: Vec<(u32, String)>,
     bookmarks: Vec<wv_core::Bookmark>,
     /// User styles of styles.xml by style id; the ones used get an id in `doc_styles`.
     user_styles: HashMap<String, wv_core::UserStyle>,
@@ -282,7 +282,8 @@ impl State {
         let mut style = self.run.clone();
         style.link = self.link.clone();
         style.comment = self.comment;
-        style.bookmark = self.bookmark.as_ref().map(|(id, _)| *id);
+        style.bookmarks = self.bookmark.iter().map(|(id, _)| *id).collect();
+        style.bookmarks.sort_unstable();
         style.change = self.change;
         let clean = text.replace(['\n', '\r'], " ");
         let end = p.len();
