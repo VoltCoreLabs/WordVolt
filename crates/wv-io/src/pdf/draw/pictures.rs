@@ -68,7 +68,7 @@ pub(super) fn place_floats(
     page: usize,
     behind: bool,
 ) {
-    let setup = &layout.setup;
+    let setup = &layout.pages[page].setup;
     for f in layout.pages[page]
         .floats
         .iter()

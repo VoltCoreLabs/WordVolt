@@ -15,6 +15,7 @@ mod table_look;
 mod table_merge;
 
 pub use table_merge::CellSelection;
+mod section_ops;
 mod table_ops;
 mod table_rowcol;
 #[cfg(test)]

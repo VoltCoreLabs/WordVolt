@@ -28,7 +28,6 @@ pub fn encode(doc: &Document, source: &dyn FontSource) -> Result<Vec<u8>, IoErro
     let pages: Vec<_> = (0..layout.pages.len())
         .map(|page| draw::draw_page(doc, &layout, &fonts, page))
         .collect();
-    let (width, height) = (layout.setup.width * 0.75, layout.setup.height * 0.75);
     let faces = fonts.into_faces();
 
     let mut pdf = Pdf::new();
@@ -54,7 +53,9 @@ pub fn encode(doc: &Document, source: &dyn FontSource) -> Result<Vec<u8>, IoErro
     pdf.pages(tree)
         .kids(page_ids.iter().copied())
         .count(page_ids.len() as i32);
-    for (page, id) in pages.iter().zip(&page_ids) {
+    for (n, (page, id)) in pages.iter().zip(&page_ids).enumerate() {
+        let setup = &layout.pages[n].setup;
+        let (width, height) = (setup.width * 0.75, setup.height * 0.75);
         let content = ids.next();
         let mut p = pdf.page(*id);
         p.media_box(Rect::new(0.0, 0.0, width, height))

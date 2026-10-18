@@ -147,7 +147,7 @@ pub fn paint_images(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let setup = &v.layout.setup;
+    let setup = v.layout.setup_of(v.page);
     for slice in &v.layout.pages[v.page].slices {
         let para = &v.layout.paragraphs[slice.para];
         let (Some(image), true) = (
@@ -186,7 +186,7 @@ pub fn paint_floats(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let setup = &v.layout.setup;
+    let setup = v.layout.setup_of(v.page);
     for f in &v.layout.pages[v.page].floats {
         let is_behind = f.wrap == wv_core::Wrap::Behind;
         let bounds = Bounds::new(

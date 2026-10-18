@@ -13,7 +13,7 @@ pub fn paint_bands(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let setup = &v.layout.setup;
+    let setup = v.layout.setup_of(v.page);
     let pages = v.layout.pages.len();
     let z = v.zoom;
     let (header, footer) = v.bands.2.pick(v.page, &v.bands.0, &v.bands.1);

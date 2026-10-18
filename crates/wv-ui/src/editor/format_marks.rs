@@ -11,7 +11,7 @@ use super::page_view::PageView;
 pub(super) fn paint_line_marks(
     v: &PageView,
     m: &GpuiMeasurer,
-    (line, text, leader): (&Line, &str, bool),
+    (line, text, leader, section): (&Line, &str, bool, bool),
     place: (f32, f32),
     at: &dyn Fn(f32, f32) -> Point<Pixels>,
     (window, cx): (&mut Window, &mut App),
@@ -56,5 +56,14 @@ pub(super) fn paint_line_marks(
         && let Some(f) = line.fragments.last()
     {
         draw("¶", &f.style, left + f.x + f.width);
+        if section {
+            // The end of a section: a dotted run with a paragraph sign, after the pilcrow.
+            let gap = m.width("¶ ", &f.style);
+            draw(
+                "· · · · · · §  · · · · · ·",
+                &f.style,
+                left + f.x + f.width + gap,
+            );
+        }
     }
 }

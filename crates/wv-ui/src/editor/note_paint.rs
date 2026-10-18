@@ -45,7 +45,7 @@ pub(super) fn paint_note_separator(
     let Some(top) = v.layout.pages[v.page].note_top else {
         return;
     };
-    let setup = &v.layout.setup;
+    let setup = v.layout.setup_of(v.page);
     let line = Bounds::new(
         at(setup.margin_left, setup.margin_top + top + NOTES_GAP / 2.0),
         size(

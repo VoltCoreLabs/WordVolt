@@ -13,6 +13,7 @@ mod page;
 mod paginate;
 mod paragraph;
 mod raster;
+mod sections;
 mod table;
 mod table_page;
 

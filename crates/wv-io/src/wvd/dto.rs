@@ -42,6 +42,9 @@ pub(super) struct File {
     /// Authors and dates of tracked changes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) revisions: Vec<CommentDto>,
+    /// Page setup of the sections that end with a break.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) sections: Vec<SectionDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -60,6 +63,46 @@ pub(super) struct PageDto {
     pub(super) footer_distance: f32,
     #[serde(default = "one_column")]
     pub(super) columns: u8,
+}
+
+impl PageDto {
+    pub(super) fn of(page: &wv_core::PageSpec) -> Self {
+        Self {
+            width: page.width,
+            height: page.height,
+            top: page.margin_top,
+            right: page.margin_right,
+            bottom: page.margin_bottom,
+            left: page.margin_left,
+            gutter: page.gutter,
+            header_distance: page.header_distance,
+            footer_distance: page.footer_distance,
+            columns: page.columns,
+        }
+    }
+
+    /// `None` for a size that cannot be a page.
+    pub(super) fn spec(self) -> Option<wv_core::PageSpec> {
+        (self.width >= 100.0 && self.height >= 100.0).then(|| wv_core::PageSpec {
+            width: self.width,
+            height: self.height,
+            margin_top: self.top.max(0.0),
+            margin_right: self.right.max(0.0),
+            margin_bottom: self.bottom.max(0.0),
+            margin_left: self.left.max(0.0),
+            gutter: self.gutter.max(0.0),
+            header_distance: self.header_distance.max(0.0),
+            footer_distance: self.footer_distance.max(0.0),
+            columns: self.columns.clamp(1, wv_core::MAX_COLUMNS),
+        })
+    }
+}
+
+/// Page setup of the section that ends with the paragraph carrying `section = id`.
+#[derive(Serialize, Deserialize)]
+pub(super) struct SectionDto {
+    pub(super) id: u32,
+    pub(super) page: PageDto,
 }
 
 pub(super) fn one_column() -> u8 {
@@ -156,6 +199,9 @@ pub(super) struct Para {
     pub(super) image: Option<ImageRefDto>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) toc: bool,
+    /// The paragraph ends a section (id into `File::sections`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) section: Option<u32>,
     /// The paragraph is (part of) the footnote with this id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) note: Option<u32>,

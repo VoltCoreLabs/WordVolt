@@ -146,6 +146,12 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::RejectChange => "Отклонить",
         Key::AcceptAll => "Принять все",
         Key::RejectAll => "Отклонить все",
+        Key::GroupSections => "Разделы",
+        Key::SectionBreak => "Разрыв раздела",
+        Key::RemoveSectionBreak => "Убрать разрыв",
+        Key::TipSectionBreak => {
+            "Разрыв раздела со следующей страницы: у каждого раздела свои размер и ориентация страницы, поля и колонки (параметры меняются для раздела, где стоит курсор)"
+        }
         Key::CommentText => "Текст примечания",
         Key::DeleteComment => "Удалить примечание",
         Key::TipFootnote => {

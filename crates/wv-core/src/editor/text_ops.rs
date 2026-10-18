@@ -61,6 +61,13 @@ impl Editor {
             p.insert(0, line, &style);
             paras.push(p);
         }
+        // A section break stays at the end of the text that was before it.
+        let section = last_style.section.or(paras[0].style.section);
+        for p in &mut paras {
+            p.style.section = None;
+        }
+        let last_ix = paras.len() - 1;
+        paras[last_ix].style.section = section;
         // Text that joins a picture paragraph replaces the picture.
         if paras[0].style.image.is_some()
             && (paras.len() > 1 || !paras[0].is_empty() || !tail.is_empty())

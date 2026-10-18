@@ -4,12 +4,11 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::Measurer;
-use crate::around::{Around, Source, wrap_around};
+use crate::around::Source;
 use crate::layout_cache::LayoutCache;
 use crate::notes::NoteSet;
 use crate::numbering::Counters;
 use crate::page::{Page, PageSetup, Slice};
-use crate::paginate::paginate;
 use crate::paragraph::{Options, ParagraphLayout};
 use crate::table::{self, Block};
 
@@ -59,7 +58,8 @@ impl DocLayout {
     ) -> Self {
         cache.begin();
         // Text is laid out for one column; tables and paragraphs in cells likewise.
-        let content_width = setup.column_width();
+        let sections = crate::sections::setups(doc, &setup);
+        let mut section = 0;
         let fractions = table::column_fractions(doc);
         let note_numbers = doc.note_numbers();
         let mut counters = Counters::default();
@@ -68,7 +68,13 @@ impl DocLayout {
         let mut paragraphs: Vec<Rc<ParagraphLayout>> = doc
             .paragraphs
             .iter()
-            .map(|p| {
+            .enumerate()
+            .map(|(i, p)| {
+                while i >= sections[section].0.end && section + 1 < sections.len() {
+                    section += 1;
+                }
+                // Text is laid out for one column of its section.
+                let content_width = sections[section].1.column_width();
                 // A footnote starts with its number; other paragraphs may be list items.
                 let marker = match p.style.note {
                     Some(id) => (previous_note != Some(id))
@@ -109,20 +115,14 @@ impl DocLayout {
             |i| doc.paragraphs[i].style.note,
             |id| note_numbers.contains_key(&id),
         );
-        let mut pages = paginate(&paragraphs, &blocks, &setup, &notes);
-        if pages
-            .iter()
-            .any(|p| p.floats.iter().any(|f| crate::around::beside(f.wrap)))
-        {
-            let around = Around {
-                doc,
-                setup: &setup,
-                blocks: &blocks,
-                sources: &sources,
-                notes: &notes,
-            };
-            wrap_around(&around, &mut paragraphs, &mut pages, m);
-        }
+        let pages = crate::sections::paginate_sections(
+            doc,
+            &mut paragraphs,
+            &blocks,
+            &sections,
+            (&sources, &notes),
+            m,
+        );
         let mut locations = vec![Vec::new(); paragraphs.len()];
         for (page, p) in pages.iter().enumerate() {
             for (slice_ix, s) in p.slices.iter().enumerate() {

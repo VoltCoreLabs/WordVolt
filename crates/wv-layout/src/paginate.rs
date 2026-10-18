@@ -49,6 +49,9 @@ pub fn paginate(
         result = pass(paragraphs, blocks, setup, notes, &bands);
     }
     let (mut pages, floats) = result;
+    for p in &mut pages {
+        p.setup = setup.clone();
+    }
     for (page, float) in floats {
         if let Some(p) = pages.get_mut(page) {
             p.floats.push(float);

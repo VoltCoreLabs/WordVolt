@@ -15,6 +15,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     let mut links: Vec<String> = Vec::new();
     let mut lists = Lists {
         revisions: doc.revisions.clone(),
+        sections: doc.sections.clone(),
         ..Lists::default()
     };
     let paras = &doc.paragraphs;
@@ -63,26 +64,10 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     } else {
         ""
     };
-    let twips = |px: f32| (px * 15.0).round() as i64;
-    let page = doc.page;
-    let cols = if page.columns > 1 {
-        format!("<w:cols w:num=\"{}\" w:space=\"720\"/>", page.columns)
-    } else {
-        String::new()
-    };
-    xml.push_str(&format!(
-        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{cols}{title_page}</w:sectPr></w:body></w:document>",
-        twips(page.width),
-        twips(page.height),
-        if page.is_landscape() { " w:orient=\"landscape\"" } else { "" },
-        twips(page.margin_top),
-        twips(page.margin_right),
-        twips(page.margin_bottom),
-        twips(page.margin_left),
-        twips(page.header_distance),
-        twips(page.footer_distance),
-        twips(page.gutter),
+    xml.push_str(&super::section_xml::sect_pr(
+        &doc.page, &refs, title_page, false,
     ));
+    xml.push_str("</w:body></w:document>");
 
     (xml, links, lists.number_lists)
 }
@@ -94,6 +79,8 @@ pub struct Lists {
     pictures: u32,
     /// Authors and dates of the tracked changes (copied from the document).
     revisions: Vec<wv_core::Revision>,
+    /// Page setup of the sections that end with a break.
+    sections: std::collections::BTreeMap<u32, wv_core::PageSpec>,
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -140,7 +127,8 @@ pub fn write_paragraph(
         || !p.style.tabs.is_empty()
         || p.style.space_before.is_some()
         || p.style.space_after.is_some()
-        || p.style.named != NamedStyle::Normal;
+        || p.style.named != NamedStyle::Normal
+        || p.style.section.is_some();
     if has_props {
         // Child order follows the schema: pStyle, numPr, spacing, ind, jc.
         xml.push_str("<w:pPr>");
@@ -207,6 +195,10 @@ pub fn write_paragraph(
         }
         if let Some(jc) = jc {
             xml.push_str(&format!("<w:jc w:val=\"{jc}\"/>"));
+        }
+        // The properties of the section this paragraph ends come last.
+        if let Some(page) = p.style.section.and_then(|id| lists.sections.get(&id)) {
+            xml.push_str(&super::section_xml::sect_pr(page, "", "", true));
         }
         xml.push_str("</w:pPr>");
     }

@@ -705,3 +705,45 @@ fn a_note_without_a_mark_is_not_shown() {
     assert!(l.pages[0].slices.iter().all(|s| s.para != 2));
     assert!(l.pages[0].note_top.is_none());
 }
+
+#[test]
+fn each_section_starts_a_page_with_its_own_page_setup() {
+    let mut doc = Document::from_text("a\nb\nc");
+    // Section 1 = "a", landscape; section 2 = "b" and "c" with the document's page setup.
+    let mut spec = wv_core::PageSpec::default();
+    (spec.width, spec.height) = (200.0, 100.0);
+    (
+        spec.margin_top,
+        spec.margin_bottom,
+        spec.margin_left,
+        spec.margin_right,
+    ) = (10.0, 10.0, 10.0, 10.0);
+    doc.sections.insert(1, spec);
+    doc.paragraphs[0].style.section = Some(1);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.pages.len(), 2, "the break starts a new page");
+    assert_eq!(l.pages[0].setup.width, 200.0);
+    assert_eq!(l.pages[1].setup.width, 100.0);
+    assert_eq!(l.pages[0].slices.len(), 1);
+    assert_eq!(l.pages[1].slices.len(), 2);
+    assert_eq!(l.pages[1].slices[0].para, 1);
+}
+
+#[test]
+fn a_landscape_section_lays_text_out_wider() {
+    // 10 chars fit on a line of the portrait setup (80 px), 30 on the wide one (240 px).
+    let mut doc = Document::from_text("0123456789012345678901234567\nx");
+    let mut spec = wv_core::PageSpec::default();
+    (spec.width, spec.height) = (260.0, 100.0);
+    (
+        spec.margin_top,
+        spec.margin_bottom,
+        spec.margin_left,
+        spec.margin_right,
+    ) = (10.0, 10.0, 10.0, 10.0);
+    doc.sections.insert(1, spec);
+    doc.paragraphs[0].style.section = Some(1);
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.paragraphs[0].lines.len(), 1);
+    assert_eq!(l.paragraphs[1].lines.len(), 1);
+}

@@ -120,9 +120,17 @@ impl EditorView {
         cx.notify();
     }
 
+    /// Width of the widest page of any section.
+    pub(super) fn widest_page(&self) -> f32 {
+        let doc = &self.core.doc;
+        doc.sections
+            .values()
+            .fold(doc.page.width, |w, s| w.max(s.width))
+    }
+
     /// Zoom at which a page exactly fills the viewport width.
     pub fn fit_width_zoom(&self) -> f32 {
-        let page = self.core.doc.page.width + 2.0 * FIT_PADDING;
+        let page = self.widest_page() + 2.0 * FIT_PADDING;
         (self.scroll.viewport_width() / page).clamp(MIN_ZOOM, MAX_ZOOM)
     }
 

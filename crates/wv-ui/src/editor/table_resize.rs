@@ -81,7 +81,7 @@ impl EditorView {
             let origin = (f32::from(b.origin.x), f32::from(b.origin.y));
             for table in &page_layout.tables {
                 let Some((grab, row_height)) =
-                    grab_at(table, &layout.setup, origin, self.zoom, pointer)
+                    grab_at(table, &page_layout.setup, origin, self.zoom, pointer)
                 else {
                     continue;
                 };
@@ -95,7 +95,7 @@ impl EditorView {
                     },
                     look: self.core.table_look(table.table),
                     row_height,
-                    content: layout.setup.column_width(),
+                    content: page_layout.setup.column_width(),
                     first: true,
                 });
                 return true;

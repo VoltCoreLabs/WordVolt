@@ -95,7 +95,7 @@ fn draw_bands(
     pages: usize,
     layout: &DocLayout,
 ) {
-    let setup = &layout.setup;
+    let setup = &layout.pages[page].setup;
     for (band, is_header) in [(bands.0, true), (bands.1, false)] {
         let Some(line) = wv_layout::band_line(band, page + 1, pages, c.fonts) else {
             continue;
@@ -124,7 +124,8 @@ fn draw_bands(
 }
 
 fn draw_tables(c: &mut Canvas, layout: &DocLayout, page: usize) {
-    let (left, top) = (layout.setup.margin_left, layout.setup.margin_top);
+    let setup = &layout.pages[page].setup;
+    let (left, top) = (setup.margin_left, setup.margin_top);
     for table in &layout.pages[page].tables {
         for shade in &table.shades {
             c.fill(
@@ -151,10 +152,10 @@ pub fn draw_page(doc: &Document, layout: &DocLayout, fonts: &FontSet, page: usiz
     let mut c = Canvas {
         content: Content::new(),
         fonts,
-        height: layout.setup.height,
+        height: layout.pages[page].setup.height,
     };
     let mut images = BTreeSet::new();
-    let setup = &layout.setup;
+    let setup = &layout.pages[page].setup;
     draw_tables(&mut c, layout, page);
     draw_bands(
         &mut c,

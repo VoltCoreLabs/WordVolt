@@ -53,7 +53,7 @@ pub(super) fn make_paper_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Entit
         &paper_menu,
         |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
             let index = *index;
-            this.edit(cx, move |c| c.set_page(c.doc.page.with_paper(index)));
+            this.edit(cx, move |c| c.set_page(c.page_here().with_paper(index)));
         },
     )
     .detach();
@@ -88,7 +88,7 @@ pub(super) fn make_margins_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Ent
                 Margins::Moderate,
                 Margins::Wide,
             ][(*index).min(3)];
-            this.edit(cx, move |c| c.set_page(c.doc.page.with_margins(preset)));
+            this.edit(cx, move |c| c.set_page(c.page_here().with_margins(preset)));
         },
     )
     .detach();
@@ -106,7 +106,7 @@ pub(super) fn make_columns_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Ent
         &columns_menu,
         |this, _, MenuEvent::Picked(index): &MenuEvent, cx| {
             let n = (*index as u8 + 1).min(3);
-            this.edit(cx, move |c| c.set_page(c.doc.page.with_columns(n)));
+            this.edit(cx, move |c| c.set_page(c.page_here().with_columns(n)));
         },
     )
     .detach();

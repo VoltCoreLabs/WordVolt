@@ -178,7 +178,7 @@ impl EditorView {
         let (page, Some(b)) = target else {
             return;
         };
-        let s = &layout.setup;
+        let s = layout.setup_of(page);
         let pic = d.picture;
         let x = (pointer.0 - f32::from(b.origin.x)) / z - s.margin_left - d.grab.0;
         let y = (pointer.1 - f32::from(b.origin.y)) / z - s.margin_top - d.grab.1;
