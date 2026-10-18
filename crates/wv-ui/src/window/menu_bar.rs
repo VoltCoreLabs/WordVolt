@@ -18,6 +18,7 @@ pub enum Command {
     Redo,
     Find,
     Replace,
+    About,
 }
 
 pub struct CommandChosen(pub Command);
@@ -47,6 +48,8 @@ const HISTORY: &[Entry] = &[
     (Key::MenuUndo, "Z", Command::Undo),
     (Key::MenuRedo, "Y", Command::Redo),
 ];
+
+const HELP: &[Entry] = &[(Key::MenuAbout, "", Command::About)];
 
 /// Title-bar menus: File, Edit and History. Rarely used commands live here, not in the ribbon.
 pub struct MenuBar {
@@ -146,10 +149,11 @@ impl Render for MenuBar {
         let lang = self.lang;
         let th = cx.global::<Theme>();
         let (hover, open_bg) = (th.surface_alt, th.accent_subtle);
-        let menus: [(Key, &'static [Entry]); 3] = [
+        let menus: [(Key, &'static [Entry]); 4] = [
             (Key::GroupFile, FILE),
             (Key::GroupEditing, EDIT),
             (Key::GroupHistory, HISTORY),
+            (Key::MenuHelp, HELP),
         ];
         let items: Vec<_> = menus
             .into_iter()

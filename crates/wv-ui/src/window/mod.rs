@@ -1,3 +1,4 @@
+mod about;
 mod autosave;
 mod band_controls;
 mod color_picker;

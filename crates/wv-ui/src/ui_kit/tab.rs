@@ -55,7 +55,7 @@ impl PillState {
 /// only darkens its text on hover (no background).
 pub fn tab(label: &'static str, active: bool, cx: &App) -> Stateful<Div> {
     let t = cx.global::<Theme>();
-    let (fg, hover_fg) = (if active { t.on_accent } else { t.text_muted }, t.text);
+    let (fg, hover_fg) = (if active { t.text } else { t.text_muted }, t.text);
     let id = ElementId::from(SharedString::from(format!("tab-{label}")));
     div()
         .id(id)
@@ -80,7 +80,7 @@ pub fn pill_tabs(
 ) -> Div {
     state.sync(selected);
     let t = cx.global::<Theme>();
-    let (bar_bg, accent) = (t.border, t.accent);
+    let (bar_bg, accent) = (t.border, t.surface);
     let capsule = |left: f32, top: f32, width: f32, height: f32| {
         div()
             .absolute()
