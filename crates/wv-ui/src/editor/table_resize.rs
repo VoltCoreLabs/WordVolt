@@ -95,7 +95,7 @@ impl EditorView {
                     },
                     look: self.core.table_look(table.table),
                     row_height,
-                    content: layout.setup.content_width(),
+                    content: layout.setup.column_width(),
                     first: true,
                 });
                 return true;

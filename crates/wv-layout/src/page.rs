@@ -7,6 +7,9 @@ use crate::table::{Block, TABLE_GAP, TableBox};
 
 pub(crate) const EPS: f32 = 0.01;
 
+/// Space between text columns: 0.5 inch.
+pub const COLUMN_GAP: f32 = 48.0;
+
 /// Paper size and margins in logical pixels (96 per inch).
 #[derive(Clone, Debug, PartialEq)]
 pub struct PageSetup {
@@ -23,6 +26,8 @@ pub struct PageSetup {
     pub paragraph_spacing: f32,
     /// Line height multiplier.
     pub line_spacing: f32,
+    /// Text columns.
+    pub columns: u8,
 }
 
 impl PageSetup {
@@ -39,6 +44,7 @@ impl PageSetup {
             footer_distance: 47.2,
             paragraph_spacing: 8.0,
             line_spacing: 1.15,
+            columns: 1,
         }
     }
 
@@ -54,12 +60,19 @@ impl PageSetup {
             margin_left: spec.margin_left + spec.gutter,
             header_distance: spec.header_distance,
             footer_distance: spec.footer_distance,
+            columns: spec.columns.max(1),
             ..Self::a4()
         }
     }
 
     pub fn content_width(&self) -> f32 {
         self.width - self.margin_left - self.margin_right
+    }
+
+    /// Width of one text column.
+    pub fn column_width(&self) -> f32 {
+        let n = f32::from(self.columns.max(1));
+        (self.content_width() - COLUMN_GAP * (n - 1.0)) / n
     }
 
     pub fn content_height(&self) -> f32 {
@@ -105,6 +118,45 @@ pub fn paginate(
     blocks: &[Block],
     setup: &PageSetup,
 ) -> Vec<Page> {
+    let columns = usize::from(setup.columns.max(1));
+    if columns == 1 {
+        return flow(paragraphs, blocks, setup, 1);
+    }
+    // Flow the text through column-wide "pages", then set each run of `columns` of them side by
+    // side on one real page.
+    let narrow = PageSetup {
+        margin_right: setup.margin_right + setup.content_width() - setup.column_width(),
+        ..setup.clone()
+    };
+    let step = setup.column_width() + COLUMN_GAP;
+    flow(paragraphs, blocks, &narrow, columns)
+        .chunks(columns)
+        .map(|group| {
+            let mut page = Page::default();
+            for (i, part) in group.iter().enumerate() {
+                let dx = i as f32 * step;
+                page.slices.extend(part.slices.iter().cloned().map(|mut s| {
+                    s.x += dx;
+                    s
+                }));
+                page.tables.extend(part.tables.iter().cloned().map(|mut t| {
+                    t.shift(dx);
+                    t
+                }));
+            }
+            page
+        })
+        .collect()
+}
+
+/// Flows the blocks onto `setup`-sized pages; a page break skips to the next multiple of
+/// `columns` (the next real page when the pages are columns).
+fn flow(
+    paragraphs: &[Rc<ParagraphLayout>],
+    blocks: &[Block],
+    setup: &PageSetup,
+    columns: usize,
+) -> Vec<Page> {
     let limit = setup.content_height();
     let content_width = setup.content_width();
     let mut pages = vec![Page::default()];
@@ -114,7 +166,10 @@ pub fn paginate(
             Block::Para(para_ix) => {
                 let para = &paragraphs[*para_ix];
                 if para.page_break && !pages.last().is_some_and(Page::is_empty) {
-                    pages.push(Page::default());
+                    let next = (pages.len() - 1) / columns * columns + columns;
+                    while pages.len() <= next {
+                        pages.push(Page::default());
+                    }
                     y = 0.0;
                 }
                 for (line_ix, line) in para.lines.iter().enumerate() {

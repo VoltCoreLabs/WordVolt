@@ -55,8 +55,13 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     };
     let twips = |px: f32| (px * 15.0).round() as i64;
     let page = doc.page;
+    let cols = if page.columns > 1 {
+        format!("<w:cols w:num=\"{}\" w:space=\"720\"/>", page.columns)
+    } else {
+        String::new()
+    };
     xml.push_str(&format!(
-        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{title_page}</w:sectPr></w:body></w:document>",
+        "<w:sectPr>{refs}<w:pgSz w:w=\"{}\" w:h=\"{}\"{}/><w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\" w:header=\"{}\" w:footer=\"{}\" w:gutter=\"{}\"/>{cols}{title_page}</w:sectPr></w:body></w:document>",
         twips(page.width),
         twips(page.height),
         if page.is_landscape() { " w:orient=\"landscape\"" } else { "" },

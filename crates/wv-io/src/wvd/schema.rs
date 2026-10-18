@@ -61,6 +61,12 @@ struct PageDto {
     header_distance: f32,
     #[serde(default = "band_distance")]
     footer_distance: f32,
+    #[serde(default = "one_column")]
+    columns: u8,
+}
+
+fn one_column() -> u8 {
+    1
 }
 
 fn band_distance() -> f32 {
@@ -278,6 +284,7 @@ impl File {
                 gutter: doc.page.gutter,
                 header_distance: doc.page.header_distance,
                 footer_distance: doc.page.footer_distance,
+                columns: doc.page.columns,
             }),
             images: doc
                 .images
@@ -374,6 +381,7 @@ impl File {
                 gutter: p.gutter.max(0.0),
                 header_distance: p.header_distance.max(0.0),
                 footer_distance: p.footer_distance.max(0.0),
+                columns: p.columns.clamp(1, wv_core::MAX_COLUMNS),
             };
         }
         doc.header = band_of(self.header, self.header_runs, &self.header_align);

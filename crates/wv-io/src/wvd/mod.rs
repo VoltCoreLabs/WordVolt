@@ -102,7 +102,8 @@ mod tests {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()
             .with_paper(1)
-            .with_margins(wv_core::Margins::Narrow);
+            .with_margins(wv_core::Margins::Narrow)
+            .with_columns(2);
         assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
     }
 

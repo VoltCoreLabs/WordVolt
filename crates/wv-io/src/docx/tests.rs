@@ -427,3 +427,10 @@ fn reads_word_page_breaks() {
         ]
     );
 }
+
+#[test]
+fn columns_round_trip() {
+    let mut doc = Document::from_text("a");
+    doc.page = doc.page.with_columns(3);
+    assert_eq!(decode(&encode(&doc).unwrap()).unwrap().page.columns, 3);
+}

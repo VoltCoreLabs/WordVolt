@@ -115,7 +115,8 @@ impl PageSetupEditor {
             .zip(old)
             .map(|(n, o)| n.unwrap_or(o))
             .collect();
-        let page = PageSpec::custom(v[0], v[1], [v[2], v[5], v[3], v[4]], [v[6], v[7], v[8]]);
+        let page = PageSpec::custom(v[0], v[1], [v[2], v[5], v[3], v[4]], [v[6], v[7], v[8]])
+            .with_columns(c.columns);
         self.open = false;
         self.current = page;
         cx.emit(PageSetupEvent::Set(page));
