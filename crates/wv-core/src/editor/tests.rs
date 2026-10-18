@@ -1366,3 +1366,19 @@ fn sections_have_their_own_headers_and_footers() {
 fn wv_core_band(text: &str) -> crate::document::Band {
     crate::document::Band::new(text)
 }
+
+#[test]
+fn the_files_default_font_fills_what_nothing_else_sets() {
+    let mut e = Editor::new(Document::from_text("Заголовок\nТекст"));
+    e.doc.default_font = Some("Georgia".into());
+    e.doc.default_size_pt = Some(11);
+    e.sel = Selection::caret(Position::new(0, 0));
+    e.set_named_style(wv_core_named());
+    let plain = e.doc.resolve(&e.doc.paragraphs[1]).unwrap();
+    assert_eq!(plain.runs[0].style.font.as_deref(), Some("Georgia"));
+    assert_eq!(plain.runs[0].style.size_pt, Some(11));
+    // The heading keeps the size of its style; the font still comes from the file.
+    let heading = e.doc.resolve(&e.doc.paragraphs[0]).unwrap();
+    assert_eq!(heading.runs[0].style.size_pt, Some(16));
+    assert_eq!(heading.runs[0].style.font.as_deref(), Some("Georgia"));
+}

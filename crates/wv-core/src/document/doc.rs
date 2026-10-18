@@ -43,6 +43,10 @@ pub struct Document {
     /// Header and footer of the sections that end with a break (the last section uses `header` and
     /// `footer`), by `ParaStyle::section` id.
     pub section_bands: BTreeMap<u32, (Band, Band)>,
+    /// Font and size (pt) of text that sets none and whose style sets none (the file's defaults);
+    /// `None` = the application's.
+    pub default_font: Option<String>,
+    pub default_size_pt: Option<u16>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -62,6 +66,8 @@ impl Default for Document {
             sections: BTreeMap::new(),
             styles: BTreeMap::new(),
             section_bands: BTreeMap::new(),
+            default_font: None,
+            default_size_pt: None,
             comments: Vec::new(),
             revisions: Vec::new(),
         }

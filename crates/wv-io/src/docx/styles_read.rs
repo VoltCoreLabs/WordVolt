@@ -188,3 +188,83 @@ fn property(raw: &mut Raw, name: &[u8], e: &quick_xml::events::BytesStart) {
         _ => {}
     }
 }
+
+/// (major, minor) Latin fonts of word/theme/theme1.xml: what `w:asciiTheme="majorHAnsi"` /
+/// `"minorHAnsi"` stand for.
+pub(super) fn theme_fonts(xml: &[u8]) -> (Option<String>, Option<String>) {
+    let mut reader = Reader::from_reader(xml);
+    let (mut major, mut minor) = (None, None);
+    let mut in_font: Option<bool> = None;
+    let mut buf = Vec::new();
+    while let Ok(event) = reader.read_event_into(&mut buf) {
+        match event {
+            Event::Eof => break,
+            Event::Start(e) | Event::Empty(e) => match e.local_name().as_ref() {
+                b"majorFont" => in_font = Some(true),
+                b"minorFont" => in_font = Some(false),
+                b"latin" => match in_font {
+                    Some(true) if major.is_none() => major = attr(&e, b"typeface"),
+                    Some(false) if minor.is_none() => minor = attr(&e, b"typeface"),
+                    _ => {}
+                },
+                _ => {}
+            },
+            Event::End(e) if matches!(e.local_name().as_ref(), b"majorFont" | b"minorFont") => {
+                in_font = None;
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+    (major, minor)
+}
+
+/// The font and size (pt) text has when nothing says otherwise: `w:docDefaults`, then the Normal
+/// style on top of it. `theme` resolves theme fonts.
+pub(super) fn defaults(
+    xml: &[u8],
+    theme: &(Option<String>, Option<String>),
+) -> (Option<String>, Option<u16>) {
+    let mut reader = Reader::from_reader(xml);
+    let (mut font, mut size): (Option<String>, Option<u16>) = (None, None);
+    let (mut in_defaults, mut in_normal) = (false, false);
+    let mut buf = Vec::new();
+    while let Ok(event) = reader.read_event_into(&mut buf) {
+        match event {
+            Event::Eof => break,
+            Event::Start(e) | Event::Empty(e) => match e.local_name().as_ref() {
+                b"docDefaults" => in_defaults = true,
+                b"style" => {
+                    in_normal = attr(&e, b"styleId").is_some_and(|id| id == "Normal")
+                        || attr(&e, b"default").is_some_and(|d| d == "1")
+                            && attr(&e, b"type").is_none_or(|t| t == "paragraph");
+                }
+                b"rFonts" if in_defaults || in_normal => {
+                    let themed = |key: &[u8]| match attr(&e, key).as_deref() {
+                        Some(v) if v.starts_with("major") => theme.0.clone(),
+                        Some(v) if v.starts_with("minor") => theme.1.clone(),
+                        _ => None,
+                    };
+                    let named = attr(&e, b"ascii").or_else(|| attr(&e, b"hAnsi"));
+                    if let Some(f) = themed(b"asciiTheme").or(named).or(themed(b"hAnsiTheme")) {
+                        font = Some(f);
+                    }
+                }
+                b"sz" if in_defaults || in_normal => {
+                    if let Some(half) = attr(&e, b"val").and_then(|v| v.parse::<u16>().ok()) {
+                        size = Some(half.div_ceil(2));
+                    }
+                }
+                _ => {}
+            },
+            Event::End(e) => match e.local_name().as_ref() {
+                b"docDefaults" => in_defaults = false,
+                b"style" => in_normal = false,
+                _ => {}
+            },
+            _ => {}
+        }
+        buf.clear();
+    }
+    (font, size)
+}

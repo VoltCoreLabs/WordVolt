@@ -744,3 +744,40 @@ fn section_headers_are_written_per_section_and_read_back() {
     assert_eq!(back.header.text(), "Second head");
     assert!(back.section_bands[&1].1.has_page_number());
 }
+
+#[test]
+fn a_word_file_brings_its_own_default_font_and_size() {
+    let styles = r#"<?xml version="1.0"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>"#;
+    let theme = r#"<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:themeElements><a:fontScheme><a:majorFont><a:latin typeface="Cambria"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>"#;
+    let body = r#"<?xml version="1.0"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Hi</w:t></w:r></w:p><w:sectPr/></w:body></w:document>"#;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default();
+    for (name, content) in [
+        ("word/document.xml", body),
+        ("word/styles.xml", styles),
+        ("word/theme/theme1.xml", theme),
+    ] {
+        zip.start_file(name, options).unwrap();
+        std::io::Write::write_all(&mut zip, content.as_bytes()).unwrap();
+    }
+    let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
+    assert_eq!(doc.default_font.as_deref(), Some("Calibri"));
+    assert_eq!(doc.default_size_pt, Some(11));
+    // The text is drawn in it.
+    let resolved = doc.resolve(&doc.paragraphs[0]).unwrap();
+    assert_eq!(resolved.runs[0].style.font.as_deref(), Some("Calibri"));
+    assert_eq!(resolved.runs[0].style.size_pt, Some(11));
+}
+
+#[test]
+fn the_documents_own_defaults_survive_a_save() {
+    let mut doc = Document::from_text("x");
+    doc.default_font = Some("Georgia".into());
+    doc.default_size_pt = Some(10);
+    let back = decode(&encode(&doc).unwrap()).unwrap();
+    assert_eq!(back.default_font.as_deref(), Some("Georgia"));
+    assert_eq!(back.default_size_pt, Some(10));
+}

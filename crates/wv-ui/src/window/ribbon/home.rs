@@ -23,12 +23,20 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
     // The size shown includes what the paragraph style supplies (a heading is bigger than 12 pt).
     let mut shown = style.clone();
     named.apply(&mut shown);
-    let size = shown.size_pt.unwrap_or(wv_layout::DEFAULT_SIZE_PT);
+    let (default_font, default_size) = {
+        let doc = &this.editor.read(cx).core.doc;
+        (doc.default_font.clone(), doc.default_size_pt)
+    };
+    let size = shown
+        .size_pt
+        .or(default_size)
+        .unwrap_or(wv_layout::DEFAULT_SIZE_PT);
     this.style_combo
         .update(cx, |c, _| c.set_current(style_label(lang, named)));
     let font_name = style
         .font
         .clone()
+        .or(default_font)
         .unwrap_or_else(|| DEFAULT_FONT.to_string());
     this.font_combo.update(cx, |c, _| c.set_current(&font_name));
     this.size_combo
