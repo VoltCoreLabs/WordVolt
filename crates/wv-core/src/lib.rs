@@ -8,6 +8,11 @@ pub mod search;
 pub mod style;
 pub mod time;
 
+/// Font of text in a document that names none.
+pub const DEFAULT_FONT: &str = "SF Pro Text";
+/// Size (pt) of text in a document that names none.
+pub const DEFAULT_SIZE_PT: u16 = 12;
+
 pub use document::{
     BAND_DISTANCE, BAND_SIZE_PT, Band, BandVariants, Comment, DocSettings, Document, ImageData,
     ImageFormat, MAX_COLUMNS, MIN_COLUMN, Margins, NOTE_MARK, PageSpec, Paragraph, Revision, Run,

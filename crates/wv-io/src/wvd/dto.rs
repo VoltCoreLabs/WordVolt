@@ -51,6 +51,11 @@ pub(super) struct File {
     /// Headers and footers of the sections that end with a break.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) section_bands: Vec<super::variants::SectionBandsDto>,
+    /// The file's default font and size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) default_font: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) default_size_pt: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

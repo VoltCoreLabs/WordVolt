@@ -211,6 +211,14 @@ mod tests {
     }
 
     #[test]
+    fn default_font_round_trips() {
+        let mut doc = Document::from_text("x");
+        doc.default_font = Some("Georgia".into());
+        doc.default_size_pt = Some(10);
+        assert_eq!(decode(&encode(&doc).unwrap()).unwrap(), doc);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

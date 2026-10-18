@@ -230,6 +230,7 @@ pub fn write(
     odd_even: bool,
     images: &[ImageData],
     (footnotes, comments, user_styles): (Option<&str>, Option<&str>, &str),
+    defaults: (&str, u16),
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
@@ -268,7 +269,16 @@ pub fn write(
         );
         extra.push(("settings.xml".into(), SETTINGS.into()));
     }
-    let styles = STYLES.replace("</w:styles>", &format!("{user_styles}</w:styles>"));
+    let (font, size) = (
+        super::writer::escape_attr(defaults.0),
+        u32::from(defaults.1) * 2,
+    );
+    let styles = STYLES
+        .replace(
+            "<w:rFonts w:ascii=\"Calibri\" w:hAnsi=\"Calibri\" w:cs=\"Calibri\"/><w:sz w:val=\"22\"/><w:szCs w:val=\"22\"/>",
+            &format!("<w:rFonts w:ascii=\"{font}\" w:hAnsi=\"{font}\" w:cs=\"{font}\"/><w:sz w:val=\"{size}\"/><w:szCs w:val=\"{size}\"/>"),
+        )
+        .replace("</w:styles>", &format!("{user_styles}</w:styles>"));
     let parts = [
         ("[Content_Types].xml", content_types.as_str()),
         ("_rels/.rels", ROOT_RELS),

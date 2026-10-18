@@ -109,6 +109,8 @@ impl File {
                 })
                 .collect(),
             page: (doc.page != PageSpec::default()).then(|| PageDto::of(&doc.page)),
+            default_font: doc.default_font.clone(),
+            default_size_pt: doc.default_size_pt,
             section_bands: doc
                 .section_bands
                 .iter()
@@ -232,6 +234,8 @@ impl File {
         if let Some(spec) = self.page.and_then(PageDto::spec) {
             doc.page = spec;
         }
+        doc.default_font = self.default_font;
+        doc.default_size_pt = self.default_size_pt;
         doc.section_bands = self
             .section_bands
             .into_iter()

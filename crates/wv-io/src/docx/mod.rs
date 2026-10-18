@@ -37,6 +37,7 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
             .map(|xml| styles_read::read(&xml))
             .unwrap_or_default(),
     )?;
+    attach_defaults(&mut doc, bytes);
     attach_images(&mut doc, &rels, &links, bytes);
     attach_footnotes(&mut doc, &links, bytes);
     if let Some(xml) = package::read_part(bytes, "word/comments.xml") {
@@ -45,6 +46,21 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
     (doc.header, doc.footer, doc.variants) = bands::read(bytes);
     doc.section_bands = bands::read_sections(bytes);
     Ok(doc)
+}
+
+/// The font and size of text the file does not give one (docDefaults and Normal, with theme
+/// fonts resolved), so the document looks as it does in Word instead of in the app's font.
+fn attach_defaults(doc: &mut Document, bytes: &[u8]) {
+    let Some(xml) = package::read_part(bytes, "word/styles.xml") else {
+        return;
+    };
+    let theme = package::read_part(bytes, "word/theme/theme1.xml")
+        .map(|t| styles_read::theme_fonts(&t))
+        .unwrap_or_default();
+    let (font, size) = styles_read::defaults(&xml, &theme);
+    // The application's own defaults (what `encode` writes) are not a setting of the file.
+    doc.default_font = font.filter(|f| f != wv_core::DEFAULT_FONT);
+    doc.default_size_pt = size.filter(|s| *s != wv_core::DEFAULT_SIZE_PT);
 }
 
 /// Reads word/footnotes.xml: the paragraphs of the notes go to the end of the document, as
@@ -121,6 +137,10 @@ pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
             footnotes::xml(doc).as_deref(),
             comments::xml(doc).as_deref(),
             &styles_write::xml(doc),
+        ),
+        (
+            doc.default_font.as_deref().unwrap_or(wv_core::DEFAULT_FONT),
+            doc.default_size_pt.unwrap_or(wv_core::DEFAULT_SIZE_PT),
         ),
     )
 }
