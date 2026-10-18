@@ -51,7 +51,7 @@ impl Editor {
     }
 
     /// The id of the bookmark `name` that has text (records of taken-off bookmarks stay for undo).
-    fn anchored_id(&self, name: &str) -> Option<u32> {
+    pub(super) fn anchored_id(&self, name: &str) -> Option<u32> {
         self.doc
             .bookmarks
             .iter()
@@ -82,7 +82,11 @@ impl Editor {
 
     /// Where bookmark `name` starts.
     pub fn bookmark_position(&self, name: &str) -> Option<Position> {
-        let id = self.anchored_id(name)?;
+        self.bookmark_start(self.anchored_id(name)?)
+    }
+
+    /// Where the bookmark with this id starts.
+    pub(super) fn bookmark_start(&self, id: u32) -> Option<Position> {
         for (i, p) in self.doc.paragraphs.iter().enumerate() {
             let mut offset = 0;
             for run in &p.runs {

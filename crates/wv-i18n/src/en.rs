@@ -168,6 +168,9 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::TipPageNumbering => {
             "Page numbers of the section at the caret: continue or start at 1, number style"
         }
+        Key::TipUpdateFields => {
+            "Update fields: the page numbers of \"№\" references from the current layout"
+        }
         Key::CommentText => "Comment text",
         Key::DeleteComment => "Delete comment",
         Key::TipFootnote => {

@@ -5,6 +5,7 @@ mod case_ops;
 mod clipboard_ops;
 mod comment_ops;
 mod core;
+mod field_ops;
 mod footnote_ops;
 mod image_ops;
 mod ime_ops;

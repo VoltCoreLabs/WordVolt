@@ -92,6 +92,9 @@ impl State {
                 self.comment = attr(e, b"id").and_then(|v| v.parse().ok());
             }
             b"commentRangeEnd" => self.comment = None,
+            b"instrText" => self.in_instr = !empty,
+            b"fldSimple" => self.simple_field(&attr(e, b"instr").unwrap_or_default()),
+            b"fldChar" => self.field_char(&attr(e, b"fldCharType").unwrap_or_default()),
             b"bookmarkStart" => {
                 let (file_id, name) = (
                     attr(e, b"id").unwrap_or_default(),

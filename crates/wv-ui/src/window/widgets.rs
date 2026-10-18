@@ -188,6 +188,7 @@ pub(super) fn make_refs_panel(lang: Lang, cx: &mut Context<MainWindow>) -> Entit
     let panel = cx.new(|cx| RefsPanel::new(lang, cx));
     cx.subscribe(&panel, |this, _, event: &RefEvent, cx| {
         let event = event.clone();
+        let event2 = event.clone();
         this.edit(cx, move |c| match event {
             RefEvent::Add(name) => _ = c.add_bookmark(&name),
             RefEvent::Delete(id) => c.delete_bookmark(id),
@@ -196,7 +197,19 @@ pub(super) fn make_refs_panel(lang: Lang, cx: &mut Context<MainWindow>) -> Entit
                 c.insert_reference(&name, text.trim());
             }
             RefEvent::Heading(para) => c.insert_heading_reference(para),
+            RefEvent::PageBookmark(_) | RefEvent::PageHeading(_) => {}
         });
+        match event2 {
+            RefEvent::PageBookmark(name) => {
+                this.editor
+                    .update(cx, |view, cx| view.insert_page_reference(&name, cx));
+            }
+            RefEvent::PageHeading(para) => {
+                this.editor
+                    .update(cx, |view, cx| view.insert_heading_page_reference(para, cx));
+            }
+            _ => {}
+        }
         this.editor.update(cx, |view, cx| view.request_focus(cx));
     })
     .detach();

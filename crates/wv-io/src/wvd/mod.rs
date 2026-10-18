@@ -246,6 +246,22 @@ mod tests {
     }
 
     #[test]
+    fn page_number_fields_round_trip() {
+        let mut e = Editor::new(Document::from_text(
+            "Цель
+Стр. ",
+        ));
+        e.sel = wv_core::Selection {
+            anchor: wv_core::Position::new(0, 0),
+            head: wv_core::Position::new(0, "Цель".len()),
+        };
+        e.add_bookmark("цель");
+        e.sel = wv_core::Selection::caret(wv_core::Position::new(1, "Стр. ".len()));
+        e.insert_page_reference("цель", "7");
+        assert_eq!(decode(&encode(&e.doc).unwrap()).unwrap(), e.doc);
+    }
+
+    #[test]
     fn page_setup_round_trips() {
         let mut doc = Document::from_text("x");
         doc.page = wv_core::PageSpec::a4()

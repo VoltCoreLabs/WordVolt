@@ -38,6 +38,13 @@ pub fn parse(
                     .map_err(|e| IoError::Parse(format!("document.xml: {e}")))?;
                 state.picture_offset(&text);
             }
+            Event::Text(t) if state.in_instr => {
+                if state.collecting
+                    && let Ok(text) = t.unescape()
+                {
+                    state.instr.push_str(&text);
+                }
+            }
             Event::Text(t) if state.in_text => {
                 let text = t
                     .unescape()
@@ -75,6 +82,13 @@ struct State {
     /// The bookmark being read (our id, the file's id) and the bookmarks found.
     bookmark: Vec<(u32, String)>,
     bookmarks: Vec<wv_core::Bookmark>,
+    /// The field whose result is being read, its instruction text so far and the bookmark names
+    /// page-number fields refer to.
+    field: Option<fields::Field>,
+    instr: String,
+    collecting: bool,
+    in_instr: bool,
+    ref_names: Vec<String>,
     /// User styles of styles.xml by style id; the ones used get an id in `doc_styles`.
     user_styles: HashMap<String, wv_core::UserStyle>,
     custom_ids: HashMap<String, u32>,
@@ -157,6 +171,8 @@ impl State {
             }
             b"rPr" => self.in_run_props = false,
             b"t" | b"delText" => self.in_text = false,
+            b"instrText" => self.in_instr = false,
+            b"fldSimple" => self.field = None,
             b"ins" | b"del" if !self.in_paragraph_props && !self.in_run_props => self.change = None,
             _ => {}
         }
@@ -279,18 +295,21 @@ impl State {
     }
 
     fn text(&mut self, text: &str) {
-        let Some(p) = self.current.as_mut() else {
+        if self.current.is_none() {
             return;
-        };
+        }
         let mut style = self.run.clone();
         style.link = self.link.clone();
         style.comment = self.comment;
+        self.apply_field(&mut style);
         style.bookmarks = self.bookmark.iter().map(|(id, _)| *id).collect();
         style.bookmarks.sort_unstable();
         style.change = self.change;
         let clean = text.replace(['\n', '\r'], " ");
-        let end = p.len();
-        p.insert(end, &clean, &style);
+        if let Some(p) = self.current.as_mut() {
+            let end = p.len();
+            p.insert(end, &clean, &style);
+        }
     }
 
     fn finish(mut self) -> Document {
@@ -304,7 +323,8 @@ impl State {
             }
         };
         doc.revisions = self.revisions;
-        doc.bookmarks = self.bookmarks;
+        doc.bookmarks = self.bookmarks.clone();
+        fields::resolve(&self.ref_names, &mut doc);
         doc.styles = self.doc_styles;
         doc.page = self.page.snapped();
         doc.sections = self
@@ -335,5 +355,6 @@ impl State {
     }
 }
 
+mod fields;
 mod picture_state;
 mod start;
