@@ -30,6 +30,7 @@ mod side_panel;
 mod spell;
 mod state;
 mod status_bar;
+mod style_namer;
 mod style_names;
 mod styles_panel;
 mod tab_menu;

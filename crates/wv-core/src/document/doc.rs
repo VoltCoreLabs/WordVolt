@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::{Band, BandVariants, ImageData, PageSpec, Paragraph, TableLook};
 use crate::position::Position;
-use crate::style::CharStyle;
+use crate::style::{CharStyle, UserStyle};
 
 /// A comment on a stretch of text (the text carries `CharStyle::comment = id`).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -38,6 +38,8 @@ pub struct Document {
     pub table_looks: BTreeMap<u32, TableLook>,
     /// Page setup of the sections that end with a break, by `ParaStyle::section` id.
     pub sections: BTreeMap<u32, PageSpec>,
+    /// Styles defined by the user (or read from a file) by `ParaStyle::custom` id.
+    pub styles: BTreeMap<u32, UserStyle>,
     /// Comments by `CharStyle::comment` id; one without anchored text is not shown.
     pub comments: Vec<Comment>,
     /// Authors and dates of tracked changes by `Change::id`.
@@ -55,6 +57,7 @@ impl Default for Document {
             page: PageSpec::default(),
             table_looks: BTreeMap::new(),
             sections: BTreeMap::new(),
+            styles: BTreeMap::new(),
             comments: Vec::new(),
             revisions: Vec::new(),
         }
@@ -70,6 +73,7 @@ pub struct DocSettings {
     pub page: PageSpec,
     pub table_looks: BTreeMap<u32, TableLook>,
     pub sections: BTreeMap<u32, PageSpec>,
+    pub styles: BTreeMap<u32, UserStyle>,
 }
 
 /// The character that stands for a footnote mark in the text (the number is drawn instead).
@@ -126,6 +130,7 @@ impl Document {
             page: self.page,
             table_looks: self.table_looks.clone(),
             sections: self.sections.clone(),
+            styles: self.styles.clone(),
         }
     }
 
@@ -136,6 +141,7 @@ impl Document {
         self.page = settings.page;
         self.table_looks = settings.table_looks.clone();
         self.sections = settings.sections.clone();
+        self.styles = settings.styles.clone();
     }
 
     /// The (header, footer) shown on page `page` (0-based).

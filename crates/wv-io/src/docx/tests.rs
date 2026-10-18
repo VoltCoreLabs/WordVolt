@@ -665,3 +665,61 @@ fn sections_are_written_in_the_last_paragraph_of_each_and_read_back() {
     assert!(first.height > first.width);
     assert!(back.page.width > back.page.height);
 }
+
+#[test]
+fn user_styles_are_written_to_styles_xml_and_read_back() {
+    let mut e = Editor::new(Document::from_text("Styled\nPlain"));
+    e.sel = wv_core::Selection::caret(wv_core::Position::new(0, 0));
+    e.set_size_pt(18);
+    e.toggle_bold();
+    e.set_align(wv_core::Align::Center);
+    e.define_style("My <style>");
+    let bytes = encode(&e.doc).unwrap();
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut styles = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("word/styles.xml").unwrap(), &mut styles).unwrap();
+    assert!(styles.contains("w:styleId=\"WV1\"") && styles.contains("My &lt;style&gt;"));
+    let back = decode(&bytes).unwrap();
+    assert_eq!(back.styles.len(), 1);
+    let style = back.styles.values().next().unwrap();
+    assert_eq!(style.name, "My <style>");
+    assert_eq!((style.size_pt, style.bold), (Some(18), true));
+    assert_eq!(style.align, Some(wv_core::Align::Center));
+    assert!(back.paragraphs[0].style.custom.is_some());
+    assert!(back.paragraphs[1].style.custom.is_none());
+}
+
+#[test]
+fn reads_word_styles_with_based_on() {
+    let styles = r#"<?xml version="1.0"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:rPr><w:sz w:val="99"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="Note"><w:name w:val="Note"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="right"/><w:spacing w:before="240" w:after="120"/></w:pPr><w:rPr><w:i/><w:color w:val="FF0000"/><w:sz w:val="20"/><w:rFonts w:ascii="Georgia"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="BigNote"><w:name w:val="Big note"/><w:basedOn w:val="Note"/><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style>
+<w:style w:type="character" w:styleId="Emph"><w:name w:val="Emph"/><w:rPr><w:b/></w:rPr></w:style>
+</w:styles>"#;
+    let body = r#"<?xml version="1.0"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="BigNote"/></w:pPr><w:r><w:t>Hello</w:t></w:r></w:p>
+<w:p><w:r><w:t>Plain</w:t></w:r></w:p>
+<w:sectPr/></w:body></w:document>"#;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default();
+    for (name, content) in [("word/document.xml", body), ("word/styles.xml", styles)] {
+        zip.start_file(name, options).unwrap();
+        std::io::Write::write_all(&mut zip, content.as_bytes()).unwrap();
+    }
+    let doc = decode(&zip.finish().unwrap().into_inner()).unwrap();
+    assert_eq!(doc.styles.len(), 1, "only the style that is used is kept");
+    let style = doc.styles.values().next().unwrap();
+    assert_eq!(style.name, "Big note");
+    // Its own properties, and the ones it inherits from Note.
+    assert_eq!((style.bold, style.italic), (true, true));
+    assert_eq!(style.size_pt, Some(20));
+    assert_eq!(style.color, Some(0xFF0000));
+    assert_eq!(style.font.as_deref(), Some("Georgia"));
+    assert_eq!(style.align, Some(wv_core::Align::Right));
+    assert_eq!((style.space_before, style.space_after), (Some(12), Some(6)));
+    assert!(doc.paragraphs[0].style.custom.is_some());
+}

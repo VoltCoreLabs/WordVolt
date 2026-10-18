@@ -229,7 +229,7 @@ pub fn write(
     bands: &[BandPart],
     odd_even: bool,
     images: &[ImageData],
-    (footnotes, comments): (Option<&str>, Option<&str>),
+    (footnotes, comments, user_styles): (Option<&str>, Option<&str>, &str),
 ) -> Result<Vec<u8>, IoError> {
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
@@ -268,11 +268,12 @@ pub fn write(
         );
         extra.push(("settings.xml".into(), SETTINGS.into()));
     }
+    let styles = STYLES.replace("</w:styles>", &format!("{user_styles}</w:styles>"));
     let parts = [
         ("[Content_Types].xml", content_types.as_str()),
         ("_rels/.rels", ROOT_RELS),
         ("word/_rels/document.xml.rels", rels.as_str()),
-        ("word/styles.xml", STYLES),
+        ("word/styles.xml", styles.as_str()),
         ("word/numbering.xml", numbering.as_str()),
         ("word/document.xml", document_xml),
     ];

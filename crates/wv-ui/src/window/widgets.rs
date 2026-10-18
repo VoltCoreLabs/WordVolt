@@ -3,6 +3,7 @@ use super::combo::{Combo, ComboConfig, ComboEvent, ItemLook};
 use super::comment_editor::{CommentEditor, CommentEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
+use super::style_namer::{NewStyle, StyleNamer};
 use super::style_names::{style_from_label, style_label};
 use crate::theme::DEFAULT_FONT;
 use crate::ui_kit::Icon;
@@ -169,6 +170,17 @@ pub(super) fn make_comment_editor(
     })
     .detach();
     editor
+}
+
+pub(super) fn make_style_namer(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<StyleNamer> {
+    let namer = cx.new(|cx| StyleNamer::new(lang, cx));
+    cx.subscribe(&namer, |this, _, NewStyle(name): &NewStyle, cx| {
+        let name = name.clone();
+        this.edit(cx, move |c| _ = c.define_style(&name));
+        this.editor.update(cx, |view, cx| view.request_focus(cx));
+    })
+    .detach();
+    namer
 }
 
 pub(super) fn make_case_menu(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<MenuButton> {

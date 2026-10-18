@@ -16,6 +16,7 @@ pub fn document_xml(doc: &Document) -> (String, Vec<String>, usize) {
     let mut lists = Lists {
         revisions: doc.revisions.clone(),
         sections: doc.sections.clone(),
+        styles: doc.styles.keys().copied().collect(),
         ..Lists::default()
     };
     let paras = &doc.paragraphs;
@@ -81,6 +82,8 @@ pub struct Lists {
     revisions: Vec<wv_core::Revision>,
     /// Page setup of the sections that end with a break.
     sections: std::collections::BTreeMap<u32, wv_core::PageSpec>,
+    /// Ids of the user styles the document has.
+    styles: Vec<u32>,
     number_lists: usize,
     previous_was_number: bool,
 }
@@ -128,11 +131,17 @@ pub fn write_paragraph(
         || p.style.space_before.is_some()
         || p.style.space_after.is_some()
         || p.style.named != NamedStyle::Normal
+        || p.style.custom.is_some()
         || p.style.section.is_some();
     if has_props {
         // Child order follows the schema: pStyle, numPr, spacing, ind, jc.
         xml.push_str("<w:pPr>");
-        if let Some(id) = docx_style_id(p.style.named) {
+        if let Some(id) = p.style.custom.filter(|id| lists.styles.contains(id)) {
+            xml.push_str(&format!(
+                "<w:pStyle w:val=\"{}\"/>",
+                super::styles_write::style_id(id)
+            ));
+        } else if let Some(id) = docx_style_id(p.style.named) {
             xml.push_str(&format!("<w:pStyle w:val=\"{id}\"/>"));
         } else if p.style.quote {
             xml.push_str("<w:pStyle w:val=\"Quote\"/>");
@@ -269,7 +278,7 @@ pub(super) fn escape_attr(text: &str) -> String {
 }
 
 /// Word style id of a built-in style (`None` = Normal).
-fn docx_style_id(style: NamedStyle) -> Option<&'static str> {
+pub(super) fn docx_style_id(style: NamedStyle) -> Option<&'static str> {
     match style {
         NamedStyle::Normal => None,
         NamedStyle::Title => Some("Title"),

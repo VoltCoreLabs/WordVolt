@@ -120,7 +120,10 @@ impl Editor {
     /// Applies a built-in style to the selected paragraphs.
     pub fn set_named_style(&mut self, named: NamedStyle) {
         let (a, b) = self.selected_paras();
-        self.edit_para_styles(a, b, |s| s.named = named);
+        self.edit_para_styles(a, b, |s| {
+            s.named = named;
+            s.custom = None;
+        });
     }
 
     pub fn named_style(&self) -> NamedStyle {

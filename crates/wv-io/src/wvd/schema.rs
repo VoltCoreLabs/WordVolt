@@ -22,6 +22,7 @@ impl File {
                 quote: p.style.quote,
                 toc: p.style.toc,
                 section: p.style.section,
+                custom: p.style.custom,
                 note: p.style.note,
                 image: p.style.image.map(|i| ImageRefDto {
                     id: i.id,
@@ -108,6 +109,11 @@ impl File {
                 })
                 .collect(),
             page: (doc.page != PageSpec::default()).then(|| PageDto::of(&doc.page)),
+            styles: doc
+                .styles
+                .iter()
+                .map(|(id, s)| super::styles::UserStyleDto::of(*id, s))
+                .collect(),
             sections: doc
                 .sections
                 .iter()
@@ -149,6 +155,7 @@ impl File {
                     quote: p.quote,
                     toc: p.toc,
                     section: p.section,
+                    custom: p.custom,
                     note: p.note,
                     image: p.image.map(|i| ImageRef {
                         id: i.id,
@@ -220,6 +227,11 @@ impl File {
         if let Some(spec) = self.page.and_then(PageDto::spec) {
             doc.page = spec;
         }
+        doc.styles = self
+            .styles
+            .into_iter()
+            .map(super::styles::UserStyleDto::style)
+            .collect();
         doc.sections = self
             .sections
             .into_iter()

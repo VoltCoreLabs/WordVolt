@@ -66,7 +66,7 @@ pub(crate) fn wrap_around(
             paragraphs[para] = match next.get(&para) {
                 Some(around) => {
                     let p = &doc.paragraphs[para];
-                    let resolved = p.with_named_style();
+                    let resolved = doc.resolve(p);
                     let source = &sources[para];
                     let mut layout = layout_paragraph_around(
                         resolved.as_ref().unwrap_or(p),

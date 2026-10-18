@@ -13,11 +13,13 @@ pub fn parse(
     xml: &[u8],
     links: &HashMap<String, String>,
     numbering: &HashMap<String, ListKind>,
+    styles: &HashMap<String, wv_core::UserStyle>,
 ) -> Result<(Document, Vec<String>), IoError> {
     let mut reader = Reader::from_reader(xml);
     let mut state = State {
         links: links.clone(),
         numbering: numbering.clone(),
+        user_styles: styles.clone(),
         ..State::default()
     };
     let mut buf = Vec::new();
@@ -69,6 +71,11 @@ struct State {
     links: HashMap<String, String>,
     link: Option<String>,
     comment: Option<u32>,
+    /// User styles of styles.xml by style id; the ones used get an id in `doc_styles`.
+    user_styles: HashMap<String, wv_core::UserStyle>,
+    custom_ids: HashMap<String, u32>,
+    doc_styles: std::collections::BTreeMap<u32, wv_core::UserStyle>,
+    custom: Option<u32>,
     /// Page setup before a `w:sectPr` inside a paragraph (its values are read into `page`).
     saved_page: Option<PageSpec>,
     /// The section the paragraph being read ends.
@@ -151,11 +158,23 @@ impl State {
         }
     }
 
+    /// The id of the user style with the file's style id `style` (the style is added to the
+    /// document the first time); sets the built-in style it is based on.
+    fn user_style_id(&mut self, style: &str) -> Option<u32> {
+        let user = self.user_styles.get(style)?.clone();
+        self.named = user.base;
+        let next = self.doc_styles.len() as u32 + 1;
+        let id = *self.custom_ids.entry(style.to_string()).or_insert(next);
+        self.doc_styles.entry(id).or_insert(user);
+        Some(id)
+    }
+
     fn begin_paragraph(&mut self) {
         self.end_paragraph();
         self.current = Some(Paragraph::default());
         self.align = Align::default();
         self.named = NamedStyle::Normal;
+        self.custom = None;
         self.quote = false;
         self.list = None;
         self.indent = 0;
@@ -180,6 +199,7 @@ impl State {
             p.style.align = self.align;
             p.style.quote = self.quote;
             p.style.named = self.named;
+            p.style.custom = self.custom;
             p.style.list = self.list;
             p.style.indent = self.indent;
             p.style.line_spacing = self.line_spacing;
@@ -276,6 +296,7 @@ impl State {
             }
         };
         doc.revisions = self.revisions;
+        doc.styles = self.doc_styles;
         doc.page = self.page.snapped();
         doc.sections = self
             .sections

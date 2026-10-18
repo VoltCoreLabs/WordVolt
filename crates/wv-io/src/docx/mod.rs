@@ -15,6 +15,8 @@ mod picture;
 mod read_util;
 mod run_xml;
 mod section_xml;
+mod styles_read;
+mod styles_write;
 mod table_read;
 mod table_xml;
 mod writer;
@@ -31,6 +33,9 @@ pub fn decode(bytes: &[u8]) -> Result<Document, IoError> {
         &package::read_document_xml(bytes)?,
         &links,
         &package::read_numbering(bytes),
+        &package::read_part(bytes, "word/styles.xml")
+            .map(|xml| styles_read::read(&xml))
+            .unwrap_or_default(),
     )?;
     attach_images(&mut doc, &rels, &links, bytes);
     attach_footnotes(&mut doc, &links, bytes);
@@ -47,7 +52,7 @@ fn attach_footnotes(doc: &mut Document, links: &HashMap<String, String>, bytes: 
     let Some(xml) = package::read_part(bytes, "word/footnotes.xml") else {
         return;
     };
-    let Ok((notes, _)) = document_xml::parse(&xml, links, &HashMap::new()) else {
+    let Ok((notes, _)) = document_xml::parse(&xml, links, &HashMap::new(), &HashMap::new()) else {
         return;
     };
     let mut previous = None;
@@ -114,6 +119,7 @@ pub fn encode(doc: &Document) -> Result<Vec<u8>, IoError> {
         (
             footnotes::xml(doc).as_deref(),
             comments::xml(doc).as_deref(),
+            &styles_write::xml(doc),
         ),
     )
 }
