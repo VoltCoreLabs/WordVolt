@@ -2,6 +2,7 @@
 //! Tables are GFM pipe tables (first row = header; several paragraphs in a cell joined by `<br>`).
 //! Paragraph alignment and font size/colour are not representable and are dropped.
 
+mod list;
 mod reader;
 mod table;
 mod writer;

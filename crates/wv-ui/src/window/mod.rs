@@ -4,6 +4,9 @@ mod color_picker;
 mod combo;
 mod commands;
 mod context_menu;
+mod context_objects;
+mod context_parts;
+mod context_sections;
 mod doc_tabs;
 mod drop_files;
 mod export_pdf;
@@ -30,5 +33,7 @@ mod tab_menu;
 mod tab_strip;
 mod table_picker;
 mod titlebar;
+mod widgets;
+mod widgets_page;
 
 pub use main_window::MainWindow;

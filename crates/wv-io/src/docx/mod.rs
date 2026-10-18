@@ -4,11 +4,13 @@
 //! Not supported yet: images, per-section or first/even-page headers, styles defined in styles.xml (only direct formatting and Heading styles).
 
 mod band_parts;
+mod band_write;
 mod bands;
 mod document_xml;
 mod package;
 mod picture;
 mod read_util;
+mod run_xml;
 mod table_read;
 mod table_xml;
 mod writer;

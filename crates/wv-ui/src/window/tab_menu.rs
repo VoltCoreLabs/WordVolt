@@ -1,7 +1,8 @@
 use gpui_kit::*;
 use wv_i18n::{Key, t};
 
-use super::context_menu::{Action, popup, row, separator};
+use super::context_menu::{Action, row, separator};
+use super::context_parts::popup;
 use super::state::MainWindow;
 use crate::theme::{Theme, radius};
 
