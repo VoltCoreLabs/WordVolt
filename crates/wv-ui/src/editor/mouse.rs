@@ -47,6 +47,10 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
+        if self.scroll.begin_drag(ev.position) {
+            cx.notify();
+            return;
+        }
         if self.start_image_drag(ev.position, cx) || self.start_border_drag(ev.position) {
             return;
         }
@@ -122,6 +126,15 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.scroll.dragging() {
+            if ev.pressed_button == Some(MouseButton::Left) {
+                self.scroll.drag_to(ev.position);
+                cx.notify();
+            } else {
+                self.scroll.end_drag();
+            }
+            return;
+        }
         if self.border_drag.is_some() {
             if ev.pressed_button == Some(MouseButton::Left) {
                 self.drag_border(ev.position, cx);
@@ -148,6 +161,7 @@ impl EditorView {
 
     pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.selecting = false;
+        self.scroll.end_drag();
         self.end_image_drag();
         self.border_drag = None;
         if !self.core.sel.is_collapsed()

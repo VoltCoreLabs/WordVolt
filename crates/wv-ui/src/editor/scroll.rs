@@ -9,6 +9,9 @@ pub struct ScrollState {
     target: Cell<f32>,
     current: Cell<f32>,
     viewport_top: Cell<f32>,
+    viewport_right: Cell<f32>,
+    /// The thumb is being dragged: where inside the thumb it was grabbed.
+    grab: Cell<Option<f32>>,
     viewport_h: Cell<f32>,
     viewport_w: Cell<f32>,
     content_h: Cell<f32>,
@@ -22,6 +25,8 @@ impl Default for ScrollState {
             target: Cell::new(0.),
             current: Cell::new(0.),
             viewport_top: Cell::new(0.),
+            viewport_right: Cell::new(0.),
+            grab: Cell::new(None),
             viewport_h: Cell::new(0.),
             viewport_w: Cell::new(0.),
             content_h: Cell::new(0.),
@@ -38,6 +43,7 @@ impl ScrollState {
 
     pub fn set_viewport(&self, bounds: Bounds<Pixels>) {
         self.viewport_top.set(f32::from(bounds.top()));
+        self.viewport_right.set(f32::from(bounds.right()));
         self.viewport_h.set(f32::from(bounds.size.height));
         self.viewport_w.set(f32::from(bounds.size.width));
     }
@@ -110,11 +116,62 @@ impl ScrollState {
         next
     }
 
+    /// Length of the thumb and its top relative to the viewport.
+    fn thumb(&self) -> (f32, f32) {
+        let (vh, ch, max) = (self.viewport_h.get(), self.content_h.get(), self.max());
+        let len = (vh * vh / ch.max(1.)).max(32.).min(vh);
+        (len, (vh - len) * self.current.get() / max.max(1.))
+    }
+
+    /// A press at `pos` in the scrollbar strip grabs the thumb (or, on the track, centres it there
+    /// and grabs it). Returns whether the press was on the scrollbar.
+    pub fn begin_drag(&self, pos: Point<Pixels>) -> bool {
+        const STRIP: f32 = 16.;
+        let (x, y) = (f32::from(pos.x), f32::from(pos.y) - self.viewport_top.get());
+        if self.max() <= 0.
+            || x < self.viewport_right.get() - STRIP
+            || x > self.viewport_right.get()
+        {
+            return false;
+        }
+        let (len, top) = self.thumb();
+        let grab = if y >= top && y <= top + len {
+            y - top
+        } else {
+            len / 2.
+        };
+        self.grab.set(Some(grab));
+        self.drag_to(pos);
+        true
+    }
+
+    pub fn dragging(&self) -> bool {
+        self.grab.get().is_some()
+    }
+
+    /// Moves the content so the grabbed thumb follows the pointer (no easing).
+    pub fn drag_to(&self, pos: Point<Pixels>) {
+        let Some(grab) = self.grab.get() else {
+            return;
+        };
+        let (len, _) = self.thumb();
+        let room = (self.viewport_h.get() - len).max(1.);
+        let top = (f32::from(pos.y) - self.viewport_top.get() - grab).clamp(0., room);
+        let offset = top / room * self.max();
+        self.target.set(offset);
+        self.current.set(offset);
+        self.last_activity.set(Instant::now());
+    }
+
+    pub fn end_drag(&self) {
+        self.grab.set(None);
+    }
+
     /// Thin scrollbar thumb that fades out when idle.
     pub fn paint_scrollbar(&self, bounds: Bounds<Pixels>, color: Rgba, window: &mut Window) {
         let max = self.max();
         let idle = self.last_activity.get().elapsed().as_secs_f32();
-        let alpha = if idle < 0.8 {
+        let alpha = if idle < 0.8 || self.dragging() {
             1.
         } else {
             1. - (idle - 0.8) / 0.4
@@ -125,10 +182,12 @@ impl ScrollState {
         if alpha < 1. {
             window.request_animation_frame();
         }
-        let (vh, ch) = (self.viewport_h.get(), self.content_h.get());
-        let thumb = (vh * vh / ch).max(32.);
-        let y = bounds.top() + px((vh - thumb) * self.current.get() / max);
-        let rect = Bounds::new(point(bounds.right() - px(8.), y), size(px(4.), px(thumb)));
+        let (thumb, top) = self.thumb();
+        let width = if self.dragging() { 8. } else { 4. };
+        let rect = Bounds::new(
+            point(bounds.right() - px(4. + width), bounds.top() + px(top)),
+            size(px(width), px(thumb)),
+        );
         let mut quad = fill(
             rect,
             Rgba {
@@ -136,7 +195,44 @@ impl ScrollState {
                 ..color
             },
         );
-        quad.corner_radii = Corners::all(px(2.));
+        quad.corner_radii = Corners::all(px(width / 2.));
         window.paint_quad(quad);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScrollState;
+    use gpui_kit::{Bounds, point, px, size};
+
+    fn state() -> ScrollState {
+        let s = ScrollState::default();
+        s.set_viewport(Bounds::new(
+            point(px(0.), px(100.)),
+            size(px(500.), px(400.)),
+        ));
+        s.set_content_height(px(2000.));
+        s
+    }
+
+    #[test]
+    fn dragging_the_thumb_scrolls_proportionally() {
+        let s = state();
+        // Thumb is 400*400/2000 = 80 px; grab it at its top and pull to the bottom of the track.
+        assert!(s.begin_drag(point(px(495.), px(105.))));
+        s.drag_to(point(px(495.), px(1000.)));
+        assert_eq!(s.current.get(), 1600.);
+        s.drag_to(point(px(495.), px(0.)));
+        assert_eq!(s.current.get(), 0.);
+        s.end_drag();
+        assert!(!s.dragging());
+    }
+
+    #[test]
+    fn presses_outside_the_strip_are_not_the_scrollbar() {
+        let s = state();
+        assert!(!s.begin_drag(point(px(300.), px(200.))));
+        assert!(s.begin_drag(point(px(495.), px(300.))), "the track jumps");
+        assert!(s.current.get() > 0.);
     }
 }
