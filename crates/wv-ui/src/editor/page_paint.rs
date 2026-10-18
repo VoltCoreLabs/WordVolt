@@ -255,7 +255,7 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                             );
                         }
                     };
-                if text == "\t" {
+                if text == "\t" && para.toc {
                     // A tab (contents entry): dot leader up to the page number.
                     if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, &m) {
                         paint(&dots, usize::MAX / 2, x + offset, window, cx);

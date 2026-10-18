@@ -66,6 +66,21 @@ pub struct ImageRef {
     pub height: f32,
 }
 
+/// Most tab stops a paragraph can have.
+pub const MAX_TABS: usize = 20;
+
+/// The spacing and indent values edited together in the paragraph dialog.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ParaMetrics {
+    /// Left indent in points (for a list item: the part on top of its level).
+    pub left_pt: u16,
+    pub first_line: u8,
+    pub space_before: Option<u8>,
+    pub space_after: Option<u8>,
+    pub line_spacing: Option<f32>,
+    pub tabs: Vec<u16>,
+}
+
 /// Paragraph formatting.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParaStyle {
@@ -80,8 +95,13 @@ pub struct ParaStyle {
     pub indent: u8,
     /// Line height multiplier; `None` = the document default.
     pub line_spacing: Option<f32>,
-    /// Extra indent of the first line in steps of 0.25 inch (0..=8).
+    /// Left indent on top of `indent` steps, in points.
+    pub left_extra: u8,
+    /// Extra indent of the first line in points.
     pub first_line: u8,
+    /// Tab stops in points from the left edge of the text (sorted); past the last one the
+    /// default stops (every 0.5 inch) apply.
+    pub tabs: Vec<u16>,
     /// Gap above / below the paragraph in points; `None` = the style's default.
     pub space_before: Option<u8>,
     pub space_after: Option<u8>,
@@ -108,7 +128,9 @@ impl std::hash::Hash for ParaStyle {
         self.list.hash(state);
         self.indent.hash(state);
         self.line_spacing.map(f32::to_bits).hash(state);
+        self.left_extra.hash(state);
         self.first_line.hash(state);
+        self.tabs.hash(state);
         self.space_before.hash(state);
         self.space_after.hash(state);
         self.cell.hash(state);

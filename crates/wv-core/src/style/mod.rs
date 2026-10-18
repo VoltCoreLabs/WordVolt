@@ -4,4 +4,4 @@ mod para_style;
 
 pub use char_style::{CharStyle, Script};
 pub use named::NamedStyle;
-pub use para_style::{Align, Cell, ImageRef, ListKind, ParaStyle};
+pub use para_style::{Align, Cell, ImageRef, ListKind, MAX_TABS, ParaMetrics, ParaStyle};

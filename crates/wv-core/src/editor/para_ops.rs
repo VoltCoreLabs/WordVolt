@@ -1,6 +1,9 @@
 use super::Editor;
 use crate::position::Selection;
-use crate::style::{ListKind, NamedStyle, ParaStyle};
+use crate::style::{ListKind, MAX_TABS, NamedStyle, ParaMetrics, ParaStyle};
+
+/// One indent step (0.5 inch) in points.
+const INDENT_PT: u16 = 36;
 
 impl Editor {
     /// Applies `f` to the style of paragraphs `first..=last`; the selection stays as it is.
@@ -44,11 +47,55 @@ impl Editor {
         self.edit_para_styles(a, b, |s| s.line_spacing = spacing);
     }
 
-    /// Moves the first line of the selected paragraphs `delta` steps (0.25 inch) in or out.
-    pub fn change_first_line(&mut self, delta: i8) {
+    /// Moves the first line of the selected paragraphs `delta` points in or out (0..=255).
+    pub fn change_first_line(&mut self, delta: i16) {
         let (a, b) = self.selected_paras();
         self.edit_para_styles(a, b, |s| {
-            s.first_line = (i16::from(s.first_line) + i16::from(delta)).clamp(0, 8) as u8
+            s.first_line = (i16::from(s.first_line) + delta).clamp(0, 255) as u8
+        });
+    }
+
+    /// Spacing and indents of the paragraph at the caret (what the paragraph dialog shows).
+    pub fn para_metrics(&self) -> ParaMetrics {
+        let s = &self.doc.paragraphs[self.sel.head.para].style;
+        ParaMetrics {
+            left_pt: if s.list.is_some() {
+                u16::from(s.left_extra)
+            } else {
+                u16::from(s.indent) * INDENT_PT + u16::from(s.left_extra)
+            },
+            first_line: s.first_line,
+            space_before: s.space_before,
+            space_after: s.space_after,
+            line_spacing: s.line_spacing,
+            tabs: s.tabs.clone(),
+        }
+    }
+
+    /// Applies the values of the paragraph dialog to the selected paragraphs.
+    pub fn set_para_metrics(&mut self, m: &ParaMetrics) {
+        let (a, b) = self.selected_paras();
+        let mut tabs = m.tabs.clone();
+        tabs.sort_unstable();
+        tabs.dedup();
+        tabs.truncate(MAX_TABS);
+        self.edit_para_styles(a, b, |s| {
+            if s.list.is_some() {
+                s.left_extra = m.left_pt.min(255) as u8;
+            } else {
+                // Whole 0.5 inch steps are the indent level, the rest is kept in points.
+                s.indent = (m.left_pt / INDENT_PT).min(8) as u8;
+                s.left_extra = if m.left_pt / INDENT_PT >= 8 {
+                    0
+                } else {
+                    (m.left_pt % INDENT_PT) as u8
+                };
+            }
+            s.first_line = m.first_line;
+            s.space_before = m.space_before;
+            s.space_after = m.space_after;
+            s.line_spacing = m.line_spacing;
+            s.tabs = tabs.clone();
         });
     }
 

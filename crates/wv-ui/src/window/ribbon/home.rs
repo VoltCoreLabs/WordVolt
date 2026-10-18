@@ -179,6 +179,10 @@ pub fn groups(this: &MainWindow, cx: &mut Context<MainWindow>) -> Vec<AnyElement
             .into_any_element(),
     );
     para.push(this.spacing_menu.clone().into_any_element());
+    let metrics = this.editor.read(cx).core.para_metrics();
+    this.paragraph_dialog
+        .update(cx, |dialog, _| dialog.set_current(metrics));
+    para.push(this.paragraph_dialog.clone().into_any_element());
     let paragraph = block_group(t(lang, Key::GroupParagraph), para, cx);
 
     let styles = block_group(

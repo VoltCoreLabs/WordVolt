@@ -13,6 +13,7 @@ use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_bar::{CommandChosen, MenuBar};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::page_setup::{PageSetupEditor, PageSetupEvent};
+use super::paragraph_dialog::{ParagraphEditor, ParagraphEvent};
 use super::style_names::{style_from_label, style_label};
 use super::table_picker::{TablePicker, TablePickerEvent};
 use crate::editor::EditorView;
@@ -85,6 +86,7 @@ pub struct MainWindow {
     pub paper_menu: Entity<MenuButton>,
     pub margins_menu: Entity<MenuButton>,
     pub page_setup: Entity<PageSetupEditor>,
+    pub paragraph_dialog: Entity<ParagraphEditor>,
     pub menu_bar: Entity<MenuBar>,
     /// `None` = document was never saved (shown as "New document").
     pub file_path: Option<PathBuf>,
@@ -270,8 +272,8 @@ impl MainWindow {
                             let on = c.para_gap(after).is_none_or(|n| n == 0);
                             c.set_para_gap(after, Some(if on { 12 } else { 0 }));
                         }
-                        2 => c.change_first_line(1),
-                        _ => c.change_first_line(-1),
+                        2 => c.change_first_line(18),
+                        _ => c.change_first_line(-18),
                     });
                 }
                 this.editor.update(cx, |view, cx| view.request_focus(cx));
@@ -384,6 +386,16 @@ impl MainWindow {
             },
         )
         .detach();
+        let paragraph_dialog = cx.new(|cx| ParagraphEditor::new(lang, cx));
+        cx.subscribe(
+            &paragraph_dialog,
+            |this, _, ParagraphEvent::Set(metrics): &ParagraphEvent, cx| {
+                let metrics = metrics.clone();
+                this.edit(cx, move |c| c.set_para_metrics(&metrics));
+                this.editor.update(cx, |view, cx| view.request_focus(cx));
+            },
+        )
+        .detach();
         let menu_bar = cx.new(|_| MenuBar::new(lang));
         cx.subscribe_in(
             &menu_bar,
@@ -440,6 +452,7 @@ impl MainWindow {
             paper_menu,
             margins_menu,
             page_setup,
+            paragraph_dialog,
             menu_bar,
             font_combo,
             size_combo,

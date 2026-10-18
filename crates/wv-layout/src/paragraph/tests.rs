@@ -96,14 +96,14 @@ fn line_spacing_scales_height() {
 #[test]
 fn first_line_is_indented_and_wraps_earlier() {
     let mut p = plain("aaaa bbbb cccc");
-    p.style.first_line = 1;
+    p.style.first_line = 18;
     // 24 px = 3 chars: the first line holds 12 - 3 = 9 chars, so "aaaa bbbb" fits, "cccc" wraps.
     let l = layout_paragraph(&p, &opts(10.0), &Fixed);
-    assert_eq!(l.lines[0].x, FIRST_LINE_STEP);
+    assert_eq!(l.lines[0].x, 24.0);
     assert_eq!(l.lines[1].x, 0.0);
     let p2 = {
         let mut p = plain("aaaa bbbb");
-        p.style.first_line = 1;
+        p.style.first_line = 18;
         p
     };
     assert_eq!(lines_of(&p2, 10.0), ["aaaa ", "bbbb"]);
@@ -208,4 +208,49 @@ fn a_tab_in_the_contents_pushes_the_page_number_to_the_right_edge() {
     assert_eq!(widths, [5.0 * CHAR, 34.0 * CHAR, CHAR]);
     let (dots, offset) = crate::leader(widths[1], &CharStyle::default(), &Fixed).unwrap();
     assert!(!dots.is_empty() && offset > 0.0);
+}
+
+fn x_of_last_fragment(p: &Paragraph) -> f32 {
+    let l = layout_paragraph(p, &opts(40.0), &Fixed);
+    l.lines[0].fragments.last().unwrap().x
+}
+
+#[test]
+fn a_tab_reaches_the_next_default_stop() {
+    // "a" is CHAR wide, the default stops are every 48 px.
+    assert_eq!(x_of_last_fragment(&plain("a\tb")), 48.0);
+    assert_eq!(x_of_last_fragment(&plain("abcdefg\tb")), 96.0);
+}
+
+#[test]
+fn custom_tab_stops_come_first() {
+    let mut p = plain("a\tb\tc");
+    p.style.tabs = vec![30]; // 40 px
+    let l = layout_paragraph(&p, &opts(40.0), &Fixed);
+    let xs: Vec<f32> = l.lines[0].fragments.iter().map(|f| f.x).collect();
+    // "b" at 40; the second tab starts at 48, past the last custom stop: the next default stop is 96.
+    assert_eq!(xs[2], 40.0);
+    assert_eq!(xs[4], 96.0);
+}
+
+#[test]
+fn caret_after_a_tab_sits_at_the_tab_end() {
+    let p = plain("a\tb");
+    let l = layout_paragraph(&p, &opts(40.0), &Fixed);
+    assert_eq!(l.lines[0].x_at("a\tb", 2, &Fixed), 48.0);
+}
+
+#[test]
+fn past_the_last_custom_stop_the_default_grid_applies() {
+    let mut p = plain("a\tbb\tccc");
+    p.style.tabs = vec![57]; // 76 px
+    let l = layout_paragraph(&p, &opts(40.0), &Fixed);
+    let frags: Vec<(f32, f32)> = l.lines[0]
+        .fragments
+        .iter()
+        .map(|f| (f.x, f.width))
+        .collect();
+    // "bb" ends at 92; the next default stop is 96, so the second tab is 4 px wide.
+    assert_eq!(frags[3], (92.0, 4.0));
+    assert_eq!(frags[4].0, 96.0);
 }

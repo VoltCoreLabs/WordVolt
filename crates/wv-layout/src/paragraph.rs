@@ -15,9 +15,6 @@ pub const QUOTE_INDENT: f32 = 24.0;
 /// One indent step: 0.5 inch.
 pub const INDENT_STEP: f32 = 48.0;
 
-/// One step of the first-line indent: 0.25 inch.
-pub const FIRST_LINE_STEP: f32 = 24.0;
-
 /// Points to px (96 dpi).
 const PT: f32 = 4.0 / 3.0;
 
@@ -41,6 +38,8 @@ pub struct ParagraphLayout {
     pub text: String,
     /// Block quote: drawn with a bar and indented by [`QUOTE_INDENT`].
     pub quote: bool,
+    /// A line of the table of contents (its tab is drawn as a dot leader).
+    pub toc: bool,
     /// Left edge of the text (indent steps, list hanging and quote indent).
     pub indent: f32,
     /// Bullet or number drawn in front of the first line (set by `DocLayout`, which counts the items).
@@ -88,8 +87,12 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
     } else {
         0.0
     };
-    let indent = f32::from(p.style.indent) * INDENT_STEP + list_gap + quote;
-    let first = f32::from(p.style.first_line) * FIRST_LINE_STEP;
+    let indent = f32::from(p.style.indent) * INDENT_STEP
+        + f32::from(p.style.left_extra) * PT
+        + list_gap
+        + quote;
+    let first = f32::from(p.style.first_line) * PT;
+    let stops: Vec<f32> = p.style.tabs.iter().map(|t| f32::from(*t) * PT).collect();
     let opts = &Options {
         width: opts.width - indent,
         line_spacing: p.style.line_spacing.unwrap_or(opts.line_spacing),
@@ -109,7 +112,7 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
     for atom in atoms(&text) {
         let word_end = atom.start + text[atom.clone()].trim_end().len();
         let word = pieces(p, &text, &spans, atom.start..word_end, false, m);
-        let spaces = pieces(p, &text, &spans, word_end..atom.end, true, m);
+        let mut spaces = pieces(p, &text, &spans, word_end..atom.end, true, m);
         let word_width: f32 = word.iter().map(|x| x.width).sum();
         if !current.is_empty() && current_width + word_width > limit(lines.len()) + EPS {
             lines.push(std::mem::take(&mut current));
@@ -131,12 +134,18 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
             current_width += word_width;
             current.extend(word);
         }
+        if !p.style.toc {
+            // Tabs reach the next stop; the first line starts `first` px in.
+            let at = current_width + if lines.is_empty() { first } else { 0.0 };
+            tabs::resolve_tabs(p, &text, &mut spaces, at, &stops, m);
+        }
         current_width += spaces.iter().map(|x| x.width).sum::<f32>();
         current.extend(spaces);
     }
     lines.push(current);
     let mut layout = build(p, text, lines, opts, first, m);
     layout.quote = p.style.quote;
+    layout.toc = p.style.toc;
     layout.indent = indent;
     layout.space_before = p
         .style
@@ -243,5 +252,6 @@ fn split_graphemes<'a>(
 }
 
 mod build;
+mod tabs;
 #[cfg(test)]
 mod tests;

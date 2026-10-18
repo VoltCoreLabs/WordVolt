@@ -118,6 +118,8 @@ pub fn write_paragraph(
         || p.style.indent > 0
         || p.style.line_spacing.is_some()
         || p.style.first_line > 0
+        || p.style.left_extra > 0
+        || !p.style.tabs.is_empty()
         || p.style.space_before.is_some()
         || p.style.space_after.is_some()
         || p.style.named != NamedStyle::Normal;
@@ -134,6 +136,16 @@ pub fn write_paragraph(
                 "<w:numPr><w:ilvl w:val=\"{}\"/><w:numId w:val=\"{num_id}\"/></w:numPr>",
                 p.style.indent
             ));
+        }
+        if !p.style.tabs.is_empty() {
+            xml.push_str("<w:tabs>");
+            for pos in &p.style.tabs {
+                xml.push_str(&format!(
+                    "<w:tab w:val=\"left\" w:pos=\"{}\"/>",
+                    u32::from(*pos) * 20
+                ));
+            }
+            xml.push_str("</w:tabs>");
         }
         let (line, before, after) = (
             p.style.line_spacing,
@@ -157,11 +169,11 @@ pub fn write_paragraph(
             xml.push_str("/>");
         }
         let left = if num_id.is_none() {
-            u32::from(p.style.indent) * 720
+            u32::from(p.style.indent) * 720 + u32::from(p.style.left_extra) * 20
         } else {
             0
         };
-        let first = u32::from(p.style.first_line) * 360;
+        let first = u32::from(p.style.first_line) * 20;
         if left > 0 || first > 0 {
             xml.push_str("<w:ind");
             if left > 0 {
