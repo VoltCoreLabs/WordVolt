@@ -393,3 +393,22 @@ b",
     );
     assert_eq!(table.first_row, 0);
 }
+
+#[test]
+fn a_page_break_starts_a_new_page() {
+    let mut doc = Document::from_text("a\nb\nc");
+    doc.paragraphs[1].style.page_break = true;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.pages.len(), 2);
+    assert_eq!(l.pages[0].slices.len(), 1);
+    assert_eq!(l.pages[1].slices[0].para, 1);
+    assert_eq!(l.pages[1].slices[0].y, 0.0);
+}
+
+#[test]
+fn a_page_break_at_the_top_adds_no_blank_page() {
+    let mut doc = Document::from_text("a\nb");
+    doc.paragraphs[0].style.page_break = true;
+    let l = DocLayout::new(&doc, small(), &Fixed);
+    assert_eq!(l.pages.len(), 1);
+}

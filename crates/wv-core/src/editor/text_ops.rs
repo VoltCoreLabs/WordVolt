@@ -7,6 +7,18 @@ use crate::position::{Position, Selection};
 impl Editor {
     /// Replaces `start..end` with `text` (`\n` starts a new paragraph). Caret goes after the text.
     pub fn replace_range(&mut self, start: Position, end: Position, text: &str) {
+        self.replace_range_flagged(start, end, text, false);
+    }
+
+    /// `replace_range`; with `page_break` the paragraph that starts after the (first) newline
+    /// begins a new page. Paragraphs created by a split never inherit a page break.
+    pub(super) fn replace_range_flagged(
+        &mut self,
+        start: Position,
+        end: Position,
+        text: &str,
+        page_break: bool,
+    ) {
         // Text edits stay inside one table cell (or outside tables): never merge cells or cell and body.
         if self.doc.paragraphs[start.para].style.cell != self.doc.paragraphs[end.para].style.cell {
             return;
@@ -42,6 +54,7 @@ impl Editor {
                 runs: vec![],
                 style: paras[0].style.clone(),
             };
+            p.style.page_break = false;
             p.insert(0, line, &style);
             paras.push(p);
         }
@@ -52,6 +65,9 @@ impl Editor {
             paras[0].style = last_style;
         }
         let new_last = paras.len() - 1;
+        if page_break && new_last > 0 {
+            paras[1].style.page_break = true;
+        }
         let caret_offset = paras[new_last].len();
         if new_last > 0 && tail.is_empty() {
             paras[new_last].style.named = paras[0].style.named.next();
@@ -71,6 +87,28 @@ impl Editor {
     pub fn insert_text(&mut self, text: &str) {
         let (start, end) = self.sel.range();
         self.replace_range(start, end, text);
+    }
+
+    /// Starts a new page at the caret (Ctrl+Enter): the text after it moves to the next page.
+    pub fn insert_page_break(&mut self) {
+        let (start, end) = self.sel.range();
+        self.replace_range_flagged(
+            start, end, "
+", true,
+        );
+    }
+
+    /// A page with nothing on it: a break before and a break after an empty paragraph.
+    pub fn insert_blank_page(&mut self) {
+        let (start, end) = self.sel.range();
+        self.replace_range_flagged(
+            start, end, "
+
+", true,
+        );
+        let blank = self.sel.head.para;
+        // The paragraph holding the caret starts the page after the blank one.
+        self.edit_para_styles(blank, blank, |s| s.page_break = true);
     }
 
     pub fn enter(&mut self) {
@@ -114,6 +152,11 @@ impl Editor {
             return;
         }
         let at = self.sel.head;
+        // Backspace at the start of a paragraph that begins a page first takes the break away.
+        if at.offset == 0 && self.doc.paragraphs[at.para].style.page_break {
+            self.edit_para_styles(at.para, at.para, |s| s.page_break = false);
+            return;
+        }
         // Backspace at the start of a list item first removes the bullet/number.
         if at.offset == 0 && self.doc.paragraphs[at.para].style.list.is_some() {
             self.edit_para_styles(at.para, at.para, |s| s.list = None);

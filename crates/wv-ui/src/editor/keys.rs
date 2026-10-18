@@ -15,6 +15,7 @@ impl EditorView {
         // Ctrl on Windows/Linux, Cmd on macOS. AltGr (ctrl+alt) is just typing.
         let command = (m.control && !m.alt) || m.platform;
         match (k.key.as_str(), command) {
+            ("enter", true) => self.apply(cx, |c| c.insert_page_break()),
             ("enter", _) => self.apply(cx, |c| c.enter()),
             ("backspace", _) => self.apply(cx, |c| c.backspace()),
             ("delete", _) => self.apply(cx, |c| c.delete_forward()),

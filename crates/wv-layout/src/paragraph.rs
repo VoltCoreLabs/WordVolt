@@ -40,6 +40,8 @@ pub struct ParagraphLayout {
     pub quote: bool,
     /// A line of the table of contents (its tab is drawn as a dot leader).
     pub toc: bool,
+    /// The paragraph starts on a new page.
+    pub page_break: bool,
     /// Left edge of the text (indent steps, list hanging and quote indent).
     pub indent: f32,
     /// Bullet or number drawn in front of the first line (set by `DocLayout`, which counts the items).
@@ -146,6 +148,7 @@ pub fn layout_paragraph(p: &Paragraph, opts: &Options, m: &dyn Measurer) -> Para
     let mut layout = build(p, text, lines, opts, first, m);
     layout.quote = p.style.quote;
     layout.toc = p.style.toc;
+    layout.page_break = p.style.page_break;
     layout.indent = indent;
     layout.space_before = p
         .style

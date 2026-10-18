@@ -113,6 +113,10 @@ pub fn paginate(
         match block {
             Block::Para(para_ix) => {
                 let para = &paragraphs[*para_ix];
+                if para.page_break && !pages.last().is_some_and(Page::is_empty) {
+                    pages.push(Page::default());
+                    y = 0.0;
+                }
                 for (line_ix, line) in para.lines.iter().enumerate() {
                     let lead = if line_ix == 0 && y > 0.0 {
                         para.space_before

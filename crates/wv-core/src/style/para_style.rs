@@ -105,6 +105,8 @@ pub struct ParaStyle {
     /// Gap above / below the paragraph in points; `None` = the style's default.
     pub space_before: Option<u8>,
     pub space_after: Option<u8>,
+    /// The paragraph starts on a new page.
+    pub page_break: bool,
     /// Set for paragraphs that belong to a table cell.
     pub cell: Option<Cell>,
     /// Set for picture paragraphs.
@@ -131,6 +133,7 @@ impl std::hash::Hash for ParaStyle {
         self.left_extra.hash(state);
         self.first_line.hash(state);
         self.tabs.hash(state);
+        self.page_break.hash(state);
         self.space_before.hash(state);
         self.space_after.hash(state);
         self.cell.hash(state);

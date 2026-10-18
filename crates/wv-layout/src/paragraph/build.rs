@@ -38,6 +38,7 @@ pub(super) fn build(
         text,
         quote: false,
         toc: false,
+        page_break: false,
         indent: 0.0,
         marker: None,
         space_before: 0.0,
