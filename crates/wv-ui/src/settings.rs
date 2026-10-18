@@ -148,3 +148,11 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
+
+/// Name of the signed-in user (author of comments and tracked changes): `USERNAME` on Windows,
+/// `USER` elsewhere.
+pub fn user_name() -> String {
+    std::env::var("USERNAME")
+        .or_else(|_| std::env::var("USER"))
+        .unwrap_or_default()
+}

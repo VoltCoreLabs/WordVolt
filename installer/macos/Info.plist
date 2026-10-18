@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>WordVolt</string>
+  <key>CFBundleDisplayName</key><string>WordVolt</string>
+  <key>CFBundleIdentifier</key><string>com.voltcorelabs.wordvolt</string>
+  <key>CFBundleExecutable</key><string>wordvolt</string>
+  <key>CFBundleIconFile</key><string>icon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>@VERSION@</string>
+  <key>CFBundleVersion</key><string>@VERSION@</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>WordVolt document</string>
+      <key>CFBundleTypeExtensions</key><array><string>wvd</string></array>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+    </dict>
+  </array>
+</dict>
+</plist>

@@ -158,7 +158,7 @@ pub(super) fn make_comment_editor(
 ) -> Entity<CommentEditor> {
     let editor = cx.new(|cx| CommentEditor::new(lang, cx));
     cx.subscribe(&editor, |this, _, event: &CommentEvent, cx| {
-        let author = std::env::var("USERNAME").unwrap_or_default();
+        let author = crate::settings::user_name();
         let event = event.clone();
         this.edit(cx, move |c| match event {
             CommentEvent::Add(text) => {

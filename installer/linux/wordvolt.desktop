@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=WordVolt
+Comment=A word processor in pure Rust
+Exec=wordvolt %F
+Icon=wordvolt
+Terminal=false
+Categories=Office;WordProcessor;
+MimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document;
+StartupWMClass=wordvolt

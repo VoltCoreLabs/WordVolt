@@ -41,7 +41,7 @@ impl MainWindow {
             Action::Table => self.edit(cx, |c| c.insert_table(3, 3)),
             Action::UpdateFields => self.editor.update(cx, |view, cx| view.update_fields(cx)),
             Action::TrackChanges => {
-                let author = std::env::var("USERNAME").unwrap_or_default();
+                let author = crate::settings::user_name();
                 self.editor.update(cx, |view, cx| {
                     let on = !view.core.tracking();
                     view.core.set_author(&author);
