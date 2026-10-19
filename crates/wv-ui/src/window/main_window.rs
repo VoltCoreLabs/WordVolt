@@ -149,6 +149,7 @@ impl Render for MainWindow {
             .children(self.tab_menu.map(|at| tab_menu(self, at, cx)))
             .child(self.image_dialog.clone())
             .children(super::about::about_dialog(self, cx))
+            .children(super::stats_dialog::stats_dialog(self, pages.1, cx))
             .child(tooltip_layer(cx))
     }
 }

@@ -19,6 +19,7 @@ pub enum Command {
     Find,
     Replace,
     About,
+    Stats,
 }
 
 pub struct CommandChosen(pub Command);
@@ -43,6 +44,7 @@ const FILE: &[Entry] = &[
 const EDIT: &[Entry] = &[
     (Key::MenuFind, "F", Command::Find),
     (Key::MenuReplace, "H", Command::Replace),
+    (Key::MenuStats, "", Command::Stats),
 ];
 const HISTORY: &[Entry] = &[
     (Key::MenuUndo, "Z", Command::Undo),

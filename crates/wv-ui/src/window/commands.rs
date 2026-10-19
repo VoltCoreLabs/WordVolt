@@ -24,6 +24,10 @@ impl MainWindow {
                 self.about_open = true;
                 cx.notify();
             }
+            Command::Stats => {
+                self.stats_open = true;
+                cx.notify();
+            }
             Command::Find => self
                 .find_bar
                 .update(cx, |bar, cx| bar.open(false, window, cx)),

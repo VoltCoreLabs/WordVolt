@@ -135,6 +135,7 @@ pub const ITEMS: &[Item] = &[
     item(Key::PalOneColumn, Action::Columns(1), ""),
     item(Key::PalTwoColumns, Action::Columns(2), ""),
     item(Key::PalThreeColumns, Action::Columns(3), ""),
+    item(Key::MenuStats, Action::Menu(Command::Stats), ""),
     item(Key::MenuAbout, Action::Menu(Command::About), ""),
 ];
 

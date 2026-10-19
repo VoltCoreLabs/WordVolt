@@ -5,6 +5,7 @@ mod image;
 mod page;
 mod paragraph;
 mod run;
+mod stats;
 mod styles;
 mod table_look;
 
@@ -14,4 +15,5 @@ pub use image::{ImageData, ImageFormat};
 pub use page::{BAND_DISTANCE, MAX_COLUMNS, Margins, NumberFormat, PageSpec};
 pub use paragraph::Paragraph;
 pub use run::Run;
+pub use stats::TextStats;
 pub use table_look::{MIN_COLUMN, TableLook};

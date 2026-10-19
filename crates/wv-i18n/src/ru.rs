@@ -120,6 +120,13 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::NoComments => "В документе нет примечаний",
         Key::TipCommentsPanel => "Список примечаний справа (щелчок — перейти к тексту)",
         Key::MenuHelp => "Справка",
+        Key::MenuStats => "Статистика…",
+        Key::StatsWords => "Слов",
+        Key::StatsChars => "Знаков (с пробелами)",
+        Key::StatsCharsNoSpaces => "Знаков (без пробелов)",
+        Key::StatsParagraphs => "Абзацев",
+        Key::StatsPages => "Страниц",
+        Key::StatsSelection => "Выделенный фрагмент",
         Key::MenuAbout => "О программе",
         Key::AboutDesc => {
             "Текстовый редактор уровня MS Word на чистом Rust: страницы, стили, таблицы, рисунки, сноски, примечания."

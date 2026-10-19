@@ -33,6 +33,7 @@ mod ribbon;
 mod side_panel;
 mod spell;
 mod state;
+mod stats_dialog;
 mod status_bar;
 mod style_editor;
 mod style_fields;

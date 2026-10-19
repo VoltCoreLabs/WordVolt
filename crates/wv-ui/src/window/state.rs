@@ -105,6 +105,8 @@ pub struct MainWindow {
     pub comments_panel: bool,
     /// The "About" modal is shown.
     pub about_open: bool,
+    /// The "Statistics" modal is shown.
+    pub stats_open: bool,
     pub styles_open: bool,
 }
 
@@ -198,6 +200,7 @@ impl MainWindow {
             panel_open: false,
             comments_panel: false,
             about_open: false,
+            stats_open: false,
             styles_open: false,
         }
     }

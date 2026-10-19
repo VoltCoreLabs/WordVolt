@@ -120,6 +120,13 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::NoComments => "The document has no comments",
         Key::TipCommentsPanel => "List of comments on the right (click to go to the text)",
         Key::MenuHelp => "Help",
+        Key::MenuStats => "Statistics…",
+        Key::StatsWords => "Words",
+        Key::StatsChars => "Characters (with spaces)",
+        Key::StatsCharsNoSpaces => "Characters (no spaces)",
+        Key::StatsParagraphs => "Paragraphs",
+        Key::StatsPages => "Pages",
+        Key::StatsSelection => "Selection",
         Key::MenuAbout => "About",
         Key::AboutDesc => {
             "A Word-class text editor in pure Rust: pages, styles, tables, pictures, footnotes, comments."
