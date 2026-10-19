@@ -120,9 +120,19 @@ pub fn styles_panel(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl Int
             .child(t(lang, label))
     };
     let manage = current_user.map(|id| {
+        let current = this.editor.read(cx).core.doc.styles.get(&id).cloned();
         div()
             .flex()
             .flex_col()
+            .child(action("style-edit", Key::EditStyle).on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, window, cx| {
+                    if let Some(style) = current.clone() {
+                        this.style_editor
+                            .update(cx, |e, cx| e.open(id, style, window, cx));
+                    }
+                }),
+            ))
             .child(action("style-update", Key::UpdateStyle).on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, _, _, cx| this.edit(cx, move |c| c.update_style(id))),
@@ -163,7 +173,8 @@ pub fn styles_panel(this: &MainWindow, cx: &mut Context<MainWindow>) -> impl Int
                 .children(user_rows),
         )
         .children(manage)
-        .child(this.style_namer.clone());
+        .child(this.style_namer.clone())
+        .child(this.style_editor.clone());
     div()
         .h_full()
         .flex_none()

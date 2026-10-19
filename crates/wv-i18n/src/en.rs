@@ -154,6 +154,12 @@ pub(crate) fn text(key: Key) -> &'static str {
         }
         Key::NewStyle => "＋ New style",
         Key::NewStyleHint => "Style name (made from the formatting at the caret), Enter",
+        Key::EditStyle => "Edit style parameters",
+        Key::StyleFieldName => "Name",
+        Key::StyleFieldFont => "Font",
+        Key::StyleFieldSize => "Size, pt",
+        Key::StyleFieldColor => "Color (hex)",
+        Key::StyleEditHint => "Style parameters: Enter applies, empty = not set",
         Key::UpdateStyle => "Update style from selection",
         Key::DeleteStyle => "Delete style",
         Key::BookmarkHint => "Bookmark on the selected text: type a name and press Enter",

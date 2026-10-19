@@ -1500,3 +1500,28 @@ fn page_number_fields_follow_their_bookmark() {
             .is_none()
     );
 }
+
+#[test]
+fn editing_a_style_replaces_its_definition_in_one_undo_step() {
+    let mut e = typed("Заголовок");
+    let id = e.define_style("Мой стиль");
+    let mut edited = e.doc.styles[&id].clone();
+    edited.name = "  Новый  ".into();
+    edited.bold = true;
+    edited.size_pt = Some(20);
+    edited.base = crate::style::NamedStyle::Title;
+    e.edit_style(id, edited);
+    let now = &e.doc.styles[&id];
+    assert_eq!(
+        (now.name.as_str(), now.bold, now.size_pt),
+        ("Новый", true, Some(20))
+    );
+    assert_eq!(now.base, crate::style::NamedStyle::Normal);
+    e.undo();
+    assert_eq!(e.doc.styles[&id].name, "Мой стиль");
+    assert!(!e.doc.styles[&id].bold);
+    let mut blank = e.doc.styles[&id].clone();
+    blank.name = "   ".into();
+    e.edit_style(id, blank);
+    assert_eq!(e.doc.styles[&id].name, "Мой стиль");
+}

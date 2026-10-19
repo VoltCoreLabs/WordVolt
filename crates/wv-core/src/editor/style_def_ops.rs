@@ -36,6 +36,22 @@ impl Editor {
         self.change_settings(settings);
     }
 
+    /// Replaces the definition of style `id` with `style` (edited in a dialog); an empty name or a
+    /// changed base keeps the old one. One undo step; the paragraphs that use it follow.
+    pub fn edit_style(&mut self, id: u32, mut style: UserStyle) {
+        let Some(old) = self.doc.styles.get(&id) else {
+            return;
+        };
+        if style.name.trim().is_empty() {
+            style.name = old.name.clone();
+        }
+        style.name = style.name.trim().to_string();
+        style.base = old.base;
+        let mut settings = self.doc.settings();
+        settings.styles.insert(id, style);
+        self.change_settings(settings);
+    }
+
     /// Deletes style `id`; its paragraphs go back to their built-in style.
     pub fn delete_style(&mut self, id: u32) {
         let mut settings = self.doc.settings();

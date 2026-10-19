@@ -4,6 +4,7 @@ use super::comment_editor::{CommentEditor, CommentEvent};
 use super::link_editor::{LinkEditor, LinkEvent};
 use super::menu_button::{MenuButton, MenuEvent, MenuItem};
 use super::refs_panel::{RefEvent, RefsPanel};
+use super::style_editor::{StyleEdited, StyleEditor};
 use super::style_namer::{NewStyle, StyleNamer};
 use super::style_names::{style_from_label, style_label};
 use crate::theme::DEFAULT_FONT;
@@ -182,6 +183,20 @@ pub(super) fn make_style_namer(lang: Lang, cx: &mut Context<MainWindow>) -> Enti
     })
     .detach();
     namer
+}
+
+pub(super) fn make_style_editor(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<StyleEditor> {
+    let editor = cx.new(|cx| StyleEditor::new(lang, cx));
+    cx.subscribe(
+        &editor,
+        |this, _, StyleEdited(id, style): &StyleEdited, cx| {
+            let (id, style) = (*id, style.clone());
+            this.edit(cx, move |c| c.edit_style(id, style));
+            this.editor.update(cx, |view, cx| view.request_focus(cx));
+        },
+    )
+    .detach();
+    editor
 }
 
 pub(super) fn make_refs_panel(lang: Lang, cx: &mut Context<MainWindow>) -> Entity<RefsPanel> {

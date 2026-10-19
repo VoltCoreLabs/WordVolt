@@ -154,6 +154,12 @@ pub(crate) fn text(key: Key) -> &'static str {
         }
         Key::NewStyle => "＋ Новый стиль",
         Key::NewStyleHint => "Название стиля (по оформлению у курсора), Enter",
+        Key::EditStyle => "Параметры стиля…",
+        Key::StyleFieldName => "Название",
+        Key::StyleFieldFont => "Шрифт",
+        Key::StyleFieldSize => "Размер, пт",
+        Key::StyleFieldColor => "Цвет (hex)",
+        Key::StyleEditHint => "Параметры стиля: Enter применяет, пусто — не задано",
         Key::UpdateStyle => "Обновить стиль по образцу",
         Key::DeleteStyle => "Удалить стиль",
         Key::BookmarkHint => "Закладка на выделенном тексте: введите имя и Enter",

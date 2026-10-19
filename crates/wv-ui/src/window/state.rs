@@ -19,6 +19,7 @@ use super::page_setup::PageSetupEditor;
 use super::palette::{CommandPalette, Picked};
 use super::paragraph_dialog::ParagraphEditor;
 use super::refs_panel::RefsPanel;
+use super::style_editor::StyleEditor;
 use super::style_namer::StyleNamer;
 use super::table_picker::TablePicker;
 use crate::editor::EditorView;
@@ -57,6 +58,7 @@ pub struct MainWindow {
     pub link_editor: Entity<LinkEditor>,
     pub comment_editor: Entity<CommentEditor>,
     pub style_namer: Entity<StyleNamer>,
+    pub style_editor: Entity<StyleEditor>,
     pub refs_panel: Entity<RefsPanel>,
     pub palette: Entity<CommandPalette>,
     pub case_menu: Entity<MenuButton>,
@@ -118,6 +120,7 @@ impl MainWindow {
         let link_editor = widgets::make_link_editor(lang, cx);
         let comment_editor = widgets::make_comment_editor(lang, cx);
         let style_namer = widgets::make_style_namer(lang, cx);
+        let style_editor = widgets::make_style_editor(lang, cx);
         let refs_panel = widgets::make_refs_panel(lang, cx);
         let palette = cx.new(|cx| CommandPalette::new(lang, cx));
         cx.subscribe_in(
@@ -174,6 +177,7 @@ impl MainWindow {
             link_editor,
             comment_editor,
             style_namer,
+            style_editor,
             refs_panel,
             palette,
             file_path: None,
