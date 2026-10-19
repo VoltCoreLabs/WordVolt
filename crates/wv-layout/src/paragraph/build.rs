@@ -120,6 +120,7 @@ fn build_line(
                 style: p.runs[piece.run].style.clone(),
                 x: cursor,
                 width,
+                leader: piece.leader,
             }),
         }
         cursor += width;

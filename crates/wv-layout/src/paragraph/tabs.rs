@@ -1,4 +1,4 @@
-use wv_core::{Paragraph, TabKind};
+use wv_core::{Paragraph, TabKind, TabLeader};
 
 use super::Piece;
 use crate::Measurer;
@@ -9,14 +9,26 @@ const DEFAULT_TAB: f32 = 48.0;
 /// Width of a tab that starts `x` px from the left edge of the text: up to the next custom stop
 /// (a centre, right or decimal stop leaves room for `follow(kind)`, the width of the text after
 /// the tab that goes before / on it), or, past the last one, up to the next default stop.
-pub(super) fn tab_width(x: f32, stops: &[(f32, TabKind)], follow: &dyn Fn(TabKind) -> f32) -> f32 {
-    let aligned = stops.iter().find_map(|(s, kind)| {
+pub(super) fn tab_width(
+    x: f32,
+    stops: &[Stop],
+    follow: &dyn Fn(TabKind) -> f32,
+) -> (f32, TabLeader) {
+    let aligned = stops.iter().find_map(|(s, kind, leader)| {
         let target = *s - follow(*kind);
-        (*s > x + 0.5 && target > x + 0.5).then_some(target)
+        (*s > x + 0.5 && target > x + 0.5).then_some((target, *leader))
     });
-    let target = aligned.unwrap_or_else(|| ((x / DEFAULT_TAB).floor() + 1.0) * DEFAULT_TAB);
-    target - x
+    let (target, leader) = aligned.unwrap_or_else(|| {
+        (
+            ((x / DEFAULT_TAB).floor() + 1.0) * DEFAULT_TAB,
+            TabLeader::None,
+        )
+    });
+    (target - x, leader)
 }
+
+/// A custom tab stop: its place (px), how text lines up on it and its leader.
+pub(super) type Stop = (f32, TabKind, TabLeader);
 
 /// How much of the text after a tab goes before the stop: all of it for a right stop, half for a
 /// centre stop, what comes before the decimal separator for a decimal one.
@@ -40,7 +52,7 @@ pub(super) fn resolve_tabs(
     text: &str,
     spaces: &mut [Piece],
     mut x: f32,
-    stops: &[(f32, TabKind)],
+    stops: &[Stop],
     m: &dyn Measurer,
 ) {
     for piece in spaces {
@@ -51,7 +63,10 @@ pub(super) fn resolve_tabs(
             for (i, ch) in part.char_indices() {
                 width += if ch == '\t' {
                     let rest = &text[piece.range.start + i + 1..];
-                    tab_width(x + width, stops, &|kind| before_stop(kind, rest, style, m))
+                    let (w, leader) =
+                        tab_width(x + width, stops, &|kind| before_stop(kind, rest, style, m));
+                    piece.leader = leader;
+                    w
                 } else {
                     m.width(ch.encode_utf8(&mut [0; 4]), style)
                 };

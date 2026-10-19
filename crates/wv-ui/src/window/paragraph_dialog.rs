@@ -1,5 +1,5 @@
 use gpui_kit::*;
-use wv_core::ParaMetrics;
+use wv_core::{ParaMetrics, TabLeader, TabStop};
 use wv_i18n::{Key, Lang, t as tr};
 
 use crate::theme::{Theme, radius, space};
@@ -43,12 +43,36 @@ fn cm_to_pt(text: &str) -> f32 {
     number(text).map_or(0.0, |v| (v * PT_PER_CM).round())
 }
 
-/// "1,5; 3; 6" -> tab stops in points.
-fn parse_tabs(text: &str) -> Vec<u16> {
+/// "1,5; 3.; 6_" -> tab stops in points with their leaders (a trailing `.`, `-` or `_` means
+/// dots, hyphens or an underline).
+fn parse_tabs(text: &str) -> Vec<(u16, TabLeader)> {
     text.split(';')
-        .filter_map(number)
-        .map(|v| (v * PT_PER_CM).round().min(65535.0) as u16)
+        .filter_map(|item| {
+            let item = item.trim();
+            let leader = match item.chars().last()? {
+                '.' => TabLeader::Dots,
+                '-' => TabLeader::Hyphens,
+                '_' => TabLeader::Underscore,
+                _ => TabLeader::None,
+            };
+            let digits = if leader == TabLeader::None {
+                item
+            } else {
+                &item[..item.len() - 1]
+            };
+            let pt = (number(digits)? * PT_PER_CM).round().min(65535.0) as u16;
+            Some((pt, leader))
+        })
         .collect()
+}
+
+fn leader_mark(leader: TabLeader) -> &'static str {
+    match leader {
+        TabLeader::None => "",
+        TabLeader::Dots => ".",
+        TabLeader::Hyphens => "-",
+        TabLeader::Underscore => "_",
+    }
 }
 
 fn gap(text: &str) -> Option<u8> {
@@ -65,7 +89,7 @@ fn texts(m: &ParaMetrics) -> [String; 6] {
         cm(f32::from(m.first_line)),
         m.tabs
             .iter()
-            .map(|t| cm(f32::from(t.pos)))
+            .map(|t| format!("{}{}", cm(f32::from(t.pos)), leader_mark(t.leader)))
             .collect::<Vec<_>>()
             .join("; "),
     ]
@@ -124,16 +148,18 @@ impl ParagraphEditor {
             line_spacing: line,
             left_pt: cm_to_pt(self.edits[3].text()).min(65535.0) as u16,
             first_line: cm_to_pt(self.edits[4].text()).min(255.0) as u8,
-            // A stop that stays where it was keeps its kind (the dialog lists places only).
+            // A stop that stays where it was keeps its kind (the dialog lists places and leaders).
             tabs: parse_tabs(self.edits[5].text())
                 .into_iter()
-                .map(|pos| {
-                    self.current
+                .map(|(pos, leader)| TabStop {
+                    leader,
+                    ..self
+                        .current
                         .tabs
                         .iter()
                         .find(|t| t.pos == pos)
                         .copied()
-                        .unwrap_or_else(|| wv_core::TabStop::left(pos))
+                        .unwrap_or_else(|| TabStop::left(pos))
                 })
                 .collect(),
             right_pt: self.current.right_pt,
@@ -277,5 +303,29 @@ impl Render for ParagraphEditor {
             }))
             .child(button)
             .children(menu)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use wv_core::TabLeader;
+
+    use super::{leader_mark, parse_tabs};
+
+    #[test]
+    fn tab_field_has_places_and_leaders() {
+        let tabs = parse_tabs("1,5; 3.; 6_; 8-; x");
+        let leaders: Vec<_> = tabs.iter().map(|t| t.1).collect();
+        assert_eq!(
+            leaders,
+            [
+                TabLeader::None,
+                TabLeader::Dots,
+                TabLeader::Underscore,
+                TabLeader::Hyphens
+            ]
+        );
+        assert_eq!(tabs[1].0, 85);
+        assert_eq!(leader_mark(TabLeader::Dots), ".");
     }
 }

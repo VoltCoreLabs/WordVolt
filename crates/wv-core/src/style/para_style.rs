@@ -188,11 +188,51 @@ impl TabKind {
     }
 }
 
-/// A tab stop: its place in points from the left edge of the text and how text lines up there.
+/// What fills the space a tab leaves before its stop.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TabLeader {
+    #[default]
+    None,
+    Dots,
+    Hyphens,
+    Underscore,
+}
+
+impl TabLeader {
+    pub const ALL: [TabLeader; 4] = [Self::None, Self::Dots, Self::Hyphens, Self::Underscore];
+
+    /// The next leader (what the paragraph dialog cycles through).
+    pub fn next(self) -> Self {
+        Self::ALL[(Self::ALL.iter().position(|k| *k == self).unwrap_or(0) + 1) % 4]
+    }
+
+    /// The name Word uses for it in `w:tab w:leader`.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Dots => "dot",
+            Self::Hyphens => "hyphen",
+            Self::Underscore => "underscore",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Self {
+        match id {
+            "dot" | "middleDot" => Self::Dots,
+            "hyphen" | "heavy" => Self::Hyphens,
+            "underscore" => Self::Underscore,
+            _ => Self::None,
+        }
+    }
+}
+
+/// A tab stop: its place in points from the left edge of the text, how text lines up there and
+/// what fills the gap before it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TabStop {
     pub pos: u16,
     pub kind: TabKind,
+    pub leader: TabLeader,
 }
 
 impl TabStop {
@@ -200,6 +240,7 @@ impl TabStop {
         Self {
             pos,
             kind: TabKind::Left,
+            leader: TabLeader::None,
         }
     }
 }
@@ -302,5 +343,19 @@ impl std::hash::Hash for ParaStyle {
         self.image.hash(state);
         self.toc.hash(state);
         self.note.hash(state);
+    }
+}
+
+#[cfg(test)]
+mod leader_tests {
+    use super::TabLeader;
+
+    #[test]
+    fn leader_ids_round_trip_and_cycle() {
+        for l in TabLeader::ALL {
+            assert_eq!(TabLeader::from_id(l.id()), l);
+        }
+        assert_eq!(TabLeader::Underscore.next(), TabLeader::None);
+        assert_eq!(TabLeader::from_id("middleDot"), TabLeader::Dots);
     }
 }

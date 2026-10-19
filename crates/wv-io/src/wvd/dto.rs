@@ -258,6 +258,9 @@ pub(super) struct Para {
     /// Kinds of the tab stops (index into `TabKind::ALL`); absent = all left.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) tab_kinds: Vec<u8>,
+    /// Leaders of the tab stops (index into `TabLeader::ALL`); absent = none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) tab_leaders: Vec<u8>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub(super) right_indent: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]

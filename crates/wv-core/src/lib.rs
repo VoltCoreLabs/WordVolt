@@ -25,5 +25,5 @@ pub use position::{Position, Selection};
 pub use search::SearchOptions;
 pub use style::{
     Align, Cell, Change, CharStyle, Crop, Float, ImageRef, ListKind, MAX_TABS, NamedStyle,
-    ParaMetrics, ParaStyle, Script, TabKind, TabStop, UserStyle, Wrap, turned_box,
+    ParaMetrics, ParaStyle, Script, TabKind, TabLeader, TabStop, UserStyle, Wrap, turned_box,
 };

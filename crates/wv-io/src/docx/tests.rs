@@ -128,6 +128,7 @@ fn lists_indents_and_spacing_round_trip_with_separate_numbered_lists() {
         wv_core::TabStop {
             pos: 144,
             kind: wv_core::TabKind::Right,
+            leader: wv_core::TabLeader::Dots,
         },
     ];
     doc.paragraphs[4].style.space_before = Some(12);

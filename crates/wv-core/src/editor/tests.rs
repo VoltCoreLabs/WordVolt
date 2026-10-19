@@ -823,6 +823,7 @@ fn paragraph_dialog_values_round_trip() {
             crate::TabStop {
                 pos: 144,
                 kind: crate::TabKind::Right,
+                leader: crate::TabLeader::None,
             },
             crate::TabStop::left(36),
             crate::TabStop::left(36),

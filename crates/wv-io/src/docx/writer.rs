@@ -171,8 +171,12 @@ pub fn write_paragraph(
         if !p.style.tabs.is_empty() {
             xml.push_str("<w:tabs>");
             for tab in &p.style.tabs {
+                let leader = match tab.leader {
+                    wv_core::TabLeader::None => String::new(),
+                    l => format!(" w:leader=\"{}\"", l.id()),
+                };
                 xml.push_str(&format!(
-                    "<w:tab w:val=\"{}\" w:pos=\"{}\"/>",
+                    "<w:tab w:val=\"{}\"{leader} w:pos=\"{}\"/>",
                     tab.kind.id(),
                     u32::from(tab.pos) * 20
                 ));

@@ -94,6 +94,8 @@ pub(super) struct Piece {
     pub(super) run: usize,
     pub(super) width: f32,
     pub(super) space: bool,
+    /// What fills the tab this piece holds.
+    pub(super) leader: wv_core::TabLeader,
 }
 
 /// Lays out one paragraph for the given width.
@@ -120,11 +122,11 @@ pub fn layout_paragraph_around(
         + list_gap
         + quote;
     let first = f32::from(p.style.first_line) * PT;
-    let stops: Vec<(f32, wv_core::TabKind)> = p
+    let stops: Vec<tabs::Stop> = p
         .style
         .tabs
         .iter()
-        .map(|t| (f32::from(t.pos) * PT, t.kind))
+        .map(|t| (f32::from(t.pos) * PT, t.kind, t.leader))
         .collect();
     let right = f32::from(p.style.right_indent) * PT;
     let opts = &Options {
@@ -268,6 +270,7 @@ fn pieces(
                 range: part,
                 run,
                 space,
+                leader: wv_core::TabLeader::None,
             })
         })
         .collect()
@@ -288,6 +291,7 @@ fn split_graphemes<'a>(
                 run: piece.run,
                 width: run_width(m, g, &p.runs[piece.run].style),
                 space: false,
+                leader: wv_core::TabLeader::None,
             }
         })
 }

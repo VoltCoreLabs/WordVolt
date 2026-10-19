@@ -182,6 +182,9 @@ impl State {
                     self.tabs.push(wv_core::TabStop {
                         pos: (pos / 20.0).round().clamp(0.0, 65535.0) as u16,
                         kind,
+                        leader: attr(e, b"leader").map_or(wv_core::TabLeader::None, |v| {
+                            wv_core::TabLeader::from_id(&v)
+                        }),
                     });
                 }
             }

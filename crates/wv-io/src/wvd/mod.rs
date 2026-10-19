@@ -58,6 +58,7 @@ mod tests {
             wv_core::TabStop {
                 pos: 108,
                 kind: wv_core::TabKind::Decimal,
+                leader: wv_core::TabLeader::Dots,
             },
         ];
         e.doc.paragraphs[0].style.right_indent = 20;

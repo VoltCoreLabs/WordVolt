@@ -256,7 +256,11 @@ fn past_the_last_custom_stop_the_default_grid_applies() {
 }
 
 fn stop(pos: u16, kind: wv_core::TabKind) -> wv_core::TabStop {
-    wv_core::TabStop { pos, kind }
+    wv_core::TabStop {
+        pos,
+        kind,
+        leader: wv_core::TabLeader::None,
+    }
 }
 
 #[test]
@@ -293,4 +297,35 @@ fn a_right_indent_narrows_the_lines() {
     assert_eq!(lines_of(&p, 20.0).len(), 1);
     p.style.right_indent = 48;
     assert_eq!(lines_of(&p, 20.0), ["aaaa bbbb ", "cccc"]);
+}
+
+#[test]
+fn a_tab_fragment_carries_the_leader_of_its_stop() {
+    let mut p = plain("a	b");
+    p.style.tabs = vec![wv_core::TabStop {
+        pos: 20,
+        kind: wv_core::TabKind::Left,
+        leader: wv_core::TabLeader::Hyphens,
+    }];
+    let l = layout_paragraph(&p, &opts(40.0), &Fixed);
+    let leaders: Vec<_> = l.lines[0].fragments.iter().map(|f| f.leader).collect();
+    assert_eq!(
+        leaders,
+        [
+            wv_core::TabLeader::None,
+            wv_core::TabLeader::Hyphens,
+            wv_core::TabLeader::None
+        ]
+    );
+}
+
+#[test]
+fn leader_fills_the_tab_with_its_mark() {
+    let style = CharStyle::default();
+    let (dashes, offset) = crate::fill(40.0, &style, &Fixed, wv_core::TabLeader::Hyphens).unwrap();
+    assert!(dashes.chars().all(|c| c == '-') && offset > 0.0);
+    let (line, offset) = crate::fill(40.0, &style, &Fixed, wv_core::TabLeader::Underscore).unwrap();
+    assert!(line.chars().all(|c| c == '_') && offset == 0.0);
+    assert!(crate::fill(40.0, &style, &Fixed, wv_core::TabLeader::None).is_none());
+    assert!(crate::fill(1.0, &style, &Fixed, wv_core::TabLeader::Dots).is_none());
 }

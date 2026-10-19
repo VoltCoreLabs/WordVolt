@@ -80,6 +80,25 @@ impl File {
                         })
                         .collect()
                 },
+                tab_leaders: if p
+                    .style
+                    .tabs
+                    .iter()
+                    .all(|t| t.leader == wv_core::TabLeader::None)
+                {
+                    Vec::new()
+                } else {
+                    p.style
+                        .tabs
+                        .iter()
+                        .map(|t| {
+                            wv_core::TabLeader::ALL
+                                .iter()
+                                .position(|k| *k == t.leader)
+                                .unwrap_or(0) as u8
+                        })
+                        .collect()
+                },
                 right_indent: p.style.right_indent,
                 space_before: p.style.space_before,
                 space_after: p.style.space_after,
@@ -236,6 +255,12 @@ impl File {
                                 .tab_kinds
                                 .get(i)
                                 .and_then(|k| wv_core::TabKind::ALL.get(usize::from(*k)))
+                                .copied()
+                                .unwrap_or_default(),
+                            leader: p
+                                .tab_leaders
+                                .get(i)
+                                .and_then(|k| wv_core::TabLeader::ALL.get(usize::from(*k)))
                                 .copied()
                                 .unwrap_or_default(),
                         })

@@ -261,7 +261,7 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::ParaLineSpacing => "Line spacing, ×",
         Key::ParaLeft => "Left indent, cm",
         Key::ParaFirstLine => "First line, cm",
-        Key::ParaTabs => "Tab stops, cm (separate with ;)",
+        Key::ParaTabs => "Tab stops, cm (separate with ;, end with . - _ for a leader)",
         Key::ParaHint => "An empty field keeps the style's default",
         Key::GapBefore => "Space before paragraph: on/off",
         Key::GapAfter => "Space after paragraph: on/off",

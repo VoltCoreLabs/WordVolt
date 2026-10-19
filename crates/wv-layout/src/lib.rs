@@ -20,7 +20,7 @@ mod table_page;
 pub use band_line::{BandLine, BandPart, band_line};
 pub use document::{CaretRect, DocLayout, SelectionRect};
 pub use layout_cache::LayoutCache;
-pub use leader::leader;
+pub use leader::{fill, leader};
 pub use line::{Fragment, Line};
 pub use measure::{
     DEFAULT_SIZE_PT, Measurer, base_px, font_px, note_width, run_width, script_shift,

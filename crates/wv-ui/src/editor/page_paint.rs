@@ -233,12 +233,19 @@ pub fn paint_page(v: &PageView, bounds: Bounds<Pixels>, window: &mut Window, cx:
                             );
                         }
                     };
-                if text == "\t" && para.toc {
-                    // A tab (contents entry): dot leader up to the page number.
-                    if let Some((dots, offset)) = wv_layout::leader(f.width, &f.style, &m) {
-                        paint(&dots, usize::MAX / 2, x + offset, window, cx);
+                if text.contains('\t') {
+                    // A tab: the leader of its stop (a contents entry: dots up to the page number).
+                    let kind = if para.toc {
+                        wv_core::TabLeader::Dots
+                    } else {
+                        f.leader
+                    };
+                    if let Some((fill, offset)) = wv_layout::fill(f.width, &f.style, &m, kind) {
+                        paint(&fill, usize::MAX / 2, x + offset, window, cx);
                     }
-                    continue;
+                    if para.toc || text == "\t" {
+                        continue;
+                    }
                 }
                 if line.space_extra == 0.0 {
                     paint(text, f.range.start, x, window, cx);

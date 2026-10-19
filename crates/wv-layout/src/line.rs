@@ -13,6 +13,8 @@ pub struct Fragment {
     pub style: CharStyle,
     pub x: f32,
     pub width: f32,
+    /// What fills the tab this fragment is (none for text).
+    pub leader: wv_core::TabLeader,
 }
 
 /// One visual line of a paragraph. Byte ranges are offsets into the paragraph text.

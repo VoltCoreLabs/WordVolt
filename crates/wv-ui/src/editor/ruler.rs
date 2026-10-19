@@ -104,6 +104,7 @@ pub(super) fn press(
         m.tabs.push(TabStop {
             pos: pt.round() as u16,
             kind,
+            leader: wv_core::TabLeader::None,
         });
         return Some((Grab::Tab(m.tabs.len() - 1), true));
     }
@@ -388,7 +389,8 @@ mod tests {
             m.tabs[1],
             TabStop {
                 pos: 300,
-                kind: TabKind::Right
+                kind: TabKind::Right,
+                leader: wv_core::TabLeader::None,
             }
         );
         assert_eq!(press(&g, &mut m, (g.x(300.0), 10.0), kind), None);

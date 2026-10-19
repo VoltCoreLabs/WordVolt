@@ -259,7 +259,7 @@ pub(crate) fn text(key: Key) -> &'static str {
         Key::ParaLineSpacing => "Межстрочный, ×",
         Key::ParaLeft => "Отступ слева, см",
         Key::ParaFirstLine => "Красная строка, см",
-        Key::ParaTabs => "Табуляция, см (через ;)",
+        Key::ParaTabs => "Табуляция, см (через ;, в конце . - _ — заполнитель)",
         Key::ParaHint => "Пустое поле — по умолчанию стиля",
         Key::GapBefore => "Интервал перед абзацем: вкл/выкл",
         Key::GapAfter => "Интервал после абзаца: вкл/выкл",
