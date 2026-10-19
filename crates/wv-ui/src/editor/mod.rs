@@ -29,6 +29,7 @@ mod table_resize;
 mod toc;
 mod view;
 mod view_render;
+mod vruler;
 
 pub use image_settings::ImageSettings;
 pub use view::EditorView;

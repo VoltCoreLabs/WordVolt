@@ -214,6 +214,43 @@ impl Render for EditorView {
             .left_0()
             .size_full()
         });
+        // The vertical ruler: the strip at the left edge, below the horizontal one.
+        let vruler_probe = self.show_ruler.then(|| {
+            let vdrag = self.vruler_drag;
+            let caret_page = layout
+                .caret(self.core.sel.head, &self.measurer(window))
+                .map_or(0, |c| c.page);
+            let colors = super::ruler::Colors {
+                bar: theme.surface,
+                margin: theme.surface_alt,
+                tick: theme.border_strong,
+                text: theme.text_muted,
+                marker: theme.accent,
+            };
+            let (layout, bounds, zoom) = (layout.clone(), self.page_bounds.clone(), self.zoom);
+            let cache = self.measure_cache.clone();
+            canvas(
+                |b, _, _| b,
+                move |_, b, window, cx| {
+                    let meas = super::measure::GpuiMeasurer::new(window, cache.clone());
+                    let view = (
+                        f32::from(b.left()),
+                        f32::from(b.top()) + super::ruler::HEIGHT,
+                        f32::from(b.bottom()),
+                    );
+                    let Some(g) =
+                        super::vruler::geometry(&layout, &bounds.borrow(), caret_page, zoom, view)
+                    else {
+                        return;
+                    };
+                    super::vruler::paint(&g, vdrag, &colors, &meas, (window, cx));
+                },
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+        });
         let (input_focus, input_view) = (self.focus.clone(), cx.entity());
         let viewport_probe = canvas(
             move |b, _, _| {
@@ -275,6 +312,7 @@ impl Render for EditorView {
             .size_full()
             .overflow_hidden()
             .children(ruler_probe)
+            .children(vruler_probe)
             .child(
                 div()
                     .relative()

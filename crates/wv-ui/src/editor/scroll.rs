@@ -56,6 +56,10 @@ impl ScrollState {
         self.viewport_top.get()
     }
 
+    pub fn viewport_left(&self) -> f32 {
+        self.viewport_right.get() - self.viewport_w.get()
+    }
+
     pub fn viewport_width(&self) -> f32 {
         self.viewport_w.get()
     }

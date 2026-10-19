@@ -153,6 +153,20 @@ pub(super) fn finish(d: &Drag) -> (ParaMetrics, Option<TabKind>) {
     (m, set)
 }
 
+/// The page the rulers measure: the one with the caret, or (off screen) the first one shown.
+pub(super) fn shown_page(
+    page_bounds: &[Bounds<Pixels>],
+    caret_page: usize,
+) -> Option<(usize, Bounds<Pixels>)> {
+    let shown = |i: usize| page_bounds.get(i).filter(|b| b.size.width > px(0.));
+    let page = if shown(caret_page).is_some() {
+        caret_page
+    } else {
+        (0..page_bounds.len()).find(|i| shown(*i).is_some())?
+    };
+    shown(page).map(|b| (page, *b))
+}
+
 /// Where the ruler is for the page with the caret (or, off screen, the first page that is shown).
 pub(super) fn geometry(
     layout: &DocLayout,
@@ -161,13 +175,7 @@ pub(super) fn geometry(
     zoom: f32,
     top: f32,
 ) -> Option<Geom> {
-    let shown = |i: usize| page_bounds.get(i).filter(|b| b.size.width > px(0.));
-    let page = if shown(caret_page).is_some() {
-        caret_page
-    } else {
-        (0..page_bounds.len()).find(|i| shown(*i).is_some())?
-    };
-    let b = shown(page)?;
+    let (page, b) = shown_page(page_bounds, caret_page)?;
     let setup = layout.setup_of(page);
     Some(Geom {
         page_left: f32::from(b.origin.x),

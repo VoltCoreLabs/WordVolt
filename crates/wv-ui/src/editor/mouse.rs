@@ -47,7 +47,7 @@ impl EditorView {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus, cx);
-        if self.ruler_down(ev.position, window, cx) {
+        if self.ruler_down(ev.position, window, cx) || self.vruler_down(ev.position, window, cx) {
             return;
         }
         if self.scroll.begin_drag(ev.position) {
@@ -136,6 +136,14 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.vruler_drag.is_some() {
+            if ev.pressed_button == Some(MouseButton::Left) {
+                self.vruler_move(ev.position, window, cx);
+            } else {
+                self.vruler_up(cx);
+            }
+            return;
+        }
         if self.ruler_drag.is_some() {
             if ev.pressed_button == Some(MouseButton::Left) {
                 self.ruler_move(ev.position, window, cx);
@@ -180,6 +188,7 @@ impl EditorView {
     pub(super) fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.selecting = false;
         self.ruler_up(cx);
+        self.vruler_up(cx);
         self.scroll.end_drag();
         self.end_image_drag();
         self.border_drag = None;

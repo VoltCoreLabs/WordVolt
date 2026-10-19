@@ -63,6 +63,8 @@ pub struct EditorView {
     pub show_ruler: bool,
     /// A ruler marker is being dragged.
     pub(super) ruler_drag: Option<super::ruler::Drag>,
+    /// A margin edge of the vertical ruler is being dragged.
+    pub(super) vruler_drag: Option<super::vruler::VDrag>,
     /// The kind of tab stop a click on the ruler makes.
     pub(super) new_tab_kind: wv_core::TabKind,
     /// Horizontal scroll (px) when the zoomed page is wider than the viewport.
@@ -114,6 +116,7 @@ impl EditorView {
             show_marks: false,
             show_ruler: true,
             ruler_drag: None,
+            vruler_drag: None,
             new_tab_kind: wv_core::TabKind::Left,
             scroll_x: 0.0,
             picture_cache: Default::default(),
@@ -134,6 +137,7 @@ impl EditorView {
     pub fn toggle_ruler(&mut self, cx: &mut Context<Self>) {
         self.show_ruler = !self.show_ruler;
         self.ruler_drag = None;
+        self.vruler_drag = None;
         cx.notify();
     }
 
