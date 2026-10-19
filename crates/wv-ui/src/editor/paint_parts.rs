@@ -1,7 +1,7 @@
 use gpui_kit::*;
 use wv_core::Position;
 
-use super::caret::caret_alpha;
+use super::caret::{FADE_IN, caret_alpha};
 use super::measure::GpuiMeasurer;
 use super::page_paint::PageView;
 
@@ -17,12 +17,15 @@ pub(super) fn paint_caret(
         && let Some(c) = v.layout.caret(v.head, m)
         && c.page == v.page
     {
-        let alpha = caret_alpha(v.epoch.get().elapsed().as_secs_f32());
+        let secs = v.epoch.get().elapsed().as_secs_f32();
+        let alpha = caret_alpha(secs);
         window.paint_quad(fill(
             Bounds::new(at(c.x, c.y), sz(1.5, c.height)),
             Rgba { a: alpha, ..v.text },
         ));
-        window.request_animation_frame();
+        if secs < FADE_IN {
+            window.request_animation_frame();
+        }
     }
 }
 

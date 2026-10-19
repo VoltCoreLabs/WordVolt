@@ -73,6 +73,20 @@ pub struct EditorView {
 
 impl EditorView {
     pub fn new(cx: &mut Context<Self>) -> Self {
+        let caret_epoch = Rc::new(Cell::new(Instant::now()));
+        let blink = caret_epoch.clone();
+        cx.spawn(async move |this, cx| {
+            loop {
+                let wait = super::caret::next_change(blink.get().elapsed().as_secs_f32());
+                cx.background_executor()
+                    .timer(std::time::Duration::from_secs_f32(wait))
+                    .await;
+                if this.update(cx, |_, cx| cx.notify()).is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
         Self {
             core: Editor::new(Document::default()),
             focus: cx.focus_handle(),
@@ -80,7 +94,7 @@ impl EditorView {
             context_request: None,
             resizing: None,
             border_drag: None,
-            caret_epoch: Rc::new(Cell::new(Instant::now())),
+            caret_epoch,
             scroll: Rc::default(),
             reveal_caret: Rc::default(),
             goal_x: None,
