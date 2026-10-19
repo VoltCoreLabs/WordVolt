@@ -46,7 +46,14 @@ impl EntityInputHandler for EditorView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.apply(cx, |c| c.ime_replace(range, text, false));
+        self.apply(cx, |c| {
+            c.ime_replace(range, text, false);
+            // Markdown shortcuts work on what is typed one character at a time.
+            let mut chars = text.chars();
+            if let (Some(typed), None) = (chars.next(), chars.next()) {
+                c.autoformat_typed(typed);
+            }
+        });
     }
 
     fn replace_and_mark_text_in_range(

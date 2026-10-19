@@ -1,5 +1,6 @@
 //! Editor = document + selection + history.
 
+mod autoformat;
 mod bookmark_ops;
 mod case_ops;
 mod clipboard_ops;
